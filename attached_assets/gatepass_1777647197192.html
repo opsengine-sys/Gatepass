@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>GatePass — Visitor & Gate Pass Management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Lora:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f4f1;--bg2:#fff;--bg3:#f0efec;--bg4:#e6e4df;
+  --border:#e0deda;--border2:#ccc9c2;
+  --text:#17150f;--text2:#3a3629;--muted:#7a7769;--muted2:#aca9a0;
+  --accent:#c06b2c;--accent2:#a85920;--accent-d:rgba(192,107,44,.09);--accent-g:rgba(192,107,44,.05);
+  --green:#1a7a4a;--green-d:rgba(26,122,74,.1);
+  --red:#b33535;--red-d:rgba(179,53,53,.1);
+  --blue:#2558a8;--blue-d:rgba(37,88,168,.1);
+  --purple:#6438a0;--purple-d:rgba(100,56,160,.1);
+  --slate:#445368;--slate-d:rgba(68,83,104,.1);
+  --amber:#a07a14;--amber-d:rgba(160,122,20,.12);
+  --teal:#1a6e7a;--teal-d:rgba(26,110,122,.1);
+  --sh:0 1px 3px rgba(0,0,0,.06),0 4px 18px rgba(0,0,0,.07);
+  --sh-sm:0 1px 2px rgba(0,0,0,.05);
+  --sh-lg:0 8px 40px rgba(0,0,0,.14);
+  --r:9px;--r-lg:14px;--r-xl:20px;
+  --ui:'Instrument Sans',sans-serif;
+  --ser:'Lora',serif;
+  --mono:'JetBrains Mono',monospace;
+}
+html,body{height:100%;font-family:var(--ui);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+.app{display:flex;height:100vh;overflow:hidden}
+
+/* Sidebar */
+.sidebar{width:228px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;transition:transform .25s ease;z-index:50}
+.sidebar-logo{padding:18px 16px 14px;border-bottom:1px solid var(--border)}
+.logo-mark{display:flex;align-items:center;gap:10px}
+.logo-icon{width:30px;height:30px;background:var(--accent);border-radius:7px;display:grid;place-items:center;flex-shrink:0}
+.logo-icon svg{color:#fff;width:16px;height:16px}
+.logo-text{font-weight:700;font-size:14px;letter-spacing:-.3px}
+.logo-sub{font-size:9px;color:var(--muted2);letter-spacing:.4px;margin-top:1px}
+.sidebar-nav{flex:1;padding:8px 6px;overflow-y:auto}
+.nav-section{font-size:9px;color:var(--muted2);text-transform:uppercase;letter-spacing:1px;padding:14px 10px 5px;font-weight:700}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:all .12s;font-size:13px;color:var(--muted);font-weight:500;margin-bottom:1px;user-select:none}
+.nav-item:hover{background:var(--bg3);color:var(--text2)}
+.nav-item.active{background:var(--accent-d);color:var(--accent)}
+.nav-item.active-gp{background:var(--teal-d);color:var(--teal)}
+.nav-item svg{flex-shrink:0;width:16px;height:16px}
+.nav-badge{margin-left:auto;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px}
+.sidebar-footer{padding:10px 12px;border-top:1px solid var(--border)}
+.office-chip{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;display:flex;align-items:center;gap:7px;cursor:pointer;transition:border-color .14s}
+.office-chip:hover{border-color:var(--border2)}
+.office-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;animation:pulse 2.5s infinite}
+.office-name{font-size:11px;font-weight:600;color:var(--text2);line-height:1.3;flex:1}
+.office-sub{font-size:9.5px;color:var(--muted2)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* Main */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{height:52px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px;background:var(--bg2);flex-shrink:0}
+.topbar-title{font-weight:700;font-size:14px;flex:1}
+.topbar-module{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;padding:3px 9px;border-radius:99px;margin-right:4px}
+.mod-visitor{background:var(--accent-d);color:var(--accent)}
+.mod-gatepass{background:var(--teal-d);color:var(--teal)}
+.live-pill{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--muted);background:var(--bg3);border:1px solid var(--border);border-radius:99px;padding:3px 10px}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2.5s infinite}
+.content{flex:1;overflow-y:auto;padding:24px}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .14s;font-family:var(--ui);white-space:nowrap;letter-spacing:-.1px}
+.btn svg{width:14px;height:14px;flex-shrink:0}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent2);box-shadow:0 3px 12px rgba(192,107,44,.25)}
+.btn-teal{background:var(--teal);color:#fff}
+.btn-teal:hover{background:#155e6a}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border)}
+.btn-ghost:hover{background:var(--bg3);border-color:var(--border2)}
+.btn-danger{background:var(--red-d);color:var(--red);border:1px solid rgba(179,53,53,.18)}
+.btn-danger:hover{background:rgba(179,53,53,.2)}
+.btn-success{background:var(--green-d);color:var(--green);border:1px solid rgba(26,122,74,.2)}
+.btn-success:hover{background:rgba(26,122,74,.18)}
+.btn-amber{background:var(--amber-d);color:var(--amber);border:1px solid rgba(160,122,20,.2)}
+.btn-amber:hover{background:rgba(160,122,20,.2)}
+.btn-sm{padding:5px 10px;font-size:12px;border-radius:7px}
+.btn-sm svg{width:13px;height:13px}
+
+/* Cards */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm)}
+.card-header{padding:18px 20px 0;display:flex;align-items:center;justify-content:space-between}
+.card-title{font-weight:700;font-size:13px}
+.card-body{padding:16px 20px}
+
+/* Stats */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:20px}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-lg);padding:18px;transition:all .18s;box-shadow:var(--sh-sm)}
+.stat-card:hover{box-shadow:var(--sh);transform:translateY(-1px)}
+.stat-icon{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;margin-bottom:12px}
+.stat-icon svg{width:17px;height:17px}
+.stat-label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-weight:600;margin-bottom:5px}
+.stat-value{font-size:28px;font-weight:700;line-height:1}
+.stat-delta{font-size:10.5px;color:var(--muted2);margin-top:5px}
+
+/* Table */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead tr{border-bottom:1px solid var(--border)}
+th{padding:9px 15px;text-align:left;font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-weight:700;white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s;cursor:pointer}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--bg3)}
+td{padding:10px 15px;font-size:13px;vertical-align:middle}
+.td-name{display:flex;align-items:center;gap:9px}
+.avatar{width:30px;height:30px;border-radius:50%;background:var(--accent-d);border:1px solid var(--border);display:grid;place-items:center;font-size:10.5px;font-weight:700;color:var(--accent);flex-shrink:0;overflow:hidden}
+.avatar img{width:100%;height:100%;object-fit:cover}
+
+/* Badges */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:10.5px;font-weight:600;white-space:nowrap}
+.badge-amber{background:var(--amber-d);color:var(--amber)}
+.badge-green{background:var(--green-d);color:var(--green)}
+.badge-blue{background:var(--blue-d);color:var(--blue)}
+.badge-purple{background:var(--purple-d);color:var(--purple)}
+.badge-slate{background:var(--slate-d);color:var(--slate)}
+.badge-red{background:var(--red-d);color:var(--red)}
+.badge-teal{background:var(--teal-d);color:var(--teal)}
+.sdot{width:5px;height:5px;border-radius:50%;background:currentColor;display:inline-block}
+
+/* Visitor ID chip */
+.vid-chip{display:inline-flex;align-items:center;gap:5px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.5px}
+.vid-chip.active{background:rgba(26,122,74,.06);border-color:rgba(26,122,74,.25);color:var(--green)}
+.vid-chip.on-break{background:rgba(160,122,20,.06);border-color:rgba(160,122,20,.25);color:var(--amber)}
+
+/* Break pill */
+.break-pill{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600;background:var(--amber-d);color:var(--amber)}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(23,21,15,.44);backdrop-filter:blur(3px);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px}
+.overlay.hidden{display:none}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r-xl);width:100%;max-width:560px;max-height:93vh;overflow-y:auto;box-shadow:var(--sh-lg)}
+.modal-lg{max-width:720px}
+.modal-header{padding:22px 22px 0;display:flex;align-items:flex-start;justify-content:space-between}
+.modal-title{font-family:var(--ser);font-size:19px;font-weight:500}
+.modal-sub{font-size:12.5px;color:var(--muted);margin-top:3px}
+.modal-close{background:var(--bg3);border:1px solid var(--border);border-radius:6px;width:26px;height:26px;display:grid;place-items:center;cursor:pointer;color:var(--muted);flex-shrink:0;transition:all .12s}
+.modal-close:hover{background:var(--bg4);color:var(--text)}
+.modal-close svg{width:14px;height:14px}
+.modal-body{padding:20px 22px}
+.modal-footer{padding:0 22px 22px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+
+/* Form */
+.sdiv{font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.9px;font-weight:700;padding:16px 0 10px;border-bottom:1px solid var(--border);margin-bottom:14px}
+.fgrp{margin-bottom:13px}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.flabel{display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
+.req{color:var(--red)}
+.finput{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13.5px;color:var(--text);font-family:var(--ui);transition:all .14s;outline:none;appearance:none;-webkit-appearance:none}
+.finput:focus{border-color:var(--accent);background:var(--bg2);box-shadow:0 0 0 3px var(--accent-g)}
+.finput::placeholder{color:var(--muted2)}
+select.finput{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23aaa' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:30px;cursor:pointer}
+textarea.finput{resize:vertical;min-height:68px;line-height:1.55}
+.ferr{font-size:11px;color:var(--red);margin-top:4px;display:flex;align-items:center;gap:4px}
+.ferr svg{width:12px;height:12px;flex-shrink:0}
+
+/* Type selector */
+.type-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.type-card{border:1.5px solid var(--border);border-radius:9px;padding:10px 12px;cursor:pointer;transition:all .13s;font-size:12.5px;font-weight:500;color:var(--text2);text-align:center;line-height:1.35;user-select:none}
+.type-card:hover{border-color:var(--border2);background:var(--bg3)}
+.type-card.selected{background:var(--accent-d);border-color:var(--accent);color:var(--accent)}
+
+/* GP type selector */
+.gptype-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.gptype-card{border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;transition:all .13s;user-select:none}
+.gptype-card:hover{border-color:var(--border2);background:var(--bg3)}
+.gptype-card.selected{background:var(--teal-d);border-color:var(--teal)}
+.gptype-card-title{font-size:13px;font-weight:600;color:var(--text2);margin-bottom:2px}
+.gptype-card-sub{font-size:11px;color:var(--muted)}
+.gptype-card.selected .gptype-card-title{color:var(--teal)}
+
+/* Photo capture */
+.photo-zone{border:1.5px dashed var(--border2);border-radius:var(--r);aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;background:var(--bg3);cursor:pointer;transition:border-color .14s}
+.photo-zone:hover{border-color:var(--accent)}
+.photo-zone video,.photo-zone img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+.photo-ph{display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--muted);z-index:1;pointer-events:none}
+.photo-ph svg{width:28px;height:28px;opacity:.5}
+.photo-ph span{font-size:12px}
+.photo-ctrls{display:flex;gap:7px;margin-top:7px}
+
+/* Break history */
+.break-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12.5px}
+.break-row:last-child{border-bottom:none}
+
+/* Badge card */
+.badge-card{background:#fff;border-radius:14px;padding:0;text-align:center;font-family:'Instrument Sans',sans-serif;color:#17150f;width:320px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.12)}
+.badge-top-strip{height:8px;width:100%}
+.badge-inner{padding:22px 20px 18px}
+.badge-org{font-size:8px;text-transform:uppercase;letter-spacing:2.5px;color:#999;margin-bottom:14px;font-weight:700}
+.badge-photo-wrap{width:68px;height:68px;border-radius:50%;margin:0 auto 12px;border:3px solid #f0eeeb;overflow:hidden;background:#f5f3f0;display:flex;align-items:center;justify-content:center}
+.badge-photo-wrap img{width:100%;height:100%;object-fit:cover}
+.badge-photo-init{font-size:20px;font-weight:700;color:#bbb}
+.badge-name{font-size:17px;font-weight:700;margin-bottom:3px}
+.badge-company{font-size:11px;color:#888;margin-bottom:10px}
+.badge-type-pill{display:inline-block;padding:3px 10px;border-radius:99px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px}
+.badge-vid-block{background:#f8f7f4;border:1.5px solid #e8e5df;border-radius:10px;padding:9px 12px;margin-bottom:12px;text-align:left}
+.badge-vid-label{font-size:8px;text-transform:uppercase;letter-spacing:1.5px;color:#aaa;font-weight:700;margin-bottom:4px}
+.badge-vid-value{font-family:monospace;font-size:14px;font-weight:700;letter-spacing:.5px}
+.badge-vid-validity{font-size:9px;color:#888;margin-top:3px}
+.badge-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;text-align:left;margin-bottom:10px}
+.badge-info-cell{background:#f8f7f4;border-radius:7px;padding:6px 8px}
+.badge-info-key{font-size:7.5px;text-transform:uppercase;letter-spacing:1px;color:#bbb;font-weight:700;margin-bottom:2px}
+.badge-info-val{font-size:10.5px;font-weight:600;color:#333}
+.badge-office-bar{background:#f0efec;border-top:1px solid #eee;padding:7px 12px;font-size:8px;color:#aaa;text-transform:uppercase;letter-spacing:1.2px;display:flex;align-items:center;justify-content:space-between}
+
+/* Gate pass print card */
+.gp-card{background:#fff;border-radius:14px;overflow:hidden;width:340px;font-family:'Instrument Sans',sans-serif;box-shadow:0 4px 24px rgba(0,0,0,.12)}
+.gp-top{height:6px}
+.gp-inner{padding:20px}
+.gp-org{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#999;font-weight:700;margin-bottom:12px}
+.gp-title{font-size:15px;font-weight:700;margin-bottom:3px}
+.gp-type-pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:12px}
+.gp-id-block{background:#f8f7f4;border:1.5px solid #e8e5df;border-radius:9px;padding:9px 12px;margin-bottom:12px}
+.gp-id-label{font-size:8px;text-transform:uppercase;letter-spacing:1.5px;color:#aaa;font-weight:700;margin-bottom:3px}
+.gp-id-value{font-family:monospace;font-size:14px;font-weight:700;letter-spacing:.5px}
+.gp-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px}
+.gp-cell{background:#f8f7f4;border-radius:7px;padding:6px 8px}
+.gp-key{font-size:7.5px;text-transform:uppercase;letter-spacing:1px;color:#bbb;font-weight:700;margin-bottom:2px}
+.gp-val{font-size:10.5px;font-weight:600;color:#333}
+.gp-items-block{background:#f8f7f4;border-radius:8px;padding:9px 11px;margin-bottom:10px;text-align:left}
+.gp-items-key{font-size:8px;text-transform:uppercase;letter-spacing:1px;color:#aaa;font-weight:700;margin-bottom:5px}
+.gp-item-row{font-size:10.5px;color:#444;padding:3px 0;border-bottom:1px solid #eee}
+.gp-item-row:last-child{border-bottom:none}
+.gp-bar{background:#f0efec;border-top:1px solid #eee;padding:7px 12px;font-size:8px;color:#aaa;text-transform:uppercase;letter-spacing:1px;display:flex;justify-content:space-between}
+
+/* Link box */
+.link-box{display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 12px}
+.link-box code{flex:1;font-size:10.5px;color:var(--muted);font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Page header */
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.page-title{font-family:var(--ser);font-size:21px;font-weight:500}
+.page-sub{font-size:12.5px;color:var(--muted);margin-top:3px}
+.filter-bar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.search-bar{display:flex;align-items:center;gap:7px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:0 11px}
+.search-bar input{background:none;border:none;outline:none;font-size:13px;color:var(--text);font-family:var(--ui);padding:8px 0;width:200px}
+.search-bar input::placeholder{color:var(--muted2)}
+.search-bar svg{width:14px;height:14px;color:var(--muted2);flex-shrink:0}
+
+/* Timeline */
+.tl-item{display:flex;gap:11px;padding:9px 0;border-bottom:1px solid var(--border)}
+.tl-item:last-child{border-bottom:none}
+.tl-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.tl-title{font-size:12.5px;font-weight:500;color:var(--text2)}
+.tl-time{font-size:10.5px;color:var(--muted2);margin-top:2px}
+
+/* Toast */
+.toast-wrap{position:fixed;bottom:20px;right:20px;z-index:300;display:flex;flex-direction:column;gap:7px;pointer-events:none}
+.toast{background:var(--text);color:#fff;border-radius:9px;padding:10px 15px;font-size:12.5px;box-shadow:var(--sh-lg);display:flex;align-items:center;gap:9px;animation:tIn .22s ease;min-width:200px}
+.toast svg{width:14px;height:14px;flex-shrink:0}
+@keyframes tIn{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
+
+/* Empty */
+.empty{text-align:center;padding:44px 20px;color:var(--muted)}
+.empty svg{width:36px;height:36px;opacity:.2;margin:0 auto 10px;display:block}
+.empty h3{font-size:14px;font-weight:600;color:var(--text2);margin-bottom:4px}
+.empty p{font-size:12.5px}
+
+/* Info box */
+.info-box{background:var(--accent-d);border:1px solid rgba(192,107,44,.2);border-radius:9px;padding:11px 13px;font-size:12.5px;color:var(--accent2);display:flex;align-items:flex-start;gap:8px;line-height:1.55}
+.info-box svg{width:14px;height:14px;flex-shrink:0;margin-top:1px}
+.info-box.teal{background:var(--teal-d);border-color:rgba(26,110,122,.2);color:var(--teal)}
+
+/* Public page */
+.pub-wrap{min-height:100vh;background:#f5f4f1;display:flex;flex-direction:column;align-items:center;padding:28px 16px}
+.pub-card{background:#fff;border:1px solid #e0deda;border-radius:18px;padding:32px;width:100%;max-width:500px;box-shadow:0 4px 28px rgba(0,0,0,.07)}
+.pub-logo{text-align:center;margin-bottom:26px}
+.pub-logo-icon{width:42px;height:42px;background:var(--accent);border-radius:10px;display:grid;place-items:center;margin:0 auto 11px}
+.pub-logo-icon svg{color:#fff;width:22px;height:22px}
+.pub-logo h1{font-family:var(--ser);font-size:21px;color:#17150f;font-weight:500}
+.pub-logo p{font-size:12.5px;color:#7a7769;margin-top:4px}
+.pub-btn{width:100%;background:var(--accent);color:#fff;border:none;border-radius:9px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:var(--ui);transition:all .14s;margin-top:6px}
+.pub-btn:hover{background:var(--accent2)}
+.pub-back{display:inline-flex;align-items:center;gap:5px;background:none;border:none;cursor:pointer;color:var(--muted);font-size:12.5px;font-family:var(--ui);padding:0 0 16px;transition:color .13s}
+.pub-back:hover{color:var(--text)}
+.pub-back svg{width:15px;height:15px}
+
+/* Dropdown */
+.dd-wrap{position:relative;display:inline-block}
+.dd-menu{position:absolute;right:0;top:calc(100% + 6px);background:var(--bg2);border:1px solid var(--border);border-radius:10px;box-shadow:var(--sh);z-index:60;min-width:160px;padding:5px;display:none}
+.dd-menu.open{display:block}
+.dd-item{padding:8px 11px;border-radius:7px;cursor:pointer;font-size:12.5px;font-weight:500;color:var(--text2)}
+.dd-item:hover{background:var(--bg3)}
+
+/* Office picker */
+.office-option{display:flex;align-items:center;justify-content:space-between;padding:10px 13px;border-radius:8px;cursor:pointer;font-size:13px;transition:all .12s}
+.office-option:hover{background:var(--bg3)}
+.office-option.selected{background:var(--accent-d);color:var(--accent);font-weight:600}
+.office-option svg{width:14px;height:14px}
+
+/* Hamburger */
+.hamburger{display:none;background:var(--bg3);border:1px solid var(--border);border-radius:7px;cursor:pointer;color:var(--muted);padding:5px;align-items:center;justify-content:center}
+.hamburger svg{width:20px;height:20px}
+.mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:40}
+
+@media(max-width:1100px){.stats-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:768px){
+  .hamburger{display:flex}
+  .sidebar{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0);box-shadow:var(--sh-lg)}
+  .mob-overlay.open{display:block}
+  .content{padding:14px}
+  .stats-grid{grid-template-columns:1fr 1fr}
+  .fgrid{grid-template-columns:1fr}
+  .type-grid{grid-template-columns:1fr 1fr}
+  .gptype-grid{grid-template-columns:1fr}
+  .dash-grid{grid-template-columns:1fr!important}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast-wrap" id="toastWrap"></div>
+<script>
+// ── Icons ─────────────────────────────────────────────────────────────────────
+const I={
+  grid:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`,
+  users:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+  log:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
+  link:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`,
+  plus:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+  x:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+  camera:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>`,
+  search:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
+  download:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
+  badge:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><circle cx="12" cy="10" r="3"/></svg>`,
+  logout:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
+  login:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>`,
+  menu:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>`,
+  building:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`,
+  check:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`,
+  copy:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`,
+  print:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>`,
+  retake:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>`,
+  alert:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+  wa:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>`,
+  back:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>`,
+  eye:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`,
+  pin:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:14px;height:14px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`,
+  id:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>`,
+  share:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>`,
+  img:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`,
+  coffee:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 8h1a4 4 0 0 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V8z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/></svg>`,
+  box:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`,
+  truck:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>`,
+  food:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>`,
+  clipboard:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>`,
+  br:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 8h1a4 4 0 0 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V8z"/></svg>`,
+};
+
+// ── Constants ──────────────────────────────────────────────────────────────────
+const OFFICES=[
+  "Hyderabad — Raheja Mindspace","Hyderabad — DLF Cybercity",
+  "Bangalore — Embassy Tech Village","Mumbai — BKC",
+  "Chennai — Tidel Park","Pune — Hinjewadi",
+];
+
+const VTYPES=[
+  {id:"vendor",    label:"Vendor",              color:"amber", needsBadge:true},
+  {id:"candidate", label:"Interview Candidate", color:"blue",  needsBadge:true},
+  {id:"guest",     label:"Guest",               color:"green", needsBadge:true},
+  {id:"leadership",label:"Leadership Visit",    color:"purple",needsBadge:false},
+  {id:"employee",  label:"Employee (Forgot ID)",color:"slate", needsBadge:true},
+];
+
+// POC config — show:false means no POC section at all
+const POC_CFG={
+  vendor:    {show:true, hostLabel:"Host / Point of Contact", phoneLabel:"Host Phone"},
+  candidate: {show:true, hostLabel:"HR Point of Contact",     phoneLabel:"HR Phone"},
+  guest:     {show:true, hostLabel:"Host Name",               phoneLabel:"Host Phone"},
+  leadership:{show:true, hostLabel:"Host / Sponsor",          phoneLabel:"Host Phone"},
+  employee:  {show:false},
+};
+
+// Required fields per type: name always required, purpose/address/host optional for employee
+const NEEDS_PURPOSE={vendor:true,candidate:true,guest:true,leadership:true,employee:false};
+const NEEDS_COMPANY ={vendor:true,candidate:false,guest:false,leadership:true,employee:true};
+
+const TYPE_EXTRA={
+  vendor:    [{k:"contractRef",l:"Contract / PO Reference",p:"e.g. PO-2025-0042"},{k:"serviceType",l:"Service Category",p:"e.g. IT Hardware"}],
+  candidate: [{k:"jobId",l:"Job ID / Role Applied",p:"e.g. SWE-2025-047"},{k:"interviewRound",l:"Interview Round",p:"e.g. Round 2 — Technical"}],
+  guest:     [{k:"relationship",l:"Relationship to Host",p:"e.g. Family, Friend"}],
+  leadership:[{k:"homeOffice",l:"Home Office / BU",p:"e.g. iCIMS New Jersey HQ"},{k:"visitAgenda",l:"Visit Agenda",p:"e.g. Q3 Business Review"}],
+  employee:  [{k:"employeeId",l:"Employee ID",p:"e.g. EMP-10042",req:true},{k:"department",l:"Department",p:"e.g. Engineering"}],
+};
+
+const TYPE_COLORS={vendor:"#a07a14",candidate:"#2558a8",guest:"#1a7a4a",leadership:"#6438a0",employee:"#445368"};
+
+// Gate Pass types
+const GP_TYPES=[
+  {id:"material",  label:"Materials / Supplies", sub:"Raw materials, equipment, tools", icon:"box"},
+  {id:"food",      label:"Food & Beverages",      sub:"Catering, delivery, pantry",      icon:"food"},
+  {id:"outgoing",  label:"Outgoing Assets",       sub:"Company property leaving premises",icon:"truck"},
+  {id:"contractor",label:"Contractor Supplies",   sub:"Contractor tools & equipment",     icon:"clipboard"},
+];
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function uid6(){return Math.random().toString(36).slice(2,8).toUpperCase();}
+function genVID(){return"GP-"+uid6()+"-"+uid6();}
+function genGPID(){return"GPP-"+uid6();}
+function uid(){return Math.random().toString(36).slice(2,9);}
+function today(){return new Date().toISOString().split("T")[0];}
+function fmtTime(d){if(!d)return"—";return new Date(d).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});}
+function fmtDate(d){if(!d)return"—";return new Date(d).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"});}
+function fmtDT(d){if(!d)return"—";return fmtDate(d)+", "+fmtTime(d);}
+function initials(n){return(n||"?").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2);}
+function escH(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function sameDay(d1,d2){return new Date(d1).toDateString()===new Date(d2).toDateString();}
+
+function typeBadgeHTML(type){
+  const t=VTYPES.find(v=>v.id===type);
+  return`<span class="badge badge-${t?.color||'slate'}"><span class="sdot"></span>${t?.label||type}</span>`;
+}
+function statusBadgeHTML(s,onBreak){
+  if(onBreak) return`<span class="badge badge-amber"><span class="sdot"></span>On Break</span>`;
+  if(s==="checked-in")  return`<span class="badge badge-green"><span class="sdot"></span>Checked In</span>`;
+  if(s==="checked-out") return`<span class="badge badge-slate"><span class="sdot"></span>Checked Out</span>`;
+  if(s==="pending")     return`<span class="badge badge-amber"><span class="sdot"></span>Pending</span>`;
+  return"";
+}
+function gpStatusBadge(s){
+  if(s==="open")     return`<span class="badge badge-green"><span class="sdot"></span>Open</span>`;
+  if(s==="closed")   return`<span class="badge badge-slate"><span class="sdot"></span>Closed</span>`;
+  if(s==="pending")  return`<span class="badge badge-amber"><span class="sdot"></span>Pending</span>`;
+  return"";
+}
+function avatarHTML(v,size=30){
+  const fs=Math.round(size*0.36);
+  if(v.photo)return`<div class="avatar" style="width:${size}px;height:${size}px"><img src="${v.photo}"/></div>`;
+  return`<div class="avatar" style="width:${size}px;height:${size}px;font-size:${fs}px">${initials(v.name)}</div>`;
+}
+function vidChipHTML(v){
+  const onBreak=v.onBreak;
+  const active=v.status==="checked-in"&&!onBreak;
+  let cls=onBreak?"on-break":active?"active":"";
+  return`<span class="vid-chip ${cls}">${I.id} ${escH(v.visitorId||"—")}</span>`;
+}
+
+// ── Export helpers ─────────────────────────────────────────────────────────────
+function exportCSV(){
+  const loc=state.office;
+  const vs=state.visitors.filter(v=>v.office===loc);
+  const cols=["visitorId","name","company","email","phone","type","host","hostPhone","office","purpose","address",
+    "contractRef","serviceType","jobId","interviewRound","relationship","homeOffice","visitAgenda","employeeId","department",
+    "status","onBreak","checkin","checkout","breakCount"];
+  const header=cols.join(",");
+  const rows=vs.map(v=>cols.map(c=>{
+    let val=c==="breakCount"?(v.breaks||[]).length:v[c];
+    return`"${(val===null||val===undefined?"":String(val)).replace(/"/g,'""')}"`;
+  }).join(","));
+  const blob=new Blob([header+"\n"+rows.join("\n")],{type:"text/csv"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`visitors-${loc.split("—")[0].trim().replace(/\s/g,"-")}-${Date.now()}.csv`;a.click();
+  addToast("Exported "+vs.length+" visitors as CSV");
+}
+function exportJSON(){
+  const loc=state.office;
+  const vs=state.visitors.filter(v=>v.office===loc);
+  const blob=new Blob([JSON.stringify(vs,null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`visitors-${Date.now()}.json`;a.click();
+  addToast("Exported as JSON");
+}
+function exportGPCSV(){
+  const loc=state.office;
+  const gps=state.gatePasses.filter(g=>g.office===loc);
+  const cols=["gpId","type","requestedBy","requesterPhone","vendor","vehicleNo","office","expectedDate","purpose","status","items","createdAt","closedAt"];
+  const header=cols.join(",");
+  const rows=gps.map(g=>cols.map(c=>{
+    let val=c==="items"?JSON.stringify(g.items||[]):g[c];
+    return`"${(val===null||val===undefined?"":String(val)).replace(/"/g,'""')}"`;
+  }).join(","));
+  const blob=new Blob([header+"\n"+rows.join("\n")],{type:"text/csv"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`gatepasses-${Date.now()}.csv`;a.click();
+  addToast("Exported gate passes as CSV");
+}
+
+// ── Badge HTML ─────────────────────────────────────────────────────────────────
+function buildBadgeHTML(v){
+  const t=VTYPES.find(x=>x.id===v.type);
+  const c=TYPE_COLORS[v.type]||"#888";
+  const photo=v.photo?`<img src="${v.photo}" style="width:100%;height:100%;object-fit:cover"/>`:`<span class="badge-photo-init">${initials(v.name)}</span>`;
+  const isActive=v.status==="checked-in"||v.status==="pending";
+  const validity=isActive?(v.onBreak?"Currently on break — valid until check-out":"Valid until check-out"):"Expired — checked out";
+  return`<div class="badge-card"><div class="badge-top-strip" style="background:${c}"></div><div class="badge-inner">
+    <div class="badge-org">iCIMS · Visitor Pass</div>
+    <div class="badge-photo-wrap" style="border-color:${c}33">${photo}</div>
+    <div class="badge-name">${escH(v.name)}</div>
+    <div class="badge-company">${escH(v.company||"")}</div>
+    <div class="badge-type-pill" style="background:${c}18;color:${c}">${t?.label||v.type}</div>
+    <div class="badge-vid-block" style="border-color:${isActive?c+"44":"#e8e5df"}">
+      <div class="badge-vid-label">Visitor ID</div>
+      <div class="badge-vid-value" style="color:${isActive?c:"#aaa"}">${escH(v.visitorId||"—")}</div>
+      <div class="badge-vid-validity">${validity}</div>
+    </div>
+    <div class="badge-info-grid">
+      <div class="badge-info-cell"><div class="badge-info-key">Host</div><div class="badge-info-val">${escH(v.host||"—")}</div></div>
+      <div class="badge-info-cell"><div class="badge-info-key">Purpose</div><div class="badge-info-val">${escH(v.purpose||"—")}</div></div>
+      <div class="badge-info-cell"><div class="badge-info-key">Date</div><div class="badge-info-val">${fmtDate(v.checkin)}</div></div>
+      <div class="badge-info-cell"><div class="badge-info-key">Check-in</div><div class="badge-info-val">${fmtTime(v.checkin)}</div></div>
+    </div>
+  </div><div class="badge-office-bar"><span>${escH(v.office||"")}</span><span style="font-family:monospace;font-size:7.5px">${escH(v.visitorId||"")}</span></div></div>`;
+}
+function buildGPBadgeHTML(g){
+  const t=GP_TYPES.find(x=>x.id===g.type);
+  const c="#1a6e7a";
+  const itemsHTML=(g.items||[]).map(it=>`<div class="gp-item-row">${escH(it.name)} — Qty: ${escH(String(it.qty))}${it.desc?" ("+escH(it.desc)+")":""}</div>`).join("")||"<div class='gp-item-row' style='color:#bbb'>No items listed</div>";
+  return`<div class="gp-card"><div class="gp-top" style="background:${c}"></div><div class="gp-inner">
+    <div class="gp-org">iCIMS · Gate Pass</div>
+    <div class="gp-title">${escH(t?.label||g.type)}</div>
+    <div class="gp-type-pill" style="background:${c}18;color:${c}">${escH(g.gpId)}</div>
+    <div class="gp-id-block"><div class="gp-id-label">Pass ID</div><div class="gp-id-value" style="color:${c}">${escH(g.gpId)}</div></div>
+    <div class="gp-grid">
+      <div class="gp-cell"><div class="gp-key">Requested By</div><div class="gp-val">${escH(g.requestedBy)}</div></div>
+      <div class="gp-cell"><div class="gp-key">Vendor / Party</div><div class="gp-val">${escH(g.vendor||"—")}</div></div>
+      <div class="gp-cell"><div class="gp-key">Expected Date</div><div class="gp-val">${escH(g.expectedDate||"—")}</div></div>
+      <div class="gp-cell"><div class="gp-key">Vehicle No</div><div class="gp-val">${escH(g.vehicleNo||"—")}</div></div>
+    </div>
+    <div class="gp-items-block"><div class="gp-items-key">Items / Materials</div>${itemsHTML}</div>
+  </div><div class="gp-bar"><span>${escH(g.office||"")}</span><span>${fmtDate(g.createdAt)}</span></div></div>`;
+}
+async function exportBadgePNG(v){
+  addToast("Generating image…");
+  const wrap=document.createElement("div");
+  wrap.style.cssText="position:fixed;left:-9999px;top:0;background:transparent";
+  wrap.innerHTML=`<style>*{box-sizing:border-box;margin:0;padding:0}.badge-card{background:#fff;border-radius:14px;text-align:center;font-family:'Instrument Sans',sans-serif;color:#17150f;width:320px;overflow:hidden}.badge-top-strip{height:8px;width:100%}.badge-inner{padding:22px 20px 18px}.badge-org{font-size:8px;text-transform:uppercase;letter-spacing:2.5px;color:#999;margin-bottom:14px;font-weight:700}.badge-photo-wrap{width:68px;height:68px;border-radius:50%;margin:0 auto 12px;border:3px solid #f0eeeb;overflow:hidden;background:#f5f3f0;display:flex;align-items:center;justify-content:center}.badge-photo-wrap img{width:100%;height:100%;object-fit:cover}.badge-photo-init{font-size:20px;font-weight:700;color:#bbb}.badge-name{font-size:17px;font-weight:700;margin-bottom:3px}.badge-company{font-size:11px;color:#888;margin-bottom:10px}.badge-type-pill{display:inline-block;padding:3px 10px;border-radius:99px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px}.badge-vid-block{background:#f8f7f4;border:1.5px solid #e8e5df;border-radius:10px;padding:9px 12px;margin-bottom:12px;text-align:left}.badge-vid-label{font-size:8px;text-transform:uppercase;letter-spacing:1.5px;color:#aaa;font-weight:700;margin-bottom:4px}.badge-vid-value{font-family:monospace;font-size:14px;font-weight:700;letter-spacing:.5px}.badge-vid-validity{font-size:9px;color:#888;margin-top:3px}.badge-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;text-align:left;margin-bottom:10px}.badge-info-cell{background:#f8f7f4;border-radius:7px;padding:6px 8px}.badge-info-key{font-size:7.5px;text-transform:uppercase;letter-spacing:1px;color:#bbb;font-weight:700;margin-bottom:2px}.badge-info-val{font-size:10.5px;font-weight:600;color:#333}.badge-office-bar{background:#f0efec;border-top:1px solid #eee;padding:7px 12px;font-size:8px;color:#aaa;text-transform:uppercase;letter-spacing:1.2px;display:flex;align-items:center;justify-content:space-between}</style>${buildBadgeHTML(v)}`;
+  document.body.appendChild(wrap);
+  await new Promise(r=>setTimeout(r,300));
+  try{
+    const canvas=await html2canvas(wrap.querySelector(".badge-card"),{scale:2,useCORS:true,backgroundColor:"#ffffff"});
+    const a=document.createElement("a");a.href=canvas.toDataURL("image/png");a.download=`badge-${v.visitorId||v.name}.png`;a.click();
+    addToast("Badge downloaded as PNG");
+  }catch(e){addToast("PNG export failed — use Print instead");}
+  document.body.removeChild(wrap);
+}
+function printBadge(v){
+  const w=window.open("","_blank","width=400,height=600");
+  w.document.write(`<!DOCTYPE html><html><head><title>Badge</title><link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;600;700&display=swap" rel="stylesheet"><style>*{box-sizing:border-box;margin:0;padding:0}body{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f5f4f1;font-family:'Instrument Sans',sans-serif}.badge-card{background:#fff;border-radius:14px;text-align:center;width:320px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.12)}.badge-top-strip{height:8px}.badge-inner{padding:22px 20px 18px}.badge-org{font-size:8px;text-transform:uppercase;letter-spacing:2.5px;color:#999;margin-bottom:14px;font-weight:700}.badge-photo-wrap{width:68px;height:68px;border-radius:50%;margin:0 auto 12px;border:3px solid #f0eeeb;overflow:hidden;background:#f5f3f0;display:flex;align-items:center;justify-content:center}.badge-photo-wrap img{width:100%;height:100%;object-fit:cover}.badge-photo-init{font-size:20px;font-weight:700;color:#bbb}.badge-name{font-size:17px;font-weight:700;margin-bottom:3px}.badge-company{font-size:11px;color:#888;margin-bottom:10px}.badge-type-pill{display:inline-block;padding:3px 10px;border-radius:99px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px}.badge-vid-block{background:#f8f7f4;border:1.5px solid #e8e5df;border-radius:10px;padding:9px 12px;margin-bottom:12px;text-align:left}.badge-vid-label{font-size:8px;text-transform:uppercase;letter-spacing:1.5px;color:#aaa;font-weight:700;margin-bottom:4px}.badge-vid-value{font-family:monospace;font-size:14px;font-weight:700;letter-spacing:.5px}.badge-vid-validity{font-size:9px;color:#888;margin-top:3px}.badge-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;text-align:left;margin-bottom:10px}.badge-info-cell{background:#f8f7f4;border-radius:7px;padding:6px 8px}.badge-info-key{font-size:7.5px;text-transform:uppercase;letter-spacing:1px;color:#bbb;font-weight:700;margin-bottom:2px}.badge-info-val{font-size:10.5px;font-weight:600;color:#333}.badge-office-bar{background:#f0efec;border-top:1px solid #eee;padding:7px 12px;font-size:8px;color:#aaa;text-transform:uppercase;letter-spacing:1.2px;display:flex;justify-content:space-between}@media print{body{background:#fff}@page{size:85mm 135mm;margin:0}}</style></head><body>${buildBadgeHTML(v)}</body></html>`);
+  w.document.close();setTimeout(()=>w.print(),700);
+}
+function printGPBadge(g){
+  const w=window.open("","_blank","width=420,height=600");
+  w.document.write(`<!DOCTYPE html><html><head><title>Gate Pass</title><link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;600;700&display=swap" rel="stylesheet"><style>*{box-sizing:border-box;margin:0;padding:0}body{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f5f4f1;font-family:'Instrument Sans',sans-serif}.gp-card{background:#fff;border-radius:14px;overflow:hidden;width:340px;font-family:'Instrument Sans',sans-serif;box-shadow:0 4px 24px rgba(0,0,0,.12)}.gp-top{height:6px}.gp-inner{padding:20px}.gp-org{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#999;font-weight:700;margin-bottom:12px}.gp-title{font-size:15px;font-weight:700;margin-bottom:3px}.gp-type-pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:12px}.gp-id-block{background:#f8f7f4;border:1.5px solid #e8e5df;border-radius:9px;padding:9px 12px;margin-bottom:12px}.gp-id-label{font-size:8px;text-transform:uppercase;letter-spacing:1.5px;color:#aaa;font-weight:700;margin-bottom:3px}.gp-id-value{font-family:monospace;font-size:14px;font-weight:700;letter-spacing:.5px}.gp-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px}.gp-cell{background:#f8f7f4;border-radius:7px;padding:6px 8px}.gp-key{font-size:7.5px;text-transform:uppercase;letter-spacing:1px;color:#bbb;font-weight:700;margin-bottom:2px}.gp-val{font-size:10.5px;font-weight:600;color:#333}.gp-items-block{background:#f8f7f4;border-radius:8px;padding:9px 11px;margin-bottom:10px;text-align:left}.gp-items-key{font-size:8px;text-transform:uppercase;letter-spacing:1px;color:#aaa;font-weight:700;margin-bottom:5px}.gp-item-row{font-size:10.5px;color:#444;padding:3px 0;border-bottom:1px solid #eee}.gp-item-row:last-child{border-bottom:none}.gp-bar{background:#f0efec;border-top:1px solid #eee;padding:7px 12px;font-size:8px;color:#aaa;text-transform:uppercase;letter-spacing:1px;display:flex;justify-content:space-between}@media print{body{background:#fff}}</style></head><body>${buildGPBadgeHTML(g)}</body></html>`);
+  w.document.close();setTimeout(()=>w.print(),700);
+}
+
+// ── State ──────────────────────────────────────────────────────────────────────
+let state={
+  module:"visitors", // "visitors" | "gatepasses"
+  page:"dashboard",  // visitor pages: dashboard|visitors|logs|pub ; gp pages: gpdashboard|gatepasses|gplogs
+  office:OFFICES[0],
+  sidebarOpen:false,
+  pubView:false,
+  modal:null,modalData:null,
+  vSearch:"",vTypeF:"all",vStatusF:"all",
+  gpSearch:"",gpTypeF:"all",gpStatusF:"all",
+  regForm:null,regErrors:{},
+  pubForm:null,pubErrors:{},pubDone:false,
+  gpForm:null,gpErrors:{},
+  visitors:[
+    {id:uid(),visitorId:"GP-RAVI01-VEN001",name:"Ravi Shankar",company:"Infosys Ltd",email:"ravi@infosys.com",phone:"9876543210",type:"vendor",host:"Sathish Kumar",hostPhone:"9000011111",office:OFFICES[0],purpose:"Contract Review",address:"14 MG Road, Bangalore 560001",contractRef:"PO-2025-0042",serviceType:"IT Services",status:"checked-in",checkin:new Date(Date.now()-2*3600000).toISOString(),checkout:null,photo:null,onBreak:false,breaks:[]},
+    {id:uid(),visitorId:"GP-PRIY02-CAN002",name:"Priya Mehta",company:"",email:"priya@gmail.com",phone:"9123456789",type:"candidate",host:"Harika Reddy",hostPhone:"9000022222",office:OFFICES[0],purpose:"Senior Dev Interview",address:"22 Film Nagar, Hyderabad 500033",jobId:"SWE-2025-047",interviewRound:"Round 2 — Technical",status:"checked-in",checkin:new Date(Date.now()-3600000).toISOString(),checkout:null,photo:null,onBreak:false,breaks:[]},
+    {id:uid(),visitorId:"GP-ANAN03-LEA003",name:"Anand Krishnamurthy",company:"iCIMS HQ",email:"anand@icims.com",phone:"9988776655",type:"leadership",host:"Srini Vasudevan",hostPhone:"9000033333",office:OFFICES[0],purpose:"Q3 Business Review",address:"101 Commerce Way, NJ",homeOffice:"iCIMS New Jersey HQ",visitAgenda:"Q3 Review",status:"checked-out",checkin:new Date(Date.now()-5*3600000).toISOString(),checkout:new Date(Date.now()-3600000).toISOString(),photo:null,onBreak:false,breaks:[]},
+    {id:uid(),visitorId:"GP-AMIT04-EMP004",name:"Amit Sharma",company:"iCIMS",email:"amit@icims.com",phone:"9111222333",type:"employee",host:"",hostPhone:"",office:OFFICES[0],purpose:"",address:"",employeeId:"EMP-10087",department:"Engineering",status:"checked-in",checkin:new Date(Date.now()-1800000).toISOString(),checkout:null,photo:null,onBreak:false,breaks:[]},
+    {id:uid(),visitorId:"GP-RAVI01-VEN099",name:"Ravi Shankar",company:"Infosys Ltd",email:"ravi@infosys.com",phone:"9876543210",type:"vendor",host:"Sathish Kumar",hostPhone:"9000011111",office:OFFICES[1],purpose:"Demo",address:"",status:"checked-in",checkin:new Date(Date.now()-1800000).toISOString(),checkout:null,photo:null,onBreak:false,breaks:[]},
+  ],
+  logs:[
+    {id:uid(),type:"checkin",visitor:"Ravi Shankar",vid:"GP-RAVI01-VEN001",time:new Date(Date.now()-2*3600000).toISOString(),office:OFFICES[0],note:""},
+    {id:uid(),type:"checkin",visitor:"Priya Mehta",vid:"GP-PRIY02-CAN002",time:new Date(Date.now()-3600000).toISOString(),office:OFFICES[0],note:""},
+    {id:uid(),type:"checkin",visitor:"Amit Sharma",vid:"GP-AMIT04-EMP004",time:new Date(Date.now()-1800000).toISOString(),office:OFFICES[0],note:"Temp badge"},
+    {id:uid(),type:"checkout",visitor:"Anand Krishnamurthy",vid:"GP-ANAN03-LEA003",time:new Date(Date.now()-3600000).toISOString(),office:OFFICES[0],note:""},
+  ],
+  gatePasses:[
+    {id:uid(),gpId:"GPP-MAT001",type:"material",requestedBy:"Facilities Team",requesterPhone:"9876500001",vendor:"Ashok Hardware",vehicleNo:"TS09EF1234",office:OFFICES[0],expectedDate:today(),purpose:"Office renovation supplies",status:"open",createdAt:new Date(Date.now()-3600000).toISOString(),closedAt:null,items:[{name:"PVC Pipes",qty:"20 units",desc:"2 inch diameter"},{name:"Cement Bags",qty:"10",desc:""},{name:"Paint Cans",qty:"5",desc:"White emulsion"}]},
+    {id:uid(),gpId:"GPP-FOD002",type:"food",requestedBy:"Admin Team",requesterPhone:"9876500002",vendor:"Meals on Wheels",vehicleNo:"TS07AB5678",office:OFFICES[0],expectedDate:today(),purpose:"Team lunch delivery",status:"closed",createdAt:new Date(Date.now()-5*3600000).toISOString(),closedAt:new Date(Date.now()-2*3600000).toISOString(),items:[{name:"Veg Biryani",qty:"40 portions",desc:""},{name:"Dessert",qty:"40 portions",desc:""}]},
+  ],
+  gpLogs:[
+    {id:uid(),type:"created",passId:"GPP-MAT001",by:"Facilities Team",time:new Date(Date.now()-3600000).toISOString(),office:OFFICES[0]},
+    {id:uid(),type:"closed",passId:"GPP-FOD002",by:"Security",time:new Date(Date.now()-2*3600000).toISOString(),office:OFFICES[0]},
+  ],
+};
+
+// ── Toast ──────────────────────────────────────────────────────────────────────
+function addToast(msg){
+  const el=document.createElement("div");el.className="toast";el.innerHTML=I.check+" "+escH(msg);
+  document.getElementById("toastWrap").appendChild(el);
+  setTimeout(()=>el.remove(),3200);
+}
+
+// ── Blank forms ────────────────────────────────────────────────────────────────
+function blankVForm(){
+  return{name:"",company:"",email:"",phone:"",type:"vendor",host:"",hostPhone:"",purpose:"",office:state.office,photo:null,
+    contractRef:"",serviceType:"",jobId:"",interviewRound:"",relationship:"",homeOffice:"",visitAgenda:"",employeeId:"",department:"",address:""};
+}
+function blankGPForm(){
+  return{type:"material",requestedBy:"",requesterPhone:"",vendor:"",vehicleNo:"",expectedDate:today(),purpose:"",office:state.office,items:[{name:"",qty:"",desc:""}]};
+}
+
+// ── Validation ─────────────────────────────────────────────────────────────────
+function validateVForm(f){
+  const e={};
+  if(!f.name?.trim())e.name="Name is required";
+  const poc=POC_CFG[f.type];
+  if(poc?.show){
+    if(!f.host?.trim())e.host=poc.hostLabel+" is required";
+  }
+  if(NEEDS_PURPOSE[f.type]&&!f.purpose?.trim())e.purpose="Purpose is required";
+  (TYPE_EXTRA[f.type]||[]).forEach(x=>{if(x.req&&!f[x.k]?.trim())e[x.k]=x.l+" is required";});
+  return e;
+}
+function validateGPForm(f){
+  const e={};
+  if(!f.requestedBy?.trim())e.requestedBy="Requester name is required";
+  if(!f.purpose?.trim())e.purpose="Purpose is required";
+  if(f.items.filter(i=>i.name.trim()).length===0)e.items="Add at least one item";
+  return e;
+}
+
+// ── Visitor form HTML ──────────────────────────────────────────────────────────
+function vFormHTML(f,prefix,errors){
+  const poc=POC_CFG[f.type];
+  const offOpts=OFFICES.map(o=>`<option value="${o}"${f.office===o?" selected":""}>${o}</option>`).join("");
+  const extra=TYPE_EXTRA[f.type]||[];
+  const showCompany=NEEDS_COMPANY[f.type];
+
+  let pocSec="";
+  if(poc?.show){
+    pocSec=`<div class="sdiv">${escH(poc.hostLabel)} <span class="req" style="font-size:10px">— Required</span></div>
+    <div class="fgrid">
+      <div class="fgrp"><label class="flabel">${escH(poc.hostLabel)} <span class="req">*</span></label>
+        <input class="finput" value="${escH(f.host)}" placeholder="${escH(poc.hostLabel)}" oninput="sf('${prefix}','host',this.value)"/>
+        ${errors.host?`<div class="ferr">${I.alert} ${errors.host}</div>`:""}
+      </div>
+      <div class="fgrp"><label class="flabel">${escH(poc.phoneLabel)}</label>
+        <input class="finput" value="${escH(f.hostPhone)}" placeholder="Mobile (optional)" oninput="sf('${prefix}','hostPhone',this.value)"/>
+      </div>
+    </div>`;
+  }
+
+  let visitSec=`<div class="sdiv">Visit Details</div>`;
+  if(NEEDS_PURPOSE[f.type]){
+    visitSec+=`<div class="fgrp"><label class="flabel">Purpose of Visit <span class="req">*</span></label>
+      <input class="finput" value="${escH(f.purpose)}" placeholder="Brief reason" oninput="sf('${prefix}','purpose',this.value)"/>
+      ${errors.purpose?`<div class="ferr">${I.alert} ${errors.purpose}</div>`:""}
+    </div>`;
+  }
+  visitSec+=`<div class="fgrp"><label class="flabel">Office Location <span class="req">*</span></label>
+    <select class="finput" onchange="sf('${prefix}','office',this.value)">${offOpts}</select>
+  </div>`;
+
+  const extraInline=extra.filter(x=>x.k!=="address");
+  let extraSec="";
+  if(extraInline.length){
+    extraSec=`<div class="sdiv">Additional Details</div><div class="fgrid">
+      ${extraInline.map(x=>`<div class="fgrp"><label class="flabel">${escH(x.l)}${x.req?'<span class="req"> *</span>':""}</label>
+        <input class="finput" value="${escH(f[x.k]||"")}" placeholder="${escH(x.p)}" oninput="sf('${prefix}','${x.k}',this.value)"/>
+        ${errors[x.k]?`<div class="ferr">${I.alert} ${errors[x.k]}</div>`:""}
+      </div>`).join("")}
+    </div>`;
+  }
+
+  return`
+    <div class="fgrp"><div class="flabel">Visitor Type <span class="req">*</span></div>
+      <div class="type-grid">${VTYPES.map(t=>`<div class="type-card${f.type===t.id?" selected":""}" onclick="sf('${prefix}','type','${t.id}')">${t.label}</div>`).join("")}</div>
+    </div>
+    <div class="sdiv">Personal Details</div>
+    <div class="fgrid">
+      <div class="fgrp"><label class="flabel">Full Name <span class="req">*</span></label>
+        <input class="finput" value="${escH(f.name)}" placeholder="e.g. Ravi Shankar" oninput="sf('${prefix}','name',this.value)"/>
+        ${errors.name?`<div class="ferr">${I.alert} ${errors.name}</div>`:""}
+      </div>
+      ${showCompany?`<div class="fgrp"><label class="flabel">Company / Org</label>
+        <input class="finput" value="${escH(f.company)}" placeholder="e.g. Infosys Ltd" oninput="sf('${prefix}','company',this.value)"/>
+      </div>`:`<div class="fgrp"><label class="flabel">Email</label><input class="finput" type="email" value="${escH(f.email)}" placeholder="optional" oninput="sf('${prefix}','email',this.value)"/></div>`}
+      ${showCompany?`<div class="fgrp"><label class="flabel">Email</label><input class="finput" type="email" value="${escH(f.email)}" placeholder="optional" oninput="sf('${prefix}','email',this.value)"/></div>`:""}
+      <div class="fgrp"><label class="flabel">Phone</label>
+        <input class="finput" value="${escH(f.phone)}" placeholder="9876543210 (optional)" oninput="sf('${prefix}','phone',this.value)"/>
+      </div>
+    </div>
+    ${pocSec}
+    ${visitSec}
+    ${extraSec}
+    <div class="sdiv">Photo</div>
+    <div class="photo-zone" id="pz_${prefix}" onclick="startCam('${prefix}')">
+      <div class="photo-ph">${I.camera}<span>Click to open camera</span></div>
+      ${f.photo?`<img src="${f.photo}"/>`:""}
+      <video id="pv_${prefix}" autoplay playsinline style="display:none;width:100%;height:100%;object-fit:cover;position:absolute;inset:0"></video>
+    </div>
+    <div class="photo-ctrls" id="pc_${prefix}">
+      <button class="btn btn-ghost btn-sm" id="pbS_${prefix}" onclick="startCam('${prefix}')">${I.camera} Open Camera</button>
+      <button class="btn btn-primary btn-sm" id="pbC_${prefix}" style="display:none" onclick="captureCam('${prefix}')">${I.camera} Capture</button>
+      <button class="btn btn-ghost btn-sm" id="pbX_${prefix}" style="display:none" onclick="stopCam('${prefix}')">Cancel</button>
+      ${f.photo?`<button class="btn btn-ghost btn-sm" onclick="retakeCam('${prefix}')">${I.retake} Retake</button>`:""}
+    </div>`;
+}
+
+// ── Gate pass form HTML ────────────────────────────────────────────────────────
+function gpFormHTML(f,errors){
+  const offOpts=OFFICES.map(o=>`<option value="${o}"${f.office===o?" selected":""}>${o}</option>`).join("");
+  const itemsHTML=f.items.map((it,i)=>`
+    <div style="display:grid;grid-template-columns:2fr 1fr 2fr auto;gap:8px;margin-bottom:8px;align-items:center">
+      <input class="finput" value="${escH(it.name)}" placeholder="Item name" oninput="gpItem(${i},'name',this.value)"/>
+      <input class="finput" value="${escH(it.qty)}" placeholder="Qty" oninput="gpItem(${i},'qty',this.value)"/>
+      <input class="finput" value="${escH(it.desc)}" placeholder="Description (opt.)" oninput="gpItem(${i},'desc',this.value)"/>
+      <button class="btn btn-danger btn-sm" onclick="removeGPItem(${i})" style="padding:8px">${I.x}</button>
+    </div>`).join("");
+  return`
+    <div class="fgrp"><div class="flabel">Pass Type <span class="req">*</span></div>
+      <div class="gptype-grid">${GP_TYPES.map(t=>`<div class="gptype-card${f.type===t.id?" selected":""}" onclick="sfgp('type','${t.id}')">
+        <div class="gptype-card-title">${t.label}</div><div class="gptype-card-sub">${t.sub}</div>
+      </div>`).join("")}</div>
+    </div>
+    <div class="sdiv">Requester & Logistics</div>
+    <div class="fgrid">
+      <div class="fgrp"><label class="flabel">Requested By <span class="req">*</span></label>
+        <input class="finput" value="${escH(f.requestedBy)}" placeholder="e.g. Facilities Team" oninput="sfgp('requestedBy',this.value)"/>
+        ${errors.requestedBy?`<div class="ferr">${I.alert} ${errors.requestedBy}</div>`:""}
+      </div>
+      <div class="fgrp"><label class="flabel">Requester Phone</label>
+        <input class="finput" value="${escH(f.requesterPhone)}" placeholder="Optional" oninput="sfgp('requesterPhone',this.value)"/>
+      </div>
+      <div class="fgrp"><label class="flabel">Vendor / Supplier</label>
+        <input class="finput" value="${escH(f.vendor)}" placeholder="e.g. Ashok Hardware" oninput="sfgp('vendor',this.value)"/>
+      </div>
+      <div class="fgrp"><label class="flabel">Vehicle No.</label>
+        <input class="finput" value="${escH(f.vehicleNo)}" placeholder="e.g. TS09EF1234" oninput="sfgp('vehicleNo',this.value)"/>
+      </div>
+      <div class="fgrp"><label class="flabel">Expected Date</label>
+        <input class="finput" type="date" value="${escH(f.expectedDate)}" oninput="sfgp('expectedDate',this.value)"/>
+      </div>
+      <div class="fgrp"><label class="flabel">Office Location</label>
+        <select class="finput" onchange="sfgp('office',this.value)">${offOpts}</select>
+      </div>
+    </div>
+    <div class="fgrp"><label class="flabel">Purpose <span class="req">*</span></label>
+      <input class="finput" value="${escH(f.purpose)}" placeholder="Brief description of pass purpose" oninput="sfgp('purpose',this.value)"/>
+      ${errors.purpose?`<div class="ferr">${I.alert} ${errors.purpose}</div>`:""}
+    </div>
+    <div class="sdiv">Items / Materials ${errors.items?`<span style="color:var(--red);font-size:10px;margin-left:8px">${errors.items}</span>`:""}</div>
+    <div id="gpItemsList">${itemsHTML}</div>
+    <button class="btn btn-ghost btn-sm" onclick="addGPItem()" style="margin-top:4px">${I.plus} Add Item</button>`;
+}
+
+// ── Camera ─────────────────────────────────────────────────────────────────────
+const _streams={};
+window.startCam=async function(p){
+  try{
+    const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"}});
+    _streams[p]=s;const vid=document.getElementById("pv_"+p);if(!vid)return;
+    vid.srcObject=s;vid.style.display="block";
+    document.getElementById("pbS_"+p).style.display="none";
+    document.getElementById("pbC_"+p).style.display="flex";
+    document.getElementById("pbX_"+p).style.display="flex";
+    const ph=document.querySelector("#pz_"+p+" .photo-ph");if(ph)ph.style.display="none";
+  }catch(e){alert("Camera access denied");}
+};
+window.stopCam=function(p){
+  if(_streams[p]){_streams[p].getTracks().forEach(t=>t.stop());delete _streams[p];}
+  if(p==="reg")renderModal();else renderPub();
+};
+window.captureCam=function(p){
+  const vid=document.getElementById("pv_"+p);if(!vid)return;
+  const c=document.createElement("canvas");c.width=vid.videoWidth;c.height=vid.videoHeight;
+  c.getContext("2d").drawImage(vid,0,0);
+  if(_streams[p]){_streams[p].getTracks().forEach(t=>t.stop());delete _streams[p];}
+  const data=c.toDataURL("image/jpeg");
+  if(p==="reg"){state.regForm.photo=data;renderModal();}else{state.pubForm.photo=data;renderPub();}
+};
+window.retakeCam=function(p){if(p==="reg"){state.regForm.photo=null;renderModal();}else{state.pubForm.photo=null;renderPub();}};
+
+// ── Field setters ──────────────────────────────────────────────────────────────
+window.sf=function(prefix,key,val){
+  if(prefix==="reg"){state.regForm[key]=val;renderModal();}
+  else{state.pubForm[key]=val;renderPub();}
+};
+window.sfgp=function(key,val){state.gpForm[key]=val;renderModal();};
+window.gpItem=function(i,k,v){state.gpForm.items[i][k]=v;};
+window.addGPItem=function(){state.gpForm.items.push({name:"",qty:"",desc:""});renderModal();};
+window.removeGPItem=function(i){state.gpForm.items.splice(i,1);renderModal();};
+
+// ── Visitor actions ────────────────────────────────────────────────────────────
+window.navTo=function(id){
+  if(id==="pub"){state.pubView=true;state.pubForm=blankVForm();state.pubErrors={};state.pubDone=false;state.sidebarOpen=false;render();return;}
+  // Determine module
+  if(["gpdashboard","gatepasses","gplogs"].includes(id))state.module="gatepasses";
+  else state.module="visitors";
+  state.page=id;state.sidebarOpen=false;render();
+};
+window.closeSidebar=()=>{state.sidebarOpen=false;render();};
+window.toggleSidebar=()=>{state.sidebarOpen=!state.sidebarOpen;render();};
+window.closePub=()=>{state.pubView=false;state.pubDone=false;render();};
+window.openModal=function(name,data){
+  state.modal=name;
+  if(name==="register"){state.regForm=blankVForm();state.regErrors={};}
+  if(name==="newgp"){state.gpForm=blankGPForm();state.gpErrors={};}
+  if(data)state.modalData=data;
+  renderModal();
+};
+window.closeModal=function(){
+  Object.keys(_streams).forEach(k=>stopCam(k));
+  state.modal=null;state.modalData=null;renderModal();
+};
+window.openDetail=function(id){state.modal="detail";state.modalData=state.visitors.find(v=>v.id===id);renderModal();};
+window.openBadge=function(id){state.modal="badge";state.modalData=state.visitors.find(v=>v.id===id);renderModal();};
+window.openGPDetail=function(id){state.modal="gpdetail";state.modalData=state.gatePasses.find(g=>g.id===id);renderModal();};
+window.selectOffice=function(o){state.office=o;closeModal();render();};
+window.toggleDD=function(){document.getElementById("ddMenu")?.classList.toggle("open");};
+window.toggleGPDD=function(){document.getElementById("gpDDMenu")?.classList.toggle("open");};
+window.copyText=function(text){navigator.clipboard.writeText(text).then(()=>addToast("Copied to clipboard"));};
+
+window.doCheckin=function(id){
+  const v=state.visitors.find(x=>x.id===id);if(!v)return;
+  // Check if already checked in today
+  if(v.status==="checked-in"){addToast(v.name+" is already checked in");return;}
+  // Check if checked out today already
+  if(v.status==="checked-out"&&v.checkout&&sameDay(v.checkout,new Date())){
+    addToast(v.name+" already checked out today — cannot re-check in");return;
+  }
+  const now=new Date().toISOString();
+  v.status="checked-in";v.checkin=now;v.checkout=null;v.onBreak=false;
+  state.logs.push({id:uid(),type:"checkin",visitor:v.name,vid:v.visitorId,time:now,office:v.office,note:""});
+  addToast(v.name+" checked in — "+v.visitorId);render();
+};
+window.doCheckout=function(id){
+  const v=state.visitors.find(x=>x.id===id);if(!v)return;
+  if(v.status==="checked-out"){addToast(v.name+" is already checked out");return;}
+  const now=new Date().toISOString();
+  // End any active break
+  if(v.onBreak&&v.breaks?.length){
+    const last=v.breaks[v.breaks.length-1];
+    if(last&&!last.returnTime)last.returnTime=now;
+  }
+  v.status="checked-out";v.checkout=now;v.onBreak=false;
+  state.logs.push({id:uid(),type:"checkout",visitor:v.name,vid:v.visitorId,time:now,office:v.office,note:""});
+  addToast(v.name+" checked out");render();
+};
+window.doBreakOut=function(id){
+  const v=state.visitors.find(x=>x.id===id);if(!v||v.status!=="checked-in")return;
+  if(v.onBreak){addToast(v.name+" is already on a break");return;}
+  const now=new Date().toISOString();
+  if(!v.breaks)v.breaks=[];
+  v.breaks.push({out:now,returnTime:null});
+  v.onBreak=true;
+  state.logs.push({id:uid(),type:"break-out",visitor:v.name,vid:v.visitorId,time:now,office:v.office,note:"Step out — still checked in"});
+  addToast(v.name+" stepped out (break). Still checked in.");render();
+};
+window.doBreakReturn=function(id){
+  const v=state.visitors.find(x=>x.id===id);if(!v||!v.onBreak)return;
+  const now=new Date().toISOString();
+  const last=v.breaks[v.breaks.length-1];
+  if(last&&!last.returnTime)last.returnTime=now;
+  v.onBreak=false;
+  state.logs.push({id:uid(),type:"break-return",visitor:v.name,vid:v.visitorId,time:now,office:v.office,note:"Returned from break"});
+  addToast(v.name+" returned from break");render();
+};
+
+window.submitReg=function(){
+  const e=validateVForm(state.regForm);
+  if(Object.keys(e).length){state.regErrors=e;renderModal();return;}
+  const vid=genVID();
+  const v={...state.regForm,id:uid(),visitorId:vid,status:"checked-in",checkin:new Date().toISOString(),checkout:null,onBreak:false,breaks:[]};
+  state.visitors.push(v);
+  state.logs.push({id:uid(),type:"checkin",visitor:v.name,vid:v.visitorId,time:v.checkin,office:v.office,note:"Registered"});
+  addToast(v.name+" checked in — "+vid);
+  closeModal();render();
+};
+window.submitPub=function(){
+  const e=validateVForm(state.pubForm);
+  if(Object.keys(e).length){state.pubErrors=e;renderPub();return;}
+  const vid=genVID();
+  const v={...state.pubForm,id:uid(),visitorId:vid,status:"pending",checkin:new Date().toISOString(),checkout:null,onBreak:false,breaks:[]};
+  state.visitors.push(v);
+  state.logs.push({id:uid(),type:"checkin",visitor:v.name,vid:v.visitorId,time:v.checkin,office:v.office,note:"Via link"});
+  addToast(v.name+" registered — "+vid);
+  state.pubDone=true;state._lastPubV=v;renderPub();
+};
+window.submitGP=function(){
+  const e=validateGPForm(state.gpForm);
+  if(Object.keys(e).length){state.gpErrors=e;renderModal();return;}
+  const g={...state.gpForm,id:uid(),gpId:genGPID(),status:"open",createdAt:new Date().toISOString(),closedAt:null,items:state.gpForm.items.filter(i=>i.name.trim())};
+  state.gatePasses.push(g);
+  state.gpLogs.push({id:uid(),type:"created",passId:g.gpId,by:g.requestedBy,time:g.createdAt,office:g.office});
+  addToast("Gate pass "+g.gpId+" created");
+  closeModal();render();
+};
+window.closeGP=function(id){
+  const g=state.gatePasses.find(x=>x.id===id);if(!g)return;
+  g.status="closed";g.closedAt=new Date().toISOString();
+  state.gpLogs.push({id:uid(),type:"closed",passId:g.gpId,by:"Security",time:g.closedAt,office:g.office});
+  addToast("Gate pass "+g.gpId+" closed");render();
+};
+window.downloadBadgePNG=function(id){const v=state.visitors.find(x=>x.id===id);if(v)exportBadgePNG(v);};
+window.doPrintBadge=function(id){const v=state.visitors.find(x=>x.id===id);if(v)printBadge(v);};
+window.doPrintGP=function(id){const g=state.gatePasses.find(x=>x.id===id);if(g)printGPBadge(g);};
+window.exportCSV=exportCSV;window.exportJSON=exportJSON;window.exportGPCSV=exportGPCSV;
+
+// ── Main render ────────────────────────────────────────────────────────────────
+function render(){
+  if(state.pubView){renderPub();return;}
+  const loc=state.office;
+  const locV=state.visitors.filter(v=>v.office===loc);
+  const checkedIn=locV.filter(v=>v.status==="checked-in").length;
+  const locGP=state.gatePasses.filter(g=>g.office===loc);
+  const openGP=locGP.filter(g=>g.status==="open").length;
+
+  const navItems=[
+    {section:"Visitor Management"},
+    {id:"dashboard",  label:"Dashboard",         icon:I.grid,  mod:"visitors"},
+    {id:"visitors",   label:"Visitors",           icon:I.users, mod:"visitors", badge:checkedIn||null},
+    {id:"logs",       label:"Activity Log",       icon:I.log,   mod:"visitors"},
+    {id:"pub",        label:"Visitor Link",        icon:I.link,  mod:"visitors"},
+    {section:"Gate Passes"},
+    {id:"gpdashboard",label:"GP Dashboard",       icon:I.grid,  mod:"gatepasses"},
+    {id:"gatepasses", label:"Gate Passes",         icon:I.clipboard, mod:"gatepasses", badge:openGP||null},
+    {id:"gplogs",     label:"GP Activity Log",    icon:I.log,   mod:"gatepasses"},
+  ];
+
+  document.getElementById("app").innerHTML=`
+  <div class="app">
+    <div class="mob-overlay${state.sidebarOpen?" open":""}" onclick="closeSidebar()"></div>
+    <nav class="sidebar${state.sidebarOpen?" open":""}">
+      <div class="sidebar-logo"><div class="logo-mark">
+        <div class="logo-icon">${I.building}</div>
+        <div><div class="logo-text">GatePass</div><div class="logo-sub">Visitor & Pass Management</div></div>
+      </div></div>
+      <div class="sidebar-nav">
+        ${navItems.map(n=>{
+          if(n.section)return`<div class="nav-section">${n.section}</div>`;
+          const isMod=state.page===n.id;
+          const cls=isMod?(n.mod==="gatepasses"?"active-gp":"active"):"";
+          return`<div class="nav-item ${cls}" onclick="navTo('${n.id}')">${n.icon}<span style="flex:1">${n.label}</span>${n.badge?`<span class="nav-badge">${n.badge}</span>`:""}</div>`;
+        }).join("")}
+      </div>
+      <div class="sidebar-footer">
+        <div class="office-chip" onclick="openModal('office')">
+          <div class="office-dot"></div>
+          <div style="flex:1"><div class="office-name">${state.office.split("—")[0].trim()}</div><div class="office-sub">${(state.office.split("—")[1]||"").trim()}</div></div>${I.pin}
+        </div>
+      </div>
+    </nav>
+    <div class="main">
+      <div class="topbar">
+        <button class="hamburger" onclick="toggleSidebar()">${I.menu}</button>
+        <span class="topbar-module ${state.module==="gatepasses"?"mod-gatepass":"mod-visitor"}">${state.module==="gatepasses"?"Gate Passes":"Visitors"}</span>
+        <div class="topbar-title">${{dashboard:"Dashboard",visitors:"Visitors",logs:"Activity Log",pub:"Visitor Link",gpdashboard:"GP Dashboard",gatepasses:"Gate Passes",gplogs:"GP Activity Log"}[state.page]||""}</div>
+        <div class="live-pill"><div class="live-dot"></div>${checkedIn} inside · ${openGP} open passes</div>
+      </div>
+      <div class="content" id="pageContent"></div>
+    </div>
+  </div>`;
+
+  if(state.page==="dashboard")renderDashboard();
+  else if(state.page==="visitors")renderVisitors();
+  else if(state.page==="logs")renderLogs();
+  else if(state.page==="gpdashboard")renderGPDashboard();
+  else if(state.page==="gatepasses")renderGatePasses();
+  else if(state.page==="gplogs")renderGPLogs();
+
+  renderModal();
+  document.addEventListener("click",e=>{
+    if(!e.target.closest(".dd-wrap")){
+      document.getElementById("ddMenu")?.classList.remove("open");
+      document.getElementById("gpDDMenu")?.classList.remove("open");
+    }
+  },{once:true});
+}
+
+// ── Visitor Dashboard ──────────────────────────────────────────────────────────
+function renderDashboard(){
+  const loc=state.office;
+  const vs=state.visitors.filter(v=>v.office===loc);
+  const ci=vs.filter(v=>v.status==="checked-in").length;
+  const td=vs.filter(v=>sameDay(v.checkin,new Date())).length;
+  const pend=vs.filter(v=>v.status==="pending").length;
+  const onBreak=vs.filter(v=>v.onBreak).length;
+
+  const activeRows=vs.filter(v=>v.status==="checked-in"||v.onBreak).map(v=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 20px;border-bottom:1px solid var(--border)">
+      ${avatarHTML(v)}
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:13px">${escH(v.name)}</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:3px">${vidChipHTML(v)}${v.onBreak?`<span class="break-pill">${I.coffee} On Break</span>`:""}<span style="font-size:11px;color:var(--muted)">since ${fmtTime(v.checkin)}</span></div>
+      </div>
+      ${typeBadgeHTML(v.type)}
+    </div>`).join("")||`<div class="empty">${I.building}<h3>All clear</h3><p>No visitors at ${state.office.split("—")[0].trim()}</p></div>`;
+
+  const logRows=state.logs.filter(l=>l.office===loc).slice(-8).reverse().map(l=>{
+    const colors={checkin:"var(--green)","break-out":"var(--amber)","break-return":"var(--blue)",checkout:"var(--muted2)"};
+    const labels={checkin:"checked in","break-out":"stepped out","break-return":"returned",checkout:"checked out"};
+    return`<div class="tl-item"><div class="tl-dot" style="background:${colors[l.type]||"var(--muted2)"}"></div>
+      <div><div class="tl-title">${escH(l.visitor)} ${labels[l.type]||l.type}</div>
+      <div class="tl-time">${fmtTime(l.time)}${l.note?" · "+escH(l.note):""}</div></div></div>`;
+  }).join("")||"<p style='color:var(--muted);font-size:13px'>No activity yet</p>";
+
+  document.getElementById("pageContent").innerHTML=`
+    <div class="page-header"><div><div class="page-title">Visitor Overview</div><div class="page-sub">${state.office}</div></div></div>
+    <div class="stats-grid">
+      ${[
+        {l:"Currently Inside",v:ci,c:"green",d:"Active right now"},
+        {l:"On Break",v:onBreak,c:"amber",d:"Stepped out temporarily"},
+        {l:"Today's Visitors",v:td,c:"blue",d:fmtDate(new Date())},
+        {l:"Pending Entry",v:pend,c:"purple",d:"Registered, not arrived"},
+      ].map(s=>`<div class="stat-card"><div class="stat-icon" style="background:var(--${s.c}-d);color:var(--${s.c})">${I.users}</div><div class="stat-label">${s.l}</div><div class="stat-value">${s.v}</div><div class="stat-delta">${s.d}</div></div>`).join("")}
+    </div>
+    <div class="dash-grid" style="display:grid;grid-template-columns:3fr 2fr;gap:14px">
+      <div class="card"><div class="card-header"><div class="card-title">Active Visitors — ${state.office.split("—")[0].trim()}</div></div><div style="padding-top:4px">${activeRows}</div></div>
+      <div class="card"><div class="card-header"><div class="card-title">Recent Activity</div></div><div class="card-body">${logRows}</div></div>
+    </div>`;
+}
+
+// ── Visitors Table ─────────────────────────────────────────────────────────────
+function renderVisitors(){
+  const loc=state.office;
+  const q=state.vSearch.toLowerCase();
+  const filtered=state.visitors.filter(v=>{
+    if(v.office!==loc)return false;
+    const mQ=!q||[v.name,v.company,v.host,v.email,v.phone,v.visitorId].some(s=>(s||"").toLowerCase().includes(q));
+    return mQ&&(state.vTypeF==="all"||v.type===state.vTypeF)&&(state.vStatusF==="all"||v.status===state.vStatusF);
+  });
+  const typeOpts=`<option value="all">All Types</option>${VTYPES.map(t=>`<option value="${t.id}"${state.vTypeF===t.id?" selected":""}>${t.label}</option>`).join("")}`;
+  const statOpts=`<option value="all">All Status</option><option value="checked-in"${state.vStatusF==="checked-in"?" selected":""}>Checked In</option><option value="checked-out"${state.vStatusF==="checked-out"?" selected":""}>Checked Out</option><option value="pending"${state.vStatusF==="pending"?" selected":""}>Pending</option>`;
+
+  const rows=filtered.length?filtered.map(v=>{
+    const ciToday=v.status==="checked-in";
+    const coToday=v.status==="checked-out"&&v.checkout&&sameDay(v.checkout,new Date());
+    const canCheckin=v.status!=="checked-in"&&!coToday;
+    const canCheckout=v.status==="checked-in";
+    const canBreakOut=ciToday&&!v.onBreak;
+    const canReturn=v.onBreak;
+    return`<tr onclick="openDetail('${v.id}')">
+      <td><div class="td-name">${avatarHTML(v)}<div>
+        <div style="font-weight:600">${escH(v.name)}</div>
+        <div style="margin-top:2px">${vidChipHTML(v)}</div>
+      </div></div></td>
+      <td>${typeBadgeHTML(v.type)}</td>
+      <td style="font-size:12.5px">${escH(v.host||"—")}</td>
+      <td>${statusBadgeHTML(v.status,v.onBreak)}</td>
+      <td style="font-size:12.5px;color:var(--muted)">${fmtTime(v.checkin)}</td>
+      <td onclick="event.stopPropagation()"><div style="display:flex;gap:4px;flex-wrap:wrap">
+        ${canCheckin?`<button class="btn btn-success btn-sm" title="Check In" onclick="event.stopPropagation();doCheckin('${v.id}')">${I.login}</button>`:""}
+        ${canCheckout?`<button class="btn btn-danger btn-sm" title="Check Out" onclick="event.stopPropagation();doCheckout('${v.id}')">${I.logout}</button>`:""}
+        ${canBreakOut?`<button class="btn btn-amber btn-sm" title="Step Out (Break)" onclick="event.stopPropagation();doBreakOut('${v.id}')">${I.coffee}</button>`:""}
+        ${canReturn?`<button class="btn btn-success btn-sm" title="Return from Break" onclick="event.stopPropagation();doBreakReturn('${v.id}')">${I.check}</button>`:""}
+        ${VTYPES.find(t=>t.id===v.type)?.needsBadge?`<button class="btn btn-ghost btn-sm" title="Badge" onclick="event.stopPropagation();openBadge('${v.id}')">${I.badge}</button>`:""}
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openDetail('${v.id}')">${I.eye}</button>
+      </div></td>
+    </tr>`;}).join(""):`<tr><td colspan="6"><div class="empty">${I.search}<h3>No results</h3><p>No visitors at this location match your filters</p></div></td></tr>`;
+
+  document.getElementById("pageContent").innerHTML=`
+    <div class="page-header">
+      <div><div class="page-title">Visitors</div><div class="page-sub">${state.office} · ${filtered.length} shown</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="dd-wrap"><button class="btn btn-ghost btn-sm" onclick="toggleDD()">${I.download} Export</button>
+          <div class="dd-menu" id="ddMenu">
+            <div class="dd-item" onclick="exportCSV();toggleDD()">Export CSV</div>
+            <div class="dd-item" onclick="exportJSON();toggleDD()">Export JSON</div>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="openModal('sendlink')">${I.link} Share Link</button>
+        <button class="btn btn-primary" onclick="openModal('register')">${I.plus} Register</button>
+      </div>
+    </div>
+    <div class="filter-bar">
+      <div class="search-bar">${I.search}<input value="${escH(state.vSearch)}" placeholder="Search name, ID, host…" oninput="state.vSearch=this.value;renderVisitors()"/></div>
+      <select class="finput" style="width:auto;font-size:12.5px;padding:7px 30px 7px 11px" onchange="state.vTypeF=this.value;renderVisitors()">${typeOpts}</select>
+      <select class="finput" style="width:auto;font-size:12.5px;padding:7px 30px 7px 11px" onchange="state.vStatusF=this.value;renderVisitors()">${statOpts}</select>
+    </div>
+    <div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Visitor</th><th>Type</th><th>Host / POC</th><th>Status</th><th>Check-in</th><th>Actions</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div></div>`;
+}
+
+// ── Visitor Logs ───────────────────────────────────────────────────────────────
+function renderLogs(){
+  const loc=state.office;
+  const logs=state.logs.filter(l=>l.office===loc);
+  const labels={checkin:"Check In","break-out":"Step Out","break-return":"Return",checkout:"Check Out"};
+  const colors={checkin:"green","break-out":"amber","break-return":"blue",checkout:"slate"};
+  const rows=[...logs].reverse().map(l=>`<tr>
+    <td style="font-weight:600">${escH(l.visitor)}</td>
+    <td><span style="font-family:var(--mono);font-size:10px;color:var(--muted)">${escH(l.vid||"—")}</span></td>
+    <td><span class="badge badge-${colors[l.type]||"slate"}"><span class="sdot"></span>${labels[l.type]||l.type}</span></td>
+    <td style="font-size:12.5px">${fmtTime(l.time)}<span style="color:var(--muted2);margin-left:7px;font-size:10.5px">${fmtDate(l.time)}</span></td>
+    <td style="font-size:12.5px;color:var(--muted)">${escH(l.note||"—")}</td>
+  </tr>`).join("")||`<tr><td colspan="5"><div class="empty">${I.log}<h3>No activity</h3></div></td></tr>`;
+
+  document.getElementById("pageContent").innerHTML=`
+    <div class="page-header">
+      <div><div class="page-title">Activity Log</div><div class="page-sub">${state.office}</div></div>
+      <button class="btn btn-ghost btn-sm" onclick="exportCSV()">${I.download} Export CSV</button>
+    </div>
+    <div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Visitor</th><th>Visitor ID</th><th>Event</th><th>Time</th><th>Note</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div></div>`;
+}
+
+// ── Gate Pass Dashboard ────────────────────────────────────────────────────────
+function renderGPDashboard(){
+  const loc=state.office;
+  const gps=state.gatePasses.filter(g=>g.office===loc);
+  const open=gps.filter(g=>g.status==="open").length;
+  const closed=gps.filter(g=>g.status==="closed").length;
+  const today_gps=gps.filter(g=>sameDay(g.createdAt,new Date())).length;
+
+  const recentRows=gps.slice(-5).reverse().map(g=>{
+    const t=GP_TYPES.find(x=>x.id===g.type);
+    return`<div style="display:flex;align-items:center;gap:10px;padding:9px 20px;border-bottom:1px solid var(--border)">
+      <div style="width:30px;height:30px;border-radius:8px;background:var(--teal-d);display:grid;place-items:center;color:var(--teal);flex-shrink:0">${I[t?.icon||"box"]}</div>
+      <div style="flex:1"><div style="font-weight:600;font-size:13px">${escH(g.gpId)}</div><div style="font-size:11.5px;color:var(--muted)">${t?.label||g.type} · ${escH(g.requestedBy)}</div></div>
+      ${gpStatusBadge(g.status)}
+    </div>`;}).join("")||`<div class="empty">${I.box}<h3>No gate passes</h3><p>No passes at this location</p></div>`;
+
+  document.getElementById("pageContent").innerHTML=`
+    <div class="page-header"><div><div class="page-title">Gate Pass Overview</div><div class="page-sub">${state.office}</div></div>
+      <button class="btn btn-teal" onclick="openModal('newgp')">${I.plus} New Gate Pass</button>
+    </div>
+    <div class="stats-grid">
+      ${[
+        {l:"Open Passes",v:open,c:"green",d:"Active / in progress"},
+        {l:"Closed Today",v:closed,c:"slate",d:"Completed"},
+        {l:"Today Total",v:today_gps,c:"teal",d:fmtDate(new Date())},
+        {l:"All Time",v:gps.length,c:"purple",d:"This location"},
+      ].map(s=>`<div class="stat-card"><div class="stat-icon" style="background:var(--${s.c}-d);color:var(--${s.c})">${I.box}</div><div class="stat-label">${s.l}</div><div class="stat-value">${s.v}</div><div class="stat-delta">${s.d}</div></div>`).join("")}
+    </div>
+    <div class="card"><div class="card-header"><div class="card-title">Recent Gate Passes — ${state.office.split("—")[0].trim()}</div></div><div style="padding-top:4px">${recentRows}</div></div>`;
+}
+
+// ── Gate Passes Table ──────────────────────────────────────────────────────────
+function renderGatePasses(){
+  const loc=state.office;
+  const q=state.gpSearch.toLowerCase();
+  const filtered=state.gatePasses.filter(g=>{
+    if(g.office!==loc)return false;
+    const mQ=!q||[g.gpId,g.requestedBy,g.vendor,g.purpose].some(s=>(s||"").toLowerCase().includes(q));
+    return mQ&&(state.gpTypeF==="all"||g.type===state.gpTypeF)&&(state.gpStatusF==="all"||g.status===state.gpStatusF);
+  });
+  const typeOpts=`<option value="all">All Types</option>${GP_TYPES.map(t=>`<option value="${t.id}"${state.gpTypeF===t.id?" selected":""}>${t.label}</option>`).join("")}`;
+  const statOpts=`<option value="all">All Status</option><option value="open">Open</option><option value="closed">Closed</option><option value="pending">Pending</option>`;
+  const rows=filtered.length?filtered.map(g=>{
+    const t=GP_TYPES.find(x=>x.id===g.type);
+    return`<tr onclick="openGPDetail('${g.id}')">
+      <td><div style="font-weight:600;font-family:var(--mono);font-size:11px">${escH(g.gpId)}</div></td>
+      <td><span class="badge badge-teal"><span class="sdot"></span>${escH(t?.label||g.type)}</span></td>
+      <td style="font-size:12.5px">${escH(g.requestedBy)}</td>
+      <td style="font-size:12.5px;color:var(--muted)">${escH(g.vendor||"—")}</td>
+      <td style="font-size:12.5px;color:var(--muted)">${g.items?.length||0} item${g.items?.length!==1?"s":""}</td>
+      <td style="font-size:12px;color:var(--muted)">${fmtDate(g.createdAt)}</td>
+      <td>${gpStatusBadge(g.status)}</td>
+      <td onclick="event.stopPropagation()"><div style="display:flex;gap:4px">
+        ${g.status==="open"?`<button class="btn btn-danger btn-sm" title="Close Pass" onclick="event.stopPropagation();closeGP('${g.id}')">Close</button>`:""}
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openGPDetail('${g.id}')">${I.eye}</button>
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();doPrintGP('${g.id}')">${I.print}</button>
+      </div></td>
+    </tr>`;}).join(""):`<tr><td colspan="8"><div class="empty">${I.box}<h3>No gate passes</h3><p>No passes at ${state.office.split("—")[0].trim()} match filters</p></div></td></tr>`;
+
+  document.getElementById("pageContent").innerHTML=`
+    <div class="page-header">
+      <div><div class="page-title">Gate Passes</div><div class="page-sub">${state.office} · ${filtered.length} shown</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="dd-wrap"><button class="btn btn-ghost btn-sm" onclick="toggleGPDD()">${I.download} Export</button>
+          <div class="dd-menu" id="gpDDMenu">
+            <div class="dd-item" onclick="exportGPCSV();toggleGPDD()">Export CSV</div>
+          </div>
+        </div>
+        <button class="btn btn-teal" onclick="openModal('newgp')">${I.plus} New Gate Pass</button>
+      </div>
+    </div>
+    <div class="filter-bar">
+      <div class="search-bar">${I.search}<input value="${escH(state.gpSearch)}" placeholder="Search pass ID, requester…" oninput="state.gpSearch=this.value;renderGatePasses()"/></div>
+      <select class="finput" style="width:auto;font-size:12.5px;padding:7px 30px 7px 11px" onchange="state.gpTypeF=this.value;renderGatePasses()">${typeOpts}</select>
+      <select class="finput" style="width:auto;font-size:12.5px;padding:7px 30px 7px 11px" onchange="state.gpStatusF=this.value;renderGatePasses()">${statOpts}</select>
+    </div>
+    <div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Pass ID</th><th>Type</th><th>Requested By</th><th>Vendor</th><th>Items</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div></div>`;
+}
+
+// ── GP Activity Log ────────────────────────────────────────────────────────────
+function renderGPLogs(){
+  const loc=state.office;
+  const logs=state.gpLogs.filter(l=>l.office===loc);
+  const rows=[...logs].reverse().map(l=>`<tr>
+    <td style="font-weight:600;font-family:var(--mono);font-size:11px">${escH(l.passId)}</td>
+    <td><span class="badge badge-${l.type==="created"?"teal":"slate"}"><span class="sdot"></span>${l.type}</span></td>
+    <td style="font-size:12.5px">${escH(l.by)}</td>
+    <td style="font-size:12.5px">${fmtTime(l.time)}<span style="color:var(--muted2);margin-left:7px;font-size:10.5px">${fmtDate(l.time)}</span></td>
+  </tr>`).join("")||`<tr><td colspan="4"><div class="empty">${I.log}<h3>No activity</h3></div></td></tr>`;
+
+  document.getElementById("pageContent").innerHTML=`
+    <div class="page-header">
+      <div><div class="page-title">GP Activity Log</div><div class="page-sub">${state.office}</div></div>
+      <button class="btn btn-ghost btn-sm" onclick="exportGPCSV()">${I.download} Export CSV</button>
+    </div>
+    <div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Pass ID</th><th>Event</th><th>By</th><th>Time</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div></div>`;
+}
+
+// ── Modal ──────────────────────────────────────────────────────────────────────
+function renderModal(){
+  let ovEl=document.getElementById("modalOverlay");
+  if(!ovEl){
+    document.body.insertAdjacentHTML("beforeend",`<div class="overlay hidden" id="modalOverlay" onclick="closeModal()"></div>`);
+    ovEl=document.getElementById("modalOverlay");
+  }
+  const m=state.modal;
+  if(!m){ovEl.className="overlay hidden";return;}
+  ovEl.className="overlay";
+
+  if(m==="register"){
+    const f=state.regForm,e=state.regErrors;
+    ovEl.innerHTML=`<div class="modal modal-lg" onclick="event.stopPropagation()">
+      <div class="modal-header"><div><div class="modal-title">Register Visitor</div><div class="modal-sub">A unique Visitor ID is issued on check-in</div></div><button class="modal-close" onclick="closeModal()">${I.x}</button></div>
+      <div class="modal-body">${vFormHTML(f,"reg",e)}</div>
+      <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitReg()">${I.check} Issue ID & Check In</button></div>
+    </div>`;
+  }
+  else if(m==="newgp"){
+    const f=state.gpForm,e=state.gpErrors;
+    ovEl.innerHTML=`<div class="modal modal-lg" onclick="event.stopPropagation()">
+      <div class="modal-header"><div><div class="modal-title">New Gate Pass</div><div class="modal-sub">Create a materials / supplies / food pass</div></div><button class="modal-close" onclick="closeModal()">${I.x}</button></div>
+      <div class="modal-body">${gpFormHTML(f,e)}</div>
+      <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-teal" onclick="submitGP()">${I.check} Create Gate Pass</button></div>
+    </div>`;
+  }
+  else if(m==="sendlink"){
+    const link=window.location.href.split("?")[0].split("#")[0]+"?view=register&office="+encodeURIComponent(state.office)+"&token="+uid();
+    ovEl.innerHTML=`<div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header"><div><div class="modal-title">Share Registration Link</div><div class="modal-sub">Visitor self-registers; ID issued on submission</div></div><button class="modal-close" onclick="closeModal()">${I.x}</button></div>
+      <div class="modal-body">
+        <div class="info-box" style="margin-bottom:18px">${I.alert}<span>Share via WhatsApp or email. The visitor appears as <strong>Pending</strong> and gets a Visitor ID immediately.</span></div>
+        <label class="flabel" style="margin-bottom:8px">Registration URL</label>
+        <div class="link-box"><code>${escH(link)}</code><button class="btn btn-ghost btn-sm" onclick="copyText('${link.replace(/'/g,"\\'")}')">Copy</button></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Close</button>
+        <button class="btn btn-primary" onclick="window.open('https://wa.me/?text='+encodeURIComponent('Register your visit: ${link}'))">${I.wa} WhatsApp</button>
+      </div>
+    </div>`;
+  }
+  else if(m==="badge"){
+    const v=state.modalData;
+    ovEl.innerHTML=`<div class="modal modal-lg" onclick="event.stopPropagation()">
+      <div class="modal-header"><div><div class="modal-title">Visitor Badge</div><div class="modal-sub">${escH(v.visitorId)} · ${escH(v.name)}</div></div><button class="modal-close" onclick="closeModal()">${I.x}</button></div>
+      <div class="modal-body"><div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start">
+        <div style="flex-shrink:0">${buildBadgeHTML(v)}</div>
+        <div style="flex:1;min-width:200px">
+          <div class="sdiv" style="padding-top:0">Badge Actions</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <button class="btn btn-primary" onclick="doPrintBadge('${v.id}')">${I.print} Print / Save PDF</button>
+            <button class="btn btn-ghost" onclick="downloadBadgePNG('${v.id}')">${I.img} Download PNG</button>
+            <div style="height:1px;background:var(--border);margin:4px 0"></div>
+            <div class="sdiv" style="padding-top:0;margin-bottom:8px">Send Badge Link</div>
+            <div class="link-box"><code style="font-size:10px">Share link for ${escH(v.name)}</code><button class="btn btn-ghost btn-sm" onclick="copyText(window.location.href.split('?')[0]+'?badge=${encodeURIComponent(v.visitorId)}')">${I.copy} Copy</button></div>
+            <button class="btn btn-ghost" onclick="window.open('https://wa.me/?text='+encodeURIComponent('Your visitor badge — ID: ${v.visitorId} (${v.name}). Valid until check-out.'))">${I.wa} WhatsApp</button>
+          </div>
+        </div>
+      </div></div>
+      <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>
+    </div>`;
+  }
+  else if(m==="detail"){
+    const v=state.modalData;
+    const t=VTYPES.find(x=>x.id===v.type);
+    const poc=POC_CFG[v.type];
+    const isActive=v.status==="checked-in"||v.status==="pending";
+    const ciToday=v.status==="checked-in";
+    const coToday=v.status==="checked-out"&&v.checkout&&sameDay(v.checkout,new Date());
+    const canCheckin=v.status!=="checked-in"&&!coToday;
+    const baseRows=[
+      ["Email",v.email],["Phone",v.phone],
+      ...(poc?.show?[[poc.hostLabel,v.host],[poc.phoneLabel,v.hostPhone]]:[]),
+      ...(NEEDS_PURPOSE[v.type]?[["Purpose",v.purpose]]:[]),
+      ["Office",v.office],
+      ...(v.address?[["Address",v.address]]:[]),
+      ["Check-in",fmtDT(v.checkin)],
+      ["Check-out",v.checkout?fmtDT(v.checkout):"Still inside"],
+      ...(TYPE_EXTRA[v.type]||[]).filter(x=>v[x.k]).map(x=>[x.l,v[x.k]]),
+    ].filter(([,val])=>val&&val!=="—"&&val!=="—, —");
+    const breakRows=(v.breaks||[]).map((b,i)=>`<div class="break-row">
+      <span style="font-weight:600;font-size:12px">Break ${i+1}</span>
+      <span style="color:var(--muted);font-size:12px">Out: ${fmtTime(b.out)}</span>
+      <span style="color:var(--muted);font-size:12px">${b.returnTime?"Returned: "+fmtTime(b.returnTime):"Still outside"}</span>
+    </div>`).join("")||"<p style='color:var(--muted);font-size:12.5px'>No breaks taken</p>";
+
+    ovEl.innerHTML=`<div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header"><div><div class="modal-title">${escH(v.name)}</div><div class="modal-sub">${escH(v.company||"No company")}</div></div><button class="modal-close" onclick="closeModal()">${I.x}</button></div>
+      <div class="modal-body">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+          ${avatarHTML(v,48)}
+          <div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">${typeBadgeHTML(v.type)}${statusBadgeHTML(v.status,v.onBreak)}</div>
+            <div style="display:flex;align-items:center;gap:8px">${vidChipHTML(v)}<span style="font-size:10px;color:${isActive?"var(--green)":"var(--muted)"};font-weight:600">${isActive?"Valid until check-out":"Expired"}</span></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:16px">
+          ${baseRows.map(([k,val])=>`<div style="background:var(--bg3);border-radius:8px;padding:9px 11px"><div style="font-size:9.5px;color:var(--muted2);text-transform:uppercase;letter-spacing:.7px;font-weight:700;margin-bottom:3px">${k}</div><div style="font-size:12.5px;font-weight:500;color:var(--text2);word-break:break-word">${escH(val)}</div></div>`).join("")}
+        </div>
+        <div class="sdiv" style="padding-top:0;margin-bottom:12px">Break History (${(v.breaks||[]).length})</div>
+        ${breakRows}
+      </div>
+      <div class="modal-footer">
+        ${canCheckin?`<button class="btn btn-success" onclick="doCheckin('${v.id}');closeModal()">${I.login} Check In</button>`:""}
+        ${ciToday&&!v.onBreak?`<button class="btn btn-amber" onclick="doBreakOut('${v.id}');closeModal()">${I.coffee} Step Out</button>`:""}
+        ${v.onBreak?`<button class="btn btn-success" onclick="doBreakReturn('${v.id}');closeModal()">${I.check} Return</button>`:""}
+        ${ciToday?`<button class="btn btn-danger" onclick="doCheckout('${v.id}');closeModal()">${I.logout} Check Out</button>`:""}
+        ${t?.needsBadge?`<button class="btn btn-ghost" onclick="openBadge('${v.id}')">${I.badge} Badge</button>`:""}
+        <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+      </div>
+    </div>`;
+  }
+  else if(m==="gpdetail"){
+    const g=state.modalData;
+    const t=GP_TYPES.find(x=>x.id===g.type);
+    const itemRows=(g.items||[]).map(it=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12.5px">
+      <span style="font-weight:500">${escH(it.name)}</span>
+      <span style="color:var(--muted)">${escH(it.qty)}${it.desc?" — "+escH(it.desc):""}</span>
+    </div>`).join("")||"<p style='color:var(--muted);font-size:12.5px'>No items</p>";
+    ovEl.innerHTML=`<div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header"><div><div class="modal-title">${escH(g.gpId)}</div><div class="modal-sub">${escH(t?.label||g.type)}</div></div><button class="modal-close" onclick="closeModal()">${I.x}</button></div>
+      <div class="modal-body">
+        <div style="display:flex;gap:6px;margin-bottom:16px">${gpStatusBadge(g.status)}<span class="badge badge-teal"><span class="sdot"></span>${escH(t?.label||g.type)}</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:16px">
+          ${[["Requested By",g.requestedBy],["Phone",g.requesterPhone],["Vendor",g.vendor],["Vehicle No.",g.vehicleNo],["Expected Date",g.expectedDate],["Office",g.office],["Purpose",g.purpose],["Created",fmtDT(g.createdAt)],["Closed",g.closedAt?fmtDT(g.closedAt):"Open"]].filter(([,v])=>v&&v!=="—").map(([k,val])=>`<div style="background:var(--bg3);border-radius:8px;padding:9px 11px"><div style="font-size:9.5px;color:var(--muted2);text-transform:uppercase;letter-spacing:.7px;font-weight:700;margin-bottom:3px">${k}</div><div style="font-size:12.5px;font-weight:500;color:var(--text2)">${escH(val)}</div></div>`).join("")}
+        </div>
+        <div class="sdiv" style="padding-top:0;margin-bottom:12px">Items / Materials</div>
+        ${itemRows}
+      </div>
+      <div class="modal-footer">
+        ${g.status==="open"?`<button class="btn btn-danger" onclick="closeGP('${g.id}');closeModal()">Close Pass</button>`:""}
+        <button class="btn btn-ghost" onclick="doPrintGP('${g.id}')">${I.print} Print Pass</button>
+        <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+      </div>
+    </div>`;
+  }
+  else if(m==="office"){
+    const opts=OFFICES.map(o=>`<div class="office-option${state.office===o?" selected":""}" onclick="selectOffice(${JSON.stringify(o)})">${escH(o)}${state.office===o?I.check:""}</div>`).join("");
+    ovEl.innerHTML=`<div class="modal" style="max-width:420px" onclick="event.stopPropagation()">
+      <div class="modal-header"><div><div class="modal-title">Select Office</div><div class="modal-sub">Data shown will be filtered to this location</div></div><button class="modal-close" onclick="closeModal()">${I.x}</button></div>
+      <div class="modal-body" style="padding-top:14px">${opts}</div>
+    </div>`;
+  }
+}
+
+// ── Public Registration Page ───────────────────────────────────────────────────
+function renderPub(){
+  const f=state.pubForm,e=state.pubErrors;
+  if(state.pubDone){
+    const v=state._lastPubV||{};
+    document.getElementById("app").innerHTML=`<div class="pub-wrap"><div class="pub-card" style="text-align:center">
+      <div style="width:50px;height:50px;background:var(--green-d);border-radius:50%;display:grid;place-items:center;margin:0 auto 16px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" style="width:22px;height:22px"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <h2 style="font-family:var(--ser);font-size:21px;color:#17150f;margin-bottom:8px">Registration Submitted</h2>
+      <p style="color:#7a7769;font-size:13px;line-height:1.6">Please show this screen and your Visitor ID at the security desk on arrival.</p>
+      <div style="margin:18px 0;background:#f0efec;border:1.5px solid #e0deda;border-radius:10px;padding:16px">
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#aaa;font-weight:700;margin-bottom:6px">Your Visitor ID</div>
+        <div style="font-family:var(--mono);font-size:20px;font-weight:700;color:var(--green);letter-spacing:1px">${escH(v.visitorId||"—")}</div>
+        <div style="font-size:11px;color:#888;margin-top:4px">Valid until you check out</div>
+      </div>
+      <div style="background:#f6f5f2;border-radius:10px;padding:14px 16px;font-size:12.5px;color:#555;text-align:left;line-height:2">
+        <div style="font-weight:600;font-size:14px">${escH(f.name)}${f.company?" · "+escH(f.company):""}</div>
+        <div style="color:#888">${escH(f.office)}</div>
+        <div style="color:#888">${fmtDate(new Date())}</div>
+      </div>
+      <button onclick="closePub()" style="margin-top:18px;background:none;border:1px solid #e0deda;border-radius:8px;padding:8px 16px;font-size:12.5px;cursor:pointer;color:#7a7769;font-family:var(--ui);display:inline-flex;align-items:center;gap:5px">${I.back} Back to Dashboard</button>
+    </div></div>`;
+    return;
+  }
+  document.getElementById("app").innerHTML=`<div class="pub-wrap"><div class="pub-card">
+    <button class="pub-back" onclick="closePub()">${I.back} Back</button>
+    <div class="pub-logo">
+      <div class="pub-logo-icon">${I.building}</div>
+      <h1>Visitor Registration</h1>
+      <p>iCIMS — Your Visitor ID will be issued on submission</p>
+    </div>
+    ${vFormHTML(f,"pub",e)}
+    <button class="pub-btn" onclick="submitPub()" style="margin-top:18px">Submit & Get Visitor ID</button>
+  </div></div>`;
+}
+
+// ── Boot ───────────────────────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>

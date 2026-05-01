@@ -16,6 +16,31 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
 
+## Artifacts
+
+### GatePass — Visitor & Gate Pass Management (`artifacts/gatepass`)
+- **Route**: `/` (preview path root)
+- **Port**: 22484
+- **Stack**: React + Vite + Tailwind CSS v4 + wouter (routing) + sonner (toasts)
+- **Storage**: 100% localStorage — no backend API calls
+- **Key Files**:
+  - `src/types.ts` — all TypeScript interfaces and constants
+  - `src/hooks/useAppState.ts` — centralized state with localStorage persistence + seed data
+  - `src/App.tsx` — router with all 8 routes
+  - `src/pages/` — Dashboard, Visitors, ActivityLog, VisitorLink, GpDashboard, GatePasses, GpActivityLog, RegisterPage
+  - `src/components/modals/` — RegisterVisitorModal, VisitorDetailModal, BadgeModal, NewGatePassModal, GpDetailModal, OfficePicker
+- **Features**:
+  - Visitor check-in/check-out/break management with unique Visitor IDs
+  - Gate pass creation, tracking, and closure
+  - Printable visitor badges and gate pass documents
+  - Public visitor pre-registration page (`/register`)
+  - Multi-office support (6 Indian corporate offices)
+  - CSV export for visitors and gate passes
+  - Activity logs for both visitor and gate pass events
+- **Theme**: Warm parchment (`#f5f4f1`), burnt orange (`#c06b2c`) for visitors, teal (`#1a6e7a`) for gate passes
+- **Fonts**: Instrument Sans (UI), Lora (headings), JetBrains Mono (IDs)
+- **CSS Note**: Button utility classes defined in `@layer components {}` in `index.css`
+
 ## Key Commands
 
 - `pnpm run typecheck` — full typecheck across all packages
