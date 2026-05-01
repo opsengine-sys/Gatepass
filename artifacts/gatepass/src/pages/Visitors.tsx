@@ -4,12 +4,12 @@ import { VISITOR_TYPES } from "@/types";
 import { TypeBadge, StatusBadge } from "@/components/shared/Badge";
 import { Avatar } from "@/components/shared/Avatar";
 import { VisitorIDChip } from "@/components/shared/VisitorIDChip";
-import { fmtTime, sameDay2 } from "@/hooks/useAppState";
+import { fmtTime, sameDay } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
 interface Props {
   visitors: Visitor[];
-  office: string;
+  officeFull: string;
   onRegister: () => void;
   onDetail: (id: string) => void;
   onCheckIn: (id: string) => void;
@@ -20,36 +20,36 @@ interface Props {
 }
 
 export function Visitors({
-  visitors, office, onRegister, onDetail, onCheckIn, onCheckOut, onBreakOut, onBreakReturn, onOpenBadge,
+  visitors, officeFull, onRegister, onDetail, onCheckIn, onCheckOut, onBreakOut, onBreakReturn, onOpenBadge,
 }: Props) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
 
-  const loc = visitors.filter(v => v.office === office);
-  const filtered = loc.filter(v => {
+  const ciCount = visitors.filter(v => v.status === "Checked In").length;
+  const breakCount = visitors.filter(v => v.status === "On Break").length;
+  const coCount = visitors.filter(v => v.status === "Checked Out" && sameDay(v.checkOutTime, new Date())).length;
+  const pendingCount = visitors.filter(v => v.status === "Pending").length;
+
+  const filtered = visitors.filter(v => {
     const q = search.toLowerCase();
     const matchSearch = !q || v.name.toLowerCase().includes(q) || v.visitorId.toLowerCase().includes(q)
-      || (v.company?.toLowerCase().includes(q) ?? false) || (v.host?.toLowerCase().includes(q) ?? false);
+      || (v.company?.toLowerCase().includes(q) ?? false) || (v.hostName?.toLowerCase().includes(q) ?? false);
     const matchStatus = filter === "all"
-      || (filter === "in" && v.status === "checked-in" && !v.onBreak)
-      || (filter === "break" && v.onBreak)
-      || (filter === "out" && v.status === "checked-out")
-      || (filter === "pending" && v.status === "pending");
+      || (filter === "in" && v.status === "Checked In")
+      || (filter === "break" && v.status === "On Break")
+      || (filter === "out" && v.status === "Checked Out")
+      || (filter === "pending" && v.status === "Pending");
     const matchType = typeFilter === "all" || v.type === typeFilter;
     return matchSearch && matchStatus && matchType;
   });
-
-  const ciCount = loc.filter(v => v.status === "checked-in").length;
-  const coCount = loc.filter(v => v.status === "checked-out" && sameDay2(v.checkout!, new Date())).length;
-  const breakCount = loc.filter(v => v.onBreak).length;
 
   return (
     <div>
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="font-serif text-[21px] font-medium text-foreground">Visitors</h1>
-          <p className="text-[12.5px] text-muted-foreground mt-0.5">{office}</p>
+          <p className="text-[12.5px] text-muted-foreground mt-0.5">{officeFull}</p>
         </div>
         <button onClick={onRegister} className="btn-primary">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3.5 h-3.5">
@@ -65,7 +65,7 @@ export function Visitors({
           { id: "in", label: `Inside (${ciCount})` },
           { id: "break", label: `On Break (${breakCount})` },
           { id: "out", label: `Checked Out (${coCount})` },
-          { id: "pending", label: "Pending" },
+          { id: "pending", label: `Pending (${pendingCount})` },
         ].map(s => (
           <button
             key={s.id}
@@ -100,7 +100,7 @@ export function Visitors({
           onChange={e => setTypeFilter(e.target.value)}
         >
           <option value="all">All Types</option>
-          {VISITOR_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+          {VISITOR_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
       </div>
 
@@ -155,16 +155,16 @@ function VisitorRow({ visitor: v, onClick, onCheckIn, onCheckOut, onBreakOut, on
   onBreakReturn: () => void;
   onBadge: () => void;
 }) {
-  const isIn = v.status === "checked-in" && !v.onBreak;
-  const isBreak = v.onBreak;
-  const isOut = v.status === "checked-out";
-  const today = isOut && sameDay2(v.checkout!, new Date());
+  const isIn = v.status === "Checked In";
+  const isBreak = v.status === "On Break";
+  const isOut = v.status === "Checked Out";
+  const isPending = v.status === "Pending";
 
   return (
     <tr className="border-b border-border last:border-0 hover:bg-secondary/50 cursor-pointer transition-colors" onClick={onClick}>
       <td className="px-4 py-2.5">
         <div className="flex items-center gap-2.5">
-          <Avatar name={v.name} photo={v.photo} size={30} />
+          <Avatar name={v.name} photo={v.photoUrl} size={30} />
           <div>
             <div className="font-semibold text-[13px] text-foreground">{v.name}</div>
             {v.company && <div className="text-[11px] text-muted-foreground">{v.company}</div>}
@@ -172,24 +172,24 @@ function VisitorRow({ visitor: v, onClick, onCheckIn, onCheckOut, onBreakOut, on
         </div>
       </td>
       <td className="px-4 py-2.5 hidden md:table-cell">
-        <VisitorIDChip visitor={v} />
+        <VisitorIDChip id={v.visitorId} status={v.status} />
       </td>
       <td className="px-4 py-2.5 hidden sm:table-cell">
         <TypeBadge type={v.type} />
       </td>
       <td className="px-4 py-2.5">
-        <StatusBadge status={v.status} onBreak={v.onBreak} />
+        <StatusBadge status={v.status} />
       </td>
       <td className="px-4 py-2.5 hidden lg:table-cell text-[12px] text-muted-foreground">
-        {v.host || "—"}
+        {v.hostName || "—"}
       </td>
       <td className="px-4 py-2.5 text-[11.5px] text-muted-foreground">
-        {fmtTime(v.checkin)}{v.checkout ? ` → ${fmtTime(v.checkout)}` : ""}
+        {fmtTime(v.checkInTime)}{v.checkOutTime ? ` → ${fmtTime(v.checkOutTime)}` : ""}
       </td>
       <td className="px-4 py-2.5" onClick={e => e.stopPropagation()}>
         <div className="flex gap-1 justify-end">
-          {!isIn && !isBreak && !today && (
-            <ActionButton label="In" color="green" onClick={onCheckIn} />
+          {(isPending || isOut) && (
+            <ActionButton label="Check In" color="green" onClick={onCheckIn} />
           )}
           {isIn && <ActionButton label="Break" color="amber" onClick={onBreakOut} />}
           {isBreak && <ActionButton label="Return" color="blue" onClick={onBreakReturn} />}

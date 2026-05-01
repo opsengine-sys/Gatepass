@@ -1,35 +1,35 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import type { GatePass } from "@/types";
-import { GP_TYPES } from "@/types";
 import { StatusBadge, GPTypeBadge } from "@/components/shared/Badge";
-import { fmtDate, fmtDT } from "@/hooks/useAppState";
+import { fmtDate, fmtDateTime } from "@/lib/time";
 
 interface Props {
   gatePass: GatePass | null;
+  officeFull: string;
   onClose: () => void;
-  onClose_GP: (id: string) => void;
+  onCloseGP: (id: string) => void;
 }
 
-export function GpDetailModal({ gatePass: g, onClose, onClose_GP }: Props) {
+export function GpDetailModal({ gatePass: g, officeFull, onClose, onCloseGP }: Props) {
   if (!g) return null;
-  const t = GP_TYPES.find(x => x.id === g.type);
 
-  const details: [string, string | undefined][] = [
+  const officeShort = officeFull.split("—")[0]?.trim() ?? officeFull;
+
+  const details: [string, string | null | undefined][] = [
     ["Requested By", g.requestedBy],
-    ["Phone", g.requesterPhone],
-    ["Vendor", g.vendor],
+    ["Vendor / Supplier", g.vendorName],
     ["Vehicle No.", g.vehicleNo],
-    ["Expected Date", g.expectedDate ? fmtDate(g.expectedDate) : undefined],
-    ["Office", g.office],
+    ["Driver", g.driverName],
     ["Purpose", g.purpose],
-    ["Created", fmtDT(g.createdAt)],
-    ["Closed", g.closedAt ? fmtDT(g.closedAt) : "Open"],
-  ].filter(([, v]) => v && v !== "—") as [string, string][];
+    ["Notes", g.notes],
+    ["Created", fmtDateTime(g.createdAt)],
+    ["Closed", g.closedAt ? fmtDateTime(g.closedAt) : (g.status === "Open" ? "Open" : null)],
+  ].filter(([, v]) => v) as [string, string][];
 
   const handlePrint = () => {
     const win = window.open("", "_blank");
     if (!win) return;
-    win.document.write(`<!DOCTYPE html><html><head><title>Gate Pass ${g.gpId}</title>
+    win.document.write(`<!DOCTYPE html><html><head><title>Gate Pass ${g.passId}</title>
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
     <style>
       body{margin:0;padding:20px;background:#f5f4f1;font-family:'Instrument Sans',sans-serif;display:flex;justify-content:center}
@@ -57,20 +57,20 @@ export function GpDetailModal({ gatePass: g, onClose, onClose_GP }: Props) {
       <div class="inner">
         <div class="org">GatePass — Gate Pass</div>
         <div class="title">${g.purpose}</div>
-        <div class="pill">${t?.label || g.type}</div>
+        <div class="pill">${g.type}</div>
         <div class="id-block">
           <div class="id-label">Pass ID</div>
-          <div class="id-val">${g.gpId}</div>
+          <div class="id-val">${g.passId}</div>
         </div>
         <div class="grid">
-          ${details.slice(0,6).map(([k, v]) => `<div class="cell"><div class="key">${k}</div><div class="val">${v}</div></div>`).join("")}
+          ${details.slice(0, 6).map(([k, v]) => `<div class="cell"><div class="key">${k}</div><div class="val">${v}</div></div>`).join("")}
         </div>
         <div class="items-block">
           <div class="items-key">Items / Materials</div>
-          ${g.items.map(it => `<div class="item-row">${it.name} — ${it.qty}${it.desc ? " · " + it.desc : ""}</div>`).join("")}
+          ${(g.items ?? []).map(it => `<div class="item-row">${it.name} — ${it.qty} ${it.unit}</div>`).join("")}
         </div>
       </div>
-      <div class="bar"><span>${g.office.split("—")[0].trim()}</span><span>${fmtDate(new Date())}</span></div>
+      <div class="bar"><span>${officeShort}</span><span>${fmtDate(new Date().toISOString())}</span></div>
     </div>
     </body></html>`);
     win.document.close();
@@ -81,14 +81,14 @@ export function GpDetailModal({ gatePass: g, onClose, onClose_GP }: Props) {
     <Dialog open={!!g} onOpenChange={open => !open && onClose()}>
       <DialogContent className="max-w-[560px] max-h-[93vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-serif text-[19px] font-medium">{g.gpId}</DialogTitle>
-          <p className="text-[12.5px] text-muted-foreground">{t?.label || g.type}</p>
+          <DialogTitle className="font-serif text-[19px] font-medium font-mono">{g.passId}</DialogTitle>
+          <p className="text-[12.5px] text-muted-foreground">{g.type}</p>
         </DialogHeader>
 
         <div className="py-2 space-y-4">
           <div className="flex gap-1.5">
             <StatusBadge status={g.status} />
-            <GPTypeBadge type={t?.label || g.type} />
+            <GPTypeBadge type={g.type} />
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -104,25 +104,26 @@ export function GpDetailModal({ gatePass: g, onClose, onClose_GP }: Props) {
             <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold pb-2 border-b border-border mb-3">
               Items / Materials
             </div>
-            {g.items.length === 0 ? (
+            {(g.items ?? []).length === 0 ? (
               <p className="text-[12.5px] text-muted-foreground">No items</p>
-            ) : g.items.map((it, i) => (
+            ) : (g.items ?? []).map((it, i) => (
               <div key={i} className="flex justify-between py-1.5 border-b border-border last:border-0 text-[12.5px]">
                 <span className="font-medium text-foreground">{it.name}</span>
-                <span className="text-muted-foreground">{it.qty}{it.desc ? ` — ${it.desc}` : ""}</span>
+                <span className="text-muted-foreground">{it.qty} {it.unit}</span>
               </div>
             ))}
           </div>
         </div>
 
         <DialogFooter>
-          {g.status === "open" && (
-            <button className="btn-danger" onClick={() => { onClose_GP(g.id); onClose(); }}>
+          {g.status === "Open" && (
+            <button className="bg-red-600 text-white font-semibold text-[12.5px] px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-red-700 transition-colors" onClick={() => { onCloseGP(g.id); onClose(); }}>
               Close Pass
             </button>
           )}
           <button className="btn-ghost" onClick={handlePrint}>
-            <PrintIcon /> Print Pass
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-3.5 h-3.5"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Print Pass
           </button>
           <button className="btn-ghost" onClick={onClose}>Close</button>
         </DialogFooter>
@@ -130,5 +131,3 @@ export function GpDetailModal({ gatePass: g, onClose, onClose_GP }: Props) {
     </Dialog>
   );
 }
-
-function PrintIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-3.5 h-3.5"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>; }

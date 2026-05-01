@@ -1,18 +1,20 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { Sidebar } from "./Sidebar";
-import type { Visitor, GatePass } from "@/types";
+import type { Visitor, GatePass, UserProfile } from "@/types";
 import { cn } from "@/lib/utils";
 
 interface AppLayoutProps {
   children: React.ReactNode;
   office: string;
+  officeFull: string;
   visitors: Visitor[];
   gatePasses: GatePass[];
+  user: UserProfile;
   onOpenOfficePicker: () => void;
 }
 
-const titleMap: Record<string, { title: string; module: "visitors" | "gatepasses" }> = {
+const titleMap: Record<string, { title: string; module: "visitors" | "gatepasses" | "admin" }> = {
   "/": { title: "Dashboard", module: "visitors" },
   "/visitors": { title: "Visitors", module: "visitors" },
   "/activity-log": { title: "Activity Log", module: "visitors" },
@@ -20,22 +22,24 @@ const titleMap: Record<string, { title: string; module: "visitors" | "gatepasses
   "/gp-dashboard": { title: "GP Dashboard", module: "gatepasses" },
   "/gate-passes": { title: "Gate Passes", module: "gatepasses" },
   "/gp-activity-log": { title: "GP Activity Log", module: "gatepasses" },
+  "/admin": { title: "Admin Panel", module: "admin" },
 };
 
-export function AppLayout({ children, office, visitors, gatePasses, onOpenOfficePicker }: AppLayoutProps) {
+export function AppLayout({ children, office, officeFull, visitors, gatePasses, user, onOpenOfficePicker }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [location] = useLocation();
 
   const meta = titleMap[location] ?? { title: "GatePass", module: "visitors" as const };
-  const checkedIn = visitors.filter(v => v.office === office && v.status === "checked-in").length;
-  const openGP = gatePasses.filter(g => g.office === office && g.status === "open").length;
+  const checkedIn = visitors.filter(v => v.status === "Checked In").length;
+  const openGP = gatePasses.filter(g => g.status === "Open").length;
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar
-        office={office}
+        officeFull={officeFull}
         visitors={visitors}
         gatePasses={gatePasses}
+        user={user}
         onOpenOfficePicker={onOpenOfficePicker}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -56,9 +60,11 @@ export function AppLayout({ children, office, visitors, gatePasses, onOpenOffice
 
           <span className={cn(
             "text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full",
-            meta.module === "gatepasses" ? "bg-teal-50 text-teal-700" : "bg-orange-50 text-orange-700"
+            meta.module === "gatepasses" ? "bg-teal-50 text-teal-700" :
+            meta.module === "admin" ? "bg-purple-50 text-purple-700" :
+            "bg-orange-50 text-orange-700"
           )}>
-            {meta.module === "gatepasses" ? "Gate Passes" : "Visitors"}
+            {meta.module === "gatepasses" ? "Gate Passes" : meta.module === "admin" ? "Admin" : "Visitors"}
           </span>
 
           <div className="font-bold text-sm flex-1 text-foreground">{meta.title}</div>

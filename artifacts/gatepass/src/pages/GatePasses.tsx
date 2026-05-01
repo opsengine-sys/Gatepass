@@ -2,41 +2,40 @@ import { useState } from "react";
 import type { GatePass } from "@/types";
 import { GP_TYPES } from "@/types";
 import { GPTypeBadge, StatusBadge } from "@/components/shared/Badge";
-import { fmtDate } from "@/hooks/useAppState";
+import { fmtDate } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
 interface Props {
   gatePasses: GatePass[];
-  office: string;
+  officeFull: string;
   onNew: () => void;
   onDetail: (id: string) => void;
-  onClose_GP: (id: string) => void;
+  onCloseGP: (id: string) => void;
 }
 
-export function GatePasses({ gatePasses, office, onNew, onDetail, onClose_GP }: Props) {
+export function GatePasses({ gatePasses, officeFull, onNew, onDetail, onCloseGP }: Props) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
 
-  const loc = gatePasses.filter(g => g.office === office);
-  const filtered = loc.filter(g => {
+  const openCount = gatePasses.filter(g => g.status === "Open").length;
+  const closedCount = gatePasses.filter(g => g.status === "Closed").length;
+
+  const filtered = gatePasses.filter(g => {
     const q = search.toLowerCase();
-    const matchSearch = !q || g.gpId.toLowerCase().includes(q) || g.purpose.toLowerCase().includes(q)
-      || (g.requestedBy?.toLowerCase().includes(q) ?? false) || (g.vendor?.toLowerCase().includes(q) ?? false);
+    const matchSearch = !q || g.passId.toLowerCase().includes(q) || g.purpose.toLowerCase().includes(q)
+      || (g.requestedBy?.toLowerCase().includes(q) ?? false) || (g.vendorName?.toLowerCase().includes(q) ?? false);
     const matchStatus = filter === "all" || g.status === filter;
     const matchType = typeFilter === "all" || g.type === typeFilter;
     return matchSearch && matchStatus && matchType;
   });
-
-  const openCount = loc.filter(g => g.status === "open").length;
-  const closedCount = loc.filter(g => g.status === "closed").length;
 
   return (
     <div>
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="font-serif text-[21px] font-medium text-foreground">Gate Passes</h1>
-          <p className="text-[12.5px] text-muted-foreground mt-0.5">{office}</p>
+          <p className="text-[12.5px] text-muted-foreground mt-0.5">{officeFull}</p>
         </div>
         <button onClick={onNew} className="btn-teal">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3.5 h-3.5">
@@ -49,8 +48,8 @@ export function GatePasses({ gatePasses, office, onNew, onDetail, onClose_GP }: 
       <div className="flex gap-2 flex-wrap mb-3">
         {[
           { id: "all", label: "All" },
-          { id: "open", label: `Open (${openCount})` },
-          { id: "closed", label: `Closed (${closedCount})` },
+          { id: "Open", label: `Open (${openCount})` },
+          { id: "Closed", label: `Closed (${closedCount})` },
         ].map(s => (
           <button
             key={s.id}
@@ -85,7 +84,7 @@ export function GatePasses({ gatePasses, office, onNew, onDetail, onClose_GP }: 
           onChange={e => setTypeFilter(e.target.value)}
         >
           <option value="all">All Types</option>
-          {GP_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+          {GP_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
       </div>
 
@@ -119,22 +118,22 @@ export function GatePasses({ gatePasses, office, onNew, onDetail, onClose_GP }: 
                   onClick={() => onDetail(g.id)}
                 >
                   <td className="px-4 py-2.5">
-                    <span className="font-mono text-[11.5px] font-bold text-teal-700">{g.gpId}</span>
+                    <span className="font-mono text-[11.5px] font-bold text-teal-700">{g.passId}</span>
                   </td>
                   <td className="px-4 py-2.5 font-medium text-foreground max-w-[180px] truncate">{g.purpose}</td>
                   <td className="px-4 py-2.5 hidden sm:table-cell">
-                    <GPTypeBadge type={GP_TYPES.find(t => t.id === g.type)?.label || g.type} />
+                    <GPTypeBadge type={g.type} />
                   </td>
                   <td className="px-4 py-2.5">
                     <StatusBadge status={g.status} />
                   </td>
                   <td className="px-4 py-2.5 hidden md:table-cell text-muted-foreground">{g.requestedBy || "—"}</td>
                   <td className="px-4 py-2.5 hidden lg:table-cell text-muted-foreground">{fmtDate(g.createdAt)}</td>
-                  <td className="px-4 py-2.5 hidden lg:table-cell text-muted-foreground">{g.items.length}</td>
+                  <td className="px-4 py-2.5 hidden lg:table-cell text-muted-foreground">{g.items?.length ?? 0}</td>
                   <td className="px-4 py-2.5" onClick={e => e.stopPropagation()}>
-                    {g.status === "open" && (
+                    {g.status === "Open" && (
                       <button
-                        onClick={() => onClose_GP(g.id)}
+                        onClick={() => onCloseGP(g.id)}
                         className="text-[10.5px] font-bold px-2 py-1 rounded-md bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 transition-colors"
                       >
                         Close

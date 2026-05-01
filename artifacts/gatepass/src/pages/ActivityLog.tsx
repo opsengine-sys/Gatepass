@@ -1,45 +1,44 @@
 import { useState } from "react";
-import type { VisitorLog, Visitor } from "@/types";
-import { fmtDT, sameDay2 } from "@/hooks/useAppState";
-import { TypeBadge } from "@/components/shared/Badge";
+import type { VisitorLog } from "@/types";
+import { fmtDateTime, sameDay } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
 interface Props {
   logs: VisitorLog[];
-  visitors: Visitor[];
-  office: string;
+  officeFull: string;
 }
 
-const logColors: Record<string, { bg: string; text: string; label: string }> = {
-  checkin: { bg: "bg-green-50", text: "text-green-700", label: "Check-in" },
-  "break-out": { bg: "bg-amber-50", text: "text-amber-700", label: "Break Out" },
-  "break-return": { bg: "bg-blue-50", text: "text-blue-700", label: "Break Return" },
-  checkout: { bg: "bg-slate-100", text: "text-slate-600", label: "Check-out" },
+const actionColors: Record<string, { bg: string; text: string; label: string }> = {
+  "checked in": { bg: "bg-green-50", text: "text-green-700", label: "Check-in" },
+  "stepped out": { bg: "bg-amber-50", text: "text-amber-700", label: "Break Out" },
+  "returned from break": { bg: "bg-blue-50", text: "text-blue-700", label: "Break Return" },
+  "checked out": { bg: "bg-slate-100", text: "text-slate-600", label: "Check-out" },
 };
 
-export function ActivityLog({ logs, visitors, office }: Props) {
+export function ActivityLog({ logs, officeFull }: Props) {
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState("all");
+  const [actionFilter, setActionFilter] = useState("all");
 
-  const offLogs = logs.filter(l => l.office === office);
-  const filtered = offLogs.filter(l => {
-    const q = search.toLowerCase();
-    const matchSearch = !q || l.visitor.toLowerCase().includes(q) || (l.vid?.toLowerCase().includes(q) ?? false) || (l.note?.toLowerCase().includes(q) ?? false);
-    const matchType = typeFilter === "all" || l.type === typeFilter;
-    return matchSearch && matchType;
-  }).reverse();
+  const todayCount = logs.filter(l => sameDay(l.ts, new Date())).length;
 
-  const todayCount = offLogs.filter(l => sameDay2(l.time, new Date())).length;
+  const filtered = [...logs]
+    .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
+    .filter(l => {
+      const q = search.toLowerCase();
+      const matchSearch = !q || l.name.toLowerCase().includes(q) || (l.visitorId?.toLowerCase().includes(q) ?? false) || (l.note?.toLowerCase().includes(q) ?? false);
+      const matchType = actionFilter === "all" || l.action === actionFilter;
+      return matchSearch && matchType;
+    });
 
   return (
     <div>
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="font-serif text-[21px] font-medium text-foreground">Activity Log</h1>
-          <p className="text-[12.5px] text-muted-foreground mt-0.5">{office} · {todayCount} events today</p>
+          <p className="text-[12.5px] text-muted-foreground mt-0.5">{officeFull} · {todayCount} events today</p>
         </div>
         <div className="text-[11px] font-semibold bg-secondary border border-border rounded-full px-3 py-1.5 text-muted-foreground">
-          {offLogs.length} total events
+          {logs.length} total events
         </div>
       </div>
 
@@ -57,14 +56,14 @@ export function ActivityLog({ logs, visitors, office }: Props) {
         </div>
         <select
           className="bg-secondary border border-border rounded-lg px-3 py-2 text-[13px] text-foreground focus:outline-none"
-          value={typeFilter}
-          onChange={e => setTypeFilter(e.target.value)}
+          value={actionFilter}
+          onChange={e => setActionFilter(e.target.value)}
         >
           <option value="all">All Events</option>
-          <option value="checkin">Check-in</option>
-          <option value="break-out">Break Out</option>
-          <option value="break-return">Break Return</option>
-          <option value="checkout">Check-out</option>
+          <option value="checked in">Check-in</option>
+          <option value="stepped out">Break Out</option>
+          <option value="returned from break">Break Return</option>
+          <option value="checked out">Check-out</option>
         </select>
       </div>
 
@@ -81,22 +80,20 @@ export function ActivityLog({ logs, visitors, office }: Props) {
                 <th className="text-left px-4 py-2.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Visitor</th>
                 <th className="text-left px-4 py-2.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wide hidden md:table-cell">ID</th>
                 <th className="text-left px-4 py-2.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Event</th>
-                <th className="text-left px-4 py-2.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wide hidden sm:table-cell">Type</th>
                 <th className="text-left px-4 py-2.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wide hidden lg:table-cell">Note</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(l => {
-                const evStyle = logColors[l.type] ?? { bg: "bg-secondary", text: "text-muted-foreground", label: l.type };
-                const visitor = visitors.find(v => v.visitorId === l.vid);
+                const evStyle = actionColors[l.action] ?? { bg: "bg-secondary", text: "text-muted-foreground", label: l.action };
                 return (
                   <tr key={l.id} className="border-b border-border last:border-0 hover:bg-secondary/40">
-                    <td className="px-4 py-2.5 text-muted-foreground font-mono text-[11px] whitespace-nowrap">{fmtDT(l.time)}</td>
-                    <td className="px-4 py-2.5 font-medium text-foreground">{l.visitor}</td>
+                    <td className="px-4 py-2.5 text-muted-foreground font-mono text-[11px] whitespace-nowrap">{fmtDateTime(l.ts)}</td>
+                    <td className="px-4 py-2.5 font-medium text-foreground">{l.name}</td>
                     <td className="px-4 py-2.5 hidden md:table-cell">
-                      {l.vid && (
+                      {l.visitorId && (
                         <span className="font-mono text-[11px] bg-secondary border border-border px-2 py-0.5 rounded-md">
-                          {l.vid.split("-").slice(0,2).join("-")}
+                          {l.visitorId.split("-").slice(0, 2).join("-")}
                         </span>
                       )}
                     </td>
@@ -104,9 +101,6 @@ export function ActivityLog({ logs, visitors, office }: Props) {
                       <span className={cn("text-[10.5px] font-bold px-2 py-0.5 rounded-full", evStyle.bg, evStyle.text)}>
                         {evStyle.label}
                       </span>
-                    </td>
-                    <td className="px-4 py-2.5 hidden sm:table-cell">
-                      {visitor && <TypeBadge type={visitor.type} />}
                     </td>
                     <td className="px-4 py-2.5 hidden lg:table-cell text-muted-foreground text-[11.5px]">
                       {l.note || "—"}

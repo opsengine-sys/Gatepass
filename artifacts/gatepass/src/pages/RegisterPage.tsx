@@ -1,17 +1,24 @@
 import { useState, useRef, useCallback } from "react";
-import { VISITOR_TYPES, POC_CFG, NEEDS_PURPOSE, NEEDS_COMPANY, OFFICES } from "@/types";
+import { VISITOR_TYPES } from "@/types";
 import type { VisitorType } from "@/types";
 import { cn } from "@/lib/utils";
 
-type Status = "idle" | "submitting" | "success";
+type Status = "idle" | "submitting" | "success" | "error";
+
+const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
 export function RegisterPage() {
   const [status, setStatus] = useState<Status>("idle");
+  const [errorMsg, setErrorMsg] = useState("");
   const [form, setForm] = useState({
-    name: "", company: "", email: "", phone: "", type: "vendor" as VisitorType,
-    office: OFFICES[0], host: "", hostPhone: "", purpose: "", photo: "",
-    employeeId: "", department: "", jobId: "", interviewRound: "",
-    relationship: "", homeOffice: "", visitAgenda: "", contractRef: "", serviceType: "",
+    name: "",
+    company: "",
+    email: "",
+    phone: "",
+    type: "Guest" as VisitorType,
+    hostName: "",
+    purpose: "",
+    photo: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [camActive, setCamActive] = useState(false);
@@ -20,7 +27,7 @@ export function RegisterPage() {
 
   const sf = (k: string, v: string) => {
     setForm(prev => ({ ...prev, [k]: v }));
-    setErrors(prev => { const n = {...prev}; delete n[k]; return n; });
+    setErrors(prev => { const n = { ...prev }; delete n[k]; return n; });
   };
 
   const startCam = useCallback(async () => {
@@ -29,7 +36,9 @@ export function RegisterPage() {
       streamRef.current = s;
       if (videoRef.current) videoRef.current.srcObject = s;
       setCamActive(true);
-    } catch { alert("Camera access denied"); }
+    } catch {
+      alert("Camera access denied");
+    }
   }, []);
 
   const stopCam = useCallback(() => {
@@ -51,40 +60,41 @@ export function RegisterPage() {
   const validate = () => {
     const e: Record<string, string> = {};
     if (!form.name.trim()) e.name = "Required";
-    if (NEEDS_COMPANY[form.type] && !form.company.trim()) e.company = "Required";
-    if (NEEDS_PURPOSE[form.type] && !form.purpose.trim()) e.purpose = "Required";
-    const poc = POC_CFG[form.type];
-    if (poc.show && !form.host.trim()) e.host = "Required";
+    if (!form.hostName.trim()) e.hostName = "Required";
     return e;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const err = validate();
     if (Object.keys(err).length) { setErrors(err); return; }
     setStatus("submitting");
-    setTimeout(() => {
-      const raw = localStorage.getItem("gatepass_state");
-      const state = raw ? JSON.parse(raw) : { visitors: [], gatePasses: [], logs: [], gpLogs: [] };
-      const vid = `VID-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-      const newVisitor = {
-        ...form,
-        id: Math.random().toString(36).slice(2, 9),
-        visitorId: vid,
-        status: "pending",
-        checkin: new Date().toISOString(),
-        onBreak: false,
-        breaks: [],
-      };
-      state.visitors.push(newVisitor);
-      localStorage.setItem("gatepass_state", JSON.stringify(state));
+    setErrorMsg("");
+    try {
+      const res = await fetch(`${BASE}/api/public/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name.trim(),
+          company: form.company.trim() || undefined,
+          email: form.email.trim() || undefined,
+          phone: form.phone.trim() || undefined,
+          type: form.type,
+          host: form.hostName.trim(),
+          purpose: form.purpose.trim() || undefined,
+          photoUrl: form.photo || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error ?? `Error ${res.status}`);
+      }
       setStatus("success");
-    }, 800);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Submission failed. Please try again.");
+      setStatus("error");
+    }
   };
-
-  const poc = POC_CFG[form.type];
-  const showCompany = NEEDS_COMPANY[form.type];
-  const showPurpose = NEEDS_PURPOSE[form.type];
 
   if (status === "success") {
     return (
@@ -118,8 +128,9 @@ export function RegisterPage() {
         <div className="flex items-center gap-2.5 mb-6">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
             <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" className="w-4 h-4">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-              <polyline points="9 22 9 12 15 12 15 22"/>
+              <rect x="3" y="4" width="14" height="10" rx="2"/>
+              <path d="M7 8h6M7 11h4"/>
+              <rect x="7" y="17" width="10" height="3" rx="1.5"/>
             </svg>
           </div>
           <div>
@@ -132,25 +143,31 @@ export function RegisterPage() {
           <h1 className="font-serif text-[21px] font-medium text-foreground mb-0.5">Register Your Visit</h1>
           <p className="text-[12.5px] text-muted-foreground mb-5">Fill in your details before arriving. You'll get a Visitor ID at the gate.</p>
 
+          {status === "error" && (
+            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-[12.5px] text-red-700 mb-4">
+              {errorMsg}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
                 Visit Type <span className="text-red-500">*</span>
               </label>
               <div className="grid grid-cols-3 gap-1.5">
-                {VISITOR_TYPES.map(t => (
+                {VISITOR_TYPES.filter(t => t !== "Employee (Forgot ID)").map(t => (
                   <button
-                    key={t.id}
+                    key={t}
                     type="button"
-                    onClick={() => sf("type", t.id)}
+                    onClick={() => sf("type", t)}
                     className={cn(
-                      "border-[1.5px] rounded-lg py-2 px-2 text-[11.5px] font-medium text-center transition-all cursor-pointer",
-                      form.type === t.id
+                      "border-[1.5px] rounded-lg py-2 px-2 text-[11px] font-medium text-center transition-all cursor-pointer",
+                      form.type === t
                         ? "bg-orange-50 border-orange-400 text-orange-700"
                         : "border-border hover:border-border/80 hover:bg-secondary text-foreground"
                     )}
                   >
-                    {t.label}
+                    {t}
                   </button>
                 ))}
               </div>
@@ -159,11 +176,11 @@ export function RegisterPage() {
             <PField label="Full Name" required error={errors.name}>
               <input className={iCls(!!errors.name)} value={form.name} placeholder="Your full name" onChange={e => sf("name", e.target.value)} />
             </PField>
-            {showCompany && (
-              <PField label="Company" required={NEEDS_COMPANY[form.type]} error={errors.company}>
-                <input className={iCls(!!errors.company)} value={form.company} placeholder="Your company" onChange={e => sf("company", e.target.value)} />
-              </PField>
-            )}
+
+            <PField label="Company / Organisation">
+              <input className={iCls(false)} value={form.company} placeholder="Optional" onChange={e => sf("company", e.target.value)} />
+            </PField>
+
             <div className="grid grid-cols-2 gap-3">
               <PField label="Email">
                 <input className={iCls(false)} type="email" value={form.email} placeholder="Optional" onChange={e => sf("email", e.target.value)} />
@@ -172,31 +189,14 @@ export function RegisterPage() {
                 <input className={iCls(false)} value={form.phone} placeholder="Optional" onChange={e => sf("phone", e.target.value)} />
               </PField>
             </div>
-            <PField label="Office You're Visiting">
-              <select className={iCls(false)} value={form.office} onChange={e => sf("office", e.target.value)}>
-                {OFFICES.map(o => <option key={o} value={o}>{o}</option>)}
-              </select>
+
+            <PField label="Person You're Meeting" required error={errors.hostName}>
+              <input className={iCls(!!errors.hostName)} value={form.hostName} placeholder="Name of your host" onChange={e => sf("hostName", e.target.value)} />
             </PField>
-            {poc.show && (
-              <div className="grid grid-cols-2 gap-3">
-                <PField label={poc.hostLabel ?? "Host"} required error={errors.host}>
-                  <input className={iCls(!!errors.host)} value={form.host} placeholder="Who you're meeting" onChange={e => sf("host", e.target.value)} />
-                </PField>
-                <PField label={poc.phoneLabel ?? "Host Phone"}>
-                  <input className={iCls(false)} value={form.hostPhone} placeholder="Optional" onChange={e => sf("hostPhone", e.target.value)} />
-                </PField>
-              </div>
-            )}
-            {showPurpose && (
-              <PField label="Purpose of Visit" required error={errors.purpose}>
-                <input className={iCls(!!errors.purpose)} value={form.purpose} placeholder="Briefly describe your visit" onChange={e => sf("purpose", e.target.value)} />
-              </PField>
-            )}
-            {form.type === "employee" && (
-              <PField label="Employee ID">
-                <input className={iCls(false)} value={form.employeeId} placeholder="e.g. EMP-10042" onChange={e => sf("employeeId", e.target.value)} />
-              </PField>
-            )}
+
+            <PField label="Purpose of Visit">
+              <input className={iCls(false)} value={form.purpose} placeholder="Briefly describe your visit" onChange={e => sf("purpose", e.target.value)} />
+            </PField>
 
             <div>
               <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Photo (optional)</label>
@@ -212,10 +212,10 @@ export function RegisterPage() {
               </div>
               <div className="flex gap-2 mt-2">
                 {camActive && <>
-                  <button type="button" onClick={capture} className="btn-primary-sm">Capture</button>
-                  <button type="button" onClick={stopCam} className="btn-ghost-sm">Cancel</button>
+                  <button type="button" onClick={capture} className="text-[11.5px] font-bold bg-primary text-white px-3 py-1.5 rounded-lg">Capture</button>
+                  <button type="button" onClick={stopCam} className="btn-ghost">Cancel</button>
                 </>}
-                {form.photo && <button type="button" onClick={() => sf("photo", "")} className="btn-ghost-sm">Retake</button>}
+                {form.photo && <button type="button" onClick={() => sf("photo", "")} className="btn-ghost">Retake</button>}
               </div>
             </div>
 

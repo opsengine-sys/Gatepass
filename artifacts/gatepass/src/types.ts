@@ -1,131 +1,170 @@
-export type VisitorType = "vendor" | "candidate" | "guest" | "leadership" | "employee";
-export type VisitorStatus = "checked-in" | "checked-out" | "pending";
-export type GPType = "material" | "food" | "outgoing" | "contractor";
-export type GPStatus = "open" | "closed" | "pending";
+// API-compatible types matching backend schema
 
-export interface Break {
-  out: string;
-  returnTime: string | null;
+export type VisitorType =
+  | "Guest"
+  | "Vendor"
+  | "Contractor"
+  | "Interview Candidate"
+  | "Delivery"
+  | "Government Official"
+  | "Leadership Visit"
+  | "Employee (Forgot ID)"
+  | "Other";
+
+export type VisitorStatus = "Pending" | "Checked In" | "On Break" | "Checked Out";
+
+export type GPType =
+  | "Materials / Supplies"
+  | "Equipment"
+  | "Food & Beverages"
+  | "Documents"
+  | "IT Assets"
+  | "Furniture"
+  | "Samples"
+  | "Other";
+
+export type GPStatus = "Open" | "Closed";
+
+export interface GPItem {
+  name: string;
+  qty: number;
+  unit: string;
 }
 
 export interface Visitor {
   id: string;
+  companyId: string;
+  officeId: string;
   visitorId: string;
   name: string;
-  company?: string;
-  email?: string;
-  phone?: string;
+  phone?: string | null;
+  email?: string | null;
+  company?: string | null;
+  hostName?: string | null;
   type: VisitorType;
   status: VisitorStatus;
-  office: string;
-  host?: string;
-  hostPhone?: string;
-  purpose?: string;
-  address?: string;
-  photo?: string;
-  onBreak: boolean;
-  checkin: string;
-  checkout?: string;
-  breaks: Break[];
-  contractRef?: string;
-  serviceType?: string;
-  jobId?: string;
-  interviewRound?: string;
-  relationship?: string;
-  homeOffice?: string;
-  visitAgenda?: string;
-  employeeId?: string;
-  department?: string;
-}
-
-export interface GPItem {
-  name: string;
-  qty: string;
-  desc?: string;
+  purpose?: string | null;
+  idType?: string | null;
+  idNumber?: string | null;
+  photoUrl?: string | null;
+  vehicleNumber?: string | null;
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
+  expectedCheckout?: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface GatePass {
   id: string;
-  gpId: string;
-  type: GPType;
-  requestedBy: string;
-  requesterPhone?: string;
-  vendor?: string;
-  vehicleNo?: string;
-  expectedDate?: string;
-  office: string;
+  companyId: string;
+  officeId: string;
+  passId: string;
   purpose: string;
+  type: GPType;
   status: GPStatus;
+  vendorName?: string | null;
+  vehicleNo?: string | null;
+  driverName?: string | null;
+  requestedBy: string;
   items: GPItem[];
+  itemCount?: number;
+  openedAt?: string;
+  closedAt?: string | null;
+  notes?: string | null;
   createdAt: string;
-  closedAt?: string;
 }
 
 export interface VisitorLog {
   id: string;
-  type: "checkin" | "checkout" | "break-out" | "break-return";
-  visitor: string;
-  vid: string;
-  time: string;
-  office: string;
-  note?: string;
+  visitorDbId?: string;
+  visitorId: string;
+  companyId: string;
+  officeId: string;
+  name: string;
+  action: string;
+  note?: string | null;
+  ts: string;
 }
 
 export interface GPLog {
   id: string;
-  type: "created" | "closed";
   passId: string;
-  by: string;
-  time: string;
-  office: string;
+  gatePassId?: string;
+  companyId: string;
+  officeId: string;
+  action: string;
+  note?: string | null;
+  ts: string;
 }
 
-export const OFFICES = [
-  "Hyderabad — Raheja Mindspace",
-  "Hyderabad — DLF Cybercity",
-  "Bangalore — Embassy Tech Village",
-  "Mumbai — BKC",
-  "Chennai — Tidel Park",
-  "Pune — Hinjewadi",
+export interface Office {
+  id: string;
+  companyId: string;
+  name: string;
+  city: string;
+  address?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Company {
+  id: string;
+  name: string;
+  slug: string;
+  logoUrl?: string | null;
+  plan: "starter" | "growth" | "enterprise";
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserProfile {
+  id: string;
+  clerkId: string;
+  companyId?: string | null;
+  officeId?: string | null;
+  name: string;
+  email: string;
+  role: "super_admin" | "admin" | "security" | "viewer";
+  isActive: boolean;
+  createdAt: string;
+  company?: Company | null;
+  office?: Office | null;
+}
+
+export const VISITOR_TYPES: VisitorType[] = [
+  "Vendor",
+  "Guest",
+  "Contractor",
+  "Interview Candidate",
+  "Delivery",
+  "Government Official",
+  "Leadership Visit",
+  "Employee (Forgot ID)",
+  "Other",
 ];
 
-export const VISITOR_TYPES: { id: VisitorType; label: string; color: string; needsBadge: boolean }[] = [
-  { id: "vendor", label: "Vendor", color: "amber", needsBadge: true },
-  { id: "candidate", label: "Interview Candidate", color: "blue", needsBadge: true },
-  { id: "guest", label: "Guest", color: "green", needsBadge: true },
-  { id: "leadership", label: "Leadership Visit", color: "purple", needsBadge: false },
-  { id: "employee", label: "Employee (Forgot ID)", color: "slate", needsBadge: true },
+export const GP_TYPES: GPType[] = [
+  "Materials / Supplies",
+  "Equipment",
+  "Food & Beverages",
+  "Documents",
+  "IT Assets",
+  "Furniture",
+  "Samples",
+  "Other",
 ];
 
-export const GP_TYPES: { id: GPType; label: string; sub: string }[] = [
-  { id: "material", label: "Materials / Supplies", sub: "Raw materials, equipment, tools" },
-  { id: "food", label: "Food & Beverages", sub: "Catering, delivery, pantry" },
-  { id: "outgoing", label: "Outgoing Assets", sub: "Company property leaving premises" },
-  { id: "contractor", label: "Contractor Supplies", sub: "Contractor tools & equipment" },
-];
-
-export const POC_CFG: Record<VisitorType, { show: boolean; hostLabel?: string; phoneLabel?: string }> = {
-  vendor: { show: true, hostLabel: "Host / Point of Contact", phoneLabel: "Host Phone" },
-  candidate: { show: true, hostLabel: "HR Point of Contact", phoneLabel: "HR Phone" },
-  guest: { show: true, hostLabel: "Host Name", phoneLabel: "Host Phone" },
-  leadership: { show: true, hostLabel: "Host / Sponsor", phoneLabel: "Host Phone" },
-  employee: { show: false },
-};
-
-export const NEEDS_PURPOSE: Record<VisitorType, boolean> = {
-  vendor: true, candidate: true, guest: true, leadership: true, employee: false,
-};
-
-export const NEEDS_COMPANY: Record<VisitorType, boolean> = {
-  vendor: true, candidate: false, guest: false, leadership: true, employee: true,
-};
-
-export type TypeColor = "amber" | "blue" | "green" | "purple" | "slate";
-
-export const TYPE_COLORS: Record<VisitorType, string> = {
-  vendor: "#a07a14",
-  candidate: "#2558a8",
-  guest: "#1a7a4a",
-  leadership: "#6438a0",
-  employee: "#445368",
+export const TYPE_COLORS: Record<string, string> = {
+  Vendor: "#a07a14",
+  Guest: "#1a7a4a",
+  Contractor: "#c06b2c",
+  "Interview Candidate": "#2558a8",
+  Delivery: "#0e7490",
+  "Government Official": "#9d174d",
+  "Leadership Visit": "#6438a0",
+  "Employee (Forgot ID)": "#445368",
+  Other: "#445368",
 };

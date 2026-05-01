@@ -1,13 +1,24 @@
-import { initials } from "@/hooks/useAppState";
+function initials(name: string): string {
+  return name
+    .split(" ")
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .join("");
+}
 
 interface AvatarProps {
   name: string;
-  photo?: string;
-  size?: number;
+  photo?: string | null;
+  size?: number | "sm" | "md" | "lg";
 }
 
-export function Avatar({ name, photo, size = 30 }: AvatarProps) {
-  const style = { width: size, height: size, fontSize: Math.round(size * 0.36) };
+export function Avatar({ name, photo, size = "md" }: AvatarProps) {
+  const px =
+    size === "sm" ? 28 :
+    size === "lg" ? 44 :
+    typeof size === "number" ? size : 34;
+  const fs = Math.round(px * 0.36);
+  const style = { width: px, height: px, fontSize: fs };
   if (photo) {
     return (
       <div className="rounded-full border border-border overflow-hidden flex-shrink-0 bg-secondary" style={style}>

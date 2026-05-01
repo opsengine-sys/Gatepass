@@ -1,41 +1,43 @@
 import { useState } from "react";
 import type { GPLog } from "@/types";
-import { fmtDT, sameDay2 } from "@/hooks/useAppState";
+import { fmtDateTime, sameDay } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
 interface Props {
   gpLogs: GPLog[];
-  office: string;
+  officeFull: string;
 }
 
 const logStyles: Record<string, { bg: string; text: string }> = {
   created: { bg: "bg-teal-50", text: "text-teal-700" },
   closed: { bg: "bg-slate-100", text: "text-slate-600" },
+  updated: { bg: "bg-blue-50", text: "text-blue-700" },
 };
 
-export function GpActivityLog({ gpLogs, office }: Props) {
+export function GpActivityLog({ gpLogs, officeFull }: Props) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
 
-  const offLogs = gpLogs.filter(l => l.office === office);
-  const filtered = offLogs.filter(l => {
-    const q = search.toLowerCase();
-    const matchSearch = !q || l.passId.toLowerCase().includes(q);
-    const matchFilter = filter === "all" || l.type === filter;
-    return matchSearch && matchFilter;
-  }).reverse();
+  const todayCount = gpLogs.filter(l => sameDay(l.ts, new Date())).length;
 
-  const todayCount = offLogs.filter(l => sameDay2(l.time, new Date())).length;
+  const filtered = [...gpLogs]
+    .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
+    .filter(l => {
+      const q = search.toLowerCase();
+      const matchSearch = !q || l.passId.toLowerCase().includes(q) || (l.note?.toLowerCase().includes(q) ?? false);
+      const matchFilter = filter === "all" || l.action === filter;
+      return matchSearch && matchFilter;
+    });
 
   return (
     <div>
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="font-serif text-[21px] font-medium text-foreground">GP Activity Log</h1>
-          <p className="text-[12.5px] text-muted-foreground mt-0.5">{office} · {todayCount} events today</p>
+          <p className="text-[12.5px] text-muted-foreground mt-0.5">{officeFull} · {todayCount} events today</p>
         </div>
         <div className="text-[11px] font-semibold bg-secondary border border-border rounded-full px-3 py-1.5 text-muted-foreground">
-          {offLogs.length} total events
+          {gpLogs.length} total events
         </div>
       </div>
 
@@ -59,6 +61,7 @@ export function GpActivityLog({ gpLogs, office }: Props) {
           <option value="all">All Events</option>
           <option value="created">Created</option>
           <option value="closed">Closed</option>
+          <option value="updated">Updated</option>
         </select>
       </div>
 
@@ -74,25 +77,25 @@ export function GpActivityLog({ gpLogs, office }: Props) {
                 <th className="text-left px-4 py-2.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Time</th>
                 <th className="text-left px-4 py-2.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Pass ID</th>
                 <th className="text-left px-4 py-2.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Action</th>
-                <th className="text-left px-4 py-2.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wide hidden md:table-cell">Note</th>
+                <th className="text-left px-4 py-2.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wide hidden md:table-cell">By / Note</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(l => {
-                const s = logStyles[l.type] ?? { bg: "bg-secondary", text: "text-muted-foreground" };
+                const s = logStyles[l.action] ?? { bg: "bg-secondary", text: "text-muted-foreground" };
                 return (
                   <tr key={l.id} className="border-b border-border last:border-0 hover:bg-secondary/40">
-                    <td className="px-4 py-2.5 text-muted-foreground font-mono text-[11px] whitespace-nowrap">{fmtDT(l.time)}</td>
+                    <td className="px-4 py-2.5 text-muted-foreground font-mono text-[11px] whitespace-nowrap">{fmtDateTime(l.ts)}</td>
                     <td className="px-4 py-2.5">
                       <span className="font-mono text-[11.5px] font-bold text-teal-700">{l.passId}</span>
                     </td>
                     <td className="px-4 py-2.5">
                       <span className={cn("text-[10.5px] font-bold px-2 py-0.5 rounded-full capitalize", s.bg, s.text)}>
-                        {l.type}
+                        {l.action}
                       </span>
                     </td>
                     <td className="px-4 py-2.5 hidden md:table-cell text-muted-foreground text-[11.5px]">
-                      {l.by || "—"}
+                      {l.note || "—"}
                     </td>
                   </tr>
                 );

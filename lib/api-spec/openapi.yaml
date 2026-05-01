@@ -3,20 +3,37 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: GatePass SaaS API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Auth / current user
+  - name: companies
+    description: Company management
+  - name: offices
+    description: Office management
+  - name: users
+    description: User management
+  - name: visitors
+    description: Visitor management
+  - name: visitor-logs
+    description: Visitor activity log
+  - name: gate-passes
+    description: Gate pass management
+  - name: gp-logs
+    description: Gate pass activity log
+  - name: admin
+    description: Super admin operations
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,7 +41,669 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user profile
+      security:
+        - clerkAuth: []
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      operationId: updateMe
+      tags: [auth]
+      summary: Update current user profile
+      security:
+        - clerkAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMeInput"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /offices:
+    get:
+      operationId: listOffices
+      tags: [offices]
+      summary: List offices for the current user's company
+      security:
+        - clerkAuth: []
+      responses:
+        "200":
+          description: List of offices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Office"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createOffice
+      tags: [offices]
+      summary: Create a new office
+      security:
+        - clerkAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOfficeInput"
+      responses:
+        "201":
+          description: Created office
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Office"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /offices/{officeId}:
+    patch:
+      operationId: updateOffice
+      tags: [offices]
+      summary: Update an office
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: officeId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOfficeInput"
+      responses:
+        "200":
+          description: Updated office
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Office"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      operationId: deleteOffice
+      tags: [offices]
+      summary: Delete (deactivate) an office
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: officeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List users in the current company (admin only)
+      security:
+        - clerkAuth: []
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /users/{userId}:
+    patch:
+      operationId: updateUser
+      tags: [users]
+      summary: Update a user's role or office
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserInput"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      summary: Deactivate a user
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deactivated
+
+  /visitors:
+    get:
+      operationId: listVisitors
+      tags: [visitors]
+      summary: List visitors for a given office
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: officeId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            description: ISO date string (YYYY-MM-DD), defaults to today
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of visitors
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Visitor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: registerVisitor
+      tags: [visitors]
+      summary: Register a new visitor
+      security:
+        - clerkAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterVisitorInput"
+      responses:
+        "201":
+          description: Registered visitor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Visitor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /visitors/{visitorId}/checkin:
+    post:
+      operationId: checkInVisitor
+      tags: [visitors]
+      summary: Check in a visitor
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: visitorId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated visitor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Visitor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /visitors/{visitorId}/checkout:
+    post:
+      operationId: checkOutVisitor
+      tags: [visitors]
+      summary: Check out a visitor
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: visitorId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated visitor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Visitor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /visitors/{visitorId}/break:
+    post:
+      operationId: visitorBreak
+      tags: [visitors]
+      summary: Mark visitor as on break (step out)
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: visitorId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated visitor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Visitor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /visitors/{visitorId}/return:
+    post:
+      operationId: visitorReturn
+      tags: [visitors]
+      summary: Mark visitor as returned from break
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: visitorId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated visitor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Visitor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /visitor-logs:
+    get:
+      operationId: listVisitorLogs
+      tags: [visitor-logs]
+      summary: List visitor activity logs
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: officeId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of visitor logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VisitorLog"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /gate-passes:
+    get:
+      operationId: listGatePasses
+      tags: [gate-passes]
+      summary: List gate passes
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: officeId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of gate passes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GatePass"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createGatePass
+      tags: [gate-passes]
+      summary: Create a new gate pass
+      security:
+        - clerkAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGatePassInput"
+      responses:
+        "201":
+          description: Created gate pass
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatePass"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /gate-passes/{gpId}/close:
+    post:
+      operationId: closeGatePass
+      tags: [gate-passes]
+      summary: Close a gate pass
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: gpId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated gate pass
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatePass"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /gp-logs:
+    get:
+      operationId: listGpLogs
+      tags: [gp-logs]
+      summary: List gate pass activity logs
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: officeId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of GP logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GpLog"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /admin/companies:
+    get:
+      operationId: adminListCompanies
+      tags: [admin]
+      summary: List all companies (super admin only)
+      security:
+        - clerkAuth: []
+      responses:
+        "200":
+          description: All companies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CompanyWithStats"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: adminCreateCompany
+      tags: [admin]
+      summary: Create a company (super admin only)
+      security:
+        - clerkAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCompanyInput"
+      responses:
+        "201":
+          description: Created company
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /admin/companies/{companyId}:
+    patch:
+      operationId: adminUpdateCompany
+      tags: [admin]
+      summary: Update a company (super admin only)
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: companyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCompanyInput"
+      responses:
+        "200":
+          description: Updated company
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    delete:
+      operationId: adminDeleteCompany
+      tags: [admin]
+      summary: Deactivate a company (super admin only)
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: companyId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deactivated
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /admin/users:
+    get:
+      operationId: adminListUsers
+      tags: [admin]
+      summary: List all users (super admin only)
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: companyId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: All users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /admin/users/{userId}:
+    patch:
+      operationId: adminUpdateUser
+      tags: [admin]
+      summary: Update any user (super admin only)
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminUpdateUserInput"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /public/register:
+    post:
+      operationId: publicRegisterVisitor
+      tags: [visitors]
+      summary: Public pre-registration for visitors
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublicRegisterInput"
+      responses:
+        "201":
+          description: Pre-registered visitor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Visitor"
+
 components:
+  securitySchemes:
+    clerkAuth:
+      type: http
+      scheme: bearer
+  responses:
+    Unauthorized:
+      description: Not authenticated
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Not authorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +713,435 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    Company:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        logoUrl:
+          type: string
+          nullable: true
+        plan:
+          type: string
+          enum: [starter, growth, enterprise]
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, name, slug, plan, isActive, createdAt, updatedAt]
+
+    CompanyWithStats:
+      allOf:
+        - $ref: "#/components/schemas/Company"
+        - type: object
+          properties:
+            userCount:
+              type: integer
+            officeCount:
+              type: integer
+          required: [userCount, officeCount]
+
+    CreateCompanyInput:
+      type: object
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        plan:
+          type: string
+          enum: [starter, growth, enterprise]
+      required: [name, slug]
+
+    UpdateCompanyInput:
+      type: object
+      properties:
+        name:
+          type: string
+        plan:
+          type: string
+          enum: [starter, growth, enterprise]
+        isActive:
+          type: boolean
+        logoUrl:
+          type: string
+
+    Office:
+      type: object
+      properties:
+        id:
+          type: string
+        companyId:
+          type: string
+        name:
+          type: string
+        city:
+          type: string
+        address:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, companyId, name, city, isActive, createdAt, updatedAt]
+
+    CreateOfficeInput:
+      type: object
+      properties:
+        name:
+          type: string
+        city:
+          type: string
+        address:
+          type: string
+      required: [name, city]
+
+    UpdateOfficeInput:
+      type: object
+      properties:
+        name:
+          type: string
+        city:
+          type: string
+        address:
+          type: string
+        isActive:
+          type: boolean
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        clerkId:
+          type: string
+        companyId:
+          type: string
+          nullable: true
+        officeId:
+          type: string
+          nullable: true
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [super_admin, admin, security, viewer]
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+        company:
+          $ref: "#/components/schemas/Company"
+          nullable: true
+        office:
+          $ref: "#/components/schemas/Office"
+          nullable: true
+      required: [id, clerkId, name, email, role, isActive, createdAt]
+
+    UpdateMeInput:
+      type: object
+      properties:
+        name:
+          type: string
+        officeId:
+          type: string
+
+    UpdateUserInput:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [admin, security, viewer]
+        officeId:
+          type: string
+        isActive:
+          type: boolean
+
+    AdminUpdateUserInput:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [super_admin, admin, security, viewer]
+        companyId:
+          type: string
+        officeId:
+          type: string
+        isActive:
+          type: boolean
+
+    Visitor:
+      type: object
+      properties:
+        id:
+          type: string
+        companyId:
+          type: string
+        officeId:
+          type: string
+        visitorId:
+          type: string
+        name:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        company:
+          type: string
+          nullable: true
+        host:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+          enum: [Pending, "Checked In", "On Break", "Checked Out"]
+        purpose:
+          type: string
+          nullable: true
+        idType:
+          type: string
+          nullable: true
+        idNumber:
+          type: string
+          nullable: true
+        photoUrl:
+          type: string
+          nullable: true
+        vehicleNumber:
+          type: string
+          nullable: true
+        checkInTime:
+          type: string
+          nullable: true
+        checkOutTime:
+          type: string
+          nullable: true
+        expectedCheckout:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, companyId, officeId, visitorId, name, host, type, status, createdAt, updatedAt]
+
+    RegisterVisitorInput:
+      type: object
+      properties:
+        officeId:
+          type: string
+        name:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        company:
+          type: string
+        host:
+          type: string
+        type:
+          type: string
+        purpose:
+          type: string
+        idType:
+          type: string
+        idNumber:
+          type: string
+        photoUrl:
+          type: string
+        vehicleNumber:
+          type: string
+        checkInNow:
+          type: boolean
+      required: [officeId, name, host, type]
+
+    PublicRegisterInput:
+      type: object
+      properties:
+        companySlug:
+          type: string
+        officeId:
+          type: string
+        name:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        company:
+          type: string
+        host:
+          type: string
+        type:
+          type: string
+        purpose:
+          type: string
+        idType:
+          type: string
+        idNumber:
+          type: string
+        photoUrl:
+          type: string
+        vehicleNumber:
+          type: string
+      required: [companySlug, officeId, name, host, type]
+
+    VisitorLog:
+      type: object
+      properties:
+        id:
+          type: string
+        vid:
+          type: string
+        visitorId:
+          type: string
+        companyId:
+          type: string
+        officeId:
+          type: string
+        name:
+          type: string
+        action:
+          type: string
+        note:
+          type: string
+          nullable: true
+        ts:
+          type: string
+      required: [id, vid, visitorId, companyId, officeId, name, action, ts]
+
+    GatePass:
+      type: object
+      properties:
+        id:
+          type: string
+        companyId:
+          type: string
+        officeId:
+          type: string
+        passId:
+          type: string
+        purpose:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+          enum: [Open, Closed]
+        vendorName:
+          type: string
+          nullable: true
+        vehicleNo:
+          type: string
+          nullable: true
+        driverName:
+          type: string
+          nullable: true
+        requestedBy:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              qty:
+                type: integer
+              unit:
+                type: string
+            required: [name, qty, unit]
+        itemCount:
+          type: integer
+        openedAt:
+          type: string
+        closedAt:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required: [id, companyId, officeId, passId, purpose, type, status, requestedBy, items, itemCount, openedAt, createdAt]
+
+    CreateGatePassInput:
+      type: object
+      properties:
+        officeId:
+          type: string
+        purpose:
+          type: string
+        type:
+          type: string
+        vendorName:
+          type: string
+        vehicleNo:
+          type: string
+        driverName:
+          type: string
+        requestedBy:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              qty:
+                type: integer
+              unit:
+                type: string
+            required: [name, qty, unit]
+        notes:
+          type: string
+      required: [officeId, purpose, type, requestedBy, items]
+
+    GpLog:
+      type: object
+      properties:
+        id:
+          type: string
+        passId:
+          type: string
+        gatePassId:
+          type: string
+        companyId:
+          type: string
+        officeId:
+          type: string
+        type:
+          type: string
+        by:
+          type: string
+        note:
+          type: string
+          nullable: true
+        ts:
+          type: string
+      required: [id, passId, gatePassId, companyId, officeId, type, by, ts]
