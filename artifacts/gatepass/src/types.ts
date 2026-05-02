@@ -151,6 +151,8 @@ export interface Company {
   // License
   products?: string | null;        // JSON string: ProductKey[]
   licenseStatus?: string | null;   // LicenseStatus
+  maxSeats?: string | number | null;
+  seatsUsed?: string | number | null;
   notes?: string | null;
   contacts?: string | null;  // JSON: CompanyContact[]
   createdAt: string;

@@ -16,6 +16,22 @@ import {
 type SettingsTab = "profile" | "customization" | "badge-templates" | "team" | "locations" | "notifications" | "integrations" | "appearance";
 type IntegSub = "sso" | "messaging" | "webhooks" | "api-keys";
 type MsgChannel = "email" | "whatsapp" | "sms";
+type DataType = "text" | "number" | "email" | "phone" | "date" | "time" | "select" | "checkbox" | "textarea" | "file";
+
+// ─── Data-type palette ───────────────────────────────────────────────────────
+
+const DATA_TYPES: Array<{ value: DataType; label: string; short: string; color: string }> = [
+  { value: "text",     label: "Short Text",  short: "Text",   color: "bg-slate-100 text-slate-600" },
+  { value: "number",   label: "Number",      short: "Num",    color: "bg-blue-50 text-blue-600" },
+  { value: "email",    label: "Email",       short: "Email",  color: "bg-violet-50 text-violet-600" },
+  { value: "phone",    label: "Phone",       short: "Phone",  color: "bg-green-50 text-green-600" },
+  { value: "date",     label: "Date",        short: "Date",   color: "bg-orange-50 text-orange-600" },
+  { value: "time",     label: "Time",        short: "Time",   color: "bg-amber-50 text-amber-600" },
+  { value: "select",   label: "Dropdown",    short: "▾ List", color: "bg-teal-50 text-teal-600" },
+  { value: "checkbox", label: "Yes / No",    short: "✓/✗",   color: "bg-pink-50 text-pink-600" },
+  { value: "textarea", label: "Long Text",   short: "Long",   color: "bg-indigo-50 text-indigo-600" },
+  { value: "file",     label: "File Upload", short: "File",   color: "bg-red-50 text-red-600" },
+];
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -31,15 +47,20 @@ const TABS: { id: SettingsTab; label: string; adminOnly?: boolean }[] = [
 ];
 
 const BADGE_TEMPLATES = [
-  { id: "classic", label: "Classic", desc: "Centered layout with photo circle and colored strip" },
-  { id: "minimal", label: "Minimal", desc: "Text-focused, compact, monochrome" },
-  { id: "bold", label: "Bold", desc: "Large ID emphasis with accent colors" },
+  { id: "classic",    label: "Classic",       desc: "Photo left, name & details right, brand header strip" },
+  { id: "minimal",    label: "Minimal",       desc: "Text-only, monochrome, ultra-clean" },
+  { id: "bold",       label: "Bold ID",       desc: "Oversized visitor ID chip, accent colour block" },
+  { id: "corporate",  label: "Corporate",     desc: "Logo header, photo + name side by side, footer band" },
+  { id: "photo",      label: "Photo-First",   desc: "Full-width photo with name overlay at bottom" },
+  { id: "qr",         label: "QR-First",      desc: "Large QR code, photo thumbnail, compact details" },
 ];
 
 const GP_TEMPLATES = [
-  { id: "minimal", label: "Minimal", desc: "Clean compact card with item list" },
-  { id: "detailed", label: "Detailed A4", desc: "Full A4 grid — all fields, print-ready" },
-  { id: "compact", label: "Compact", desc: "Condensed single-column layout" },
+  { id: "minimal",    label: "Minimal Card",  desc: "Clean card: key details + barcode strip" },
+  { id: "detailed",   label: "Detailed A4",   desc: "Full A4 grid — all fields, print-ready" },
+  { id: "corporate",  label: "Corporate",     desc: "Header + footer bands, structured columns" },
+  { id: "compact",    label: "Compact",       desc: "Two-column dense layout for fast printing" },
+  { id: "security",   label: "Security Pass", desc: "Red accents, bold pass ID, authorisation fields" },
 ];
 
 const NOTIFICATION_TOGGLES = [
@@ -288,7 +309,8 @@ function ProfileTab({ user, isAdmin }: { user: ReturnType<typeof useApp>["user"]
 type VisitorTypeItem = { id: string; name: string; color: string; enabled: boolean };
 type GPTypeItem = { id: string; name: string; enabled: boolean };
 type FieldConfig = Record<string, { enabled: boolean; required: boolean }>;
-type CustomFieldItem = { id: string; label: string; enabled: boolean; required: boolean };
+type CustomFieldItem = { id: string; label: string; enabled: boolean; required: boolean; dataType: DataType };
+type FieldLabelOverrides = Record<string, string>;
 
 function loadVisitorTypes(): VisitorTypeItem[] {
   try { const s = localStorage.getItem("gp_vt_v1"); if (s) return JSON.parse(s); } catch { /* ignore */ }
@@ -313,6 +335,19 @@ function loadCustomVFields(): CustomFieldItem[] {
 function loadCustomGPFields(): CustomFieldItem[] {
   try { const s = localStorage.getItem("gp_custom_gpfields_v1"); if (s) return JSON.parse(s); } catch { /* ignore */ }
   return [];
+}
+function loadVFieldLabels(): FieldLabelOverrides {
+  try { const s = localStorage.getItem("gp_vfield_labels_v1"); if (s) return JSON.parse(s); } catch { /* ignore */ }
+  return {};
+}
+function loadGPFieldLabels(): FieldLabelOverrides {
+  try { const s = localStorage.getItem("gp_gpfield_labels_v1"); if (s) return JSON.parse(s); } catch { /* ignore */ }
+  return {};
+}
+
+function DataTypeBadge({ type }: { type: DataType }) {
+  const dt = DATA_TYPES.find(d => d.value === type) ?? DATA_TYPES[0];
+  return <span className={cn("text-[9.5px] font-bold px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap", dt.color)}>{dt.short}</span>;
 }
 
 function AccordionSection({ title, badge, children, defaultOpen = false, accent }: {
@@ -349,17 +384,23 @@ function CustomizationTab() {
   const [gpFields, setGPFields] = useState<FieldConfig>(loadGPFields);
   const [customVFields, setCustomVFields] = useState<CustomFieldItem[]>(loadCustomVFields);
   const [customGPFields, setCustomGPFields] = useState<CustomFieldItem[]>(loadCustomGPFields);
+  const [vFieldLabels, setVFieldLabels] = useState<FieldLabelOverrides>(loadVFieldLabels);
+  const [gpFieldLabels, setGPFieldLabels] = useState<FieldLabelOverrides>(loadGPFieldLabels);
   const [newVType, setNewVType] = useState("");
   const [newGPType, setNewGPType] = useState("");
   const [newVFieldLabel, setNewVFieldLabel] = useState("");
   const [newGPFieldLabel, setNewGPFieldLabel] = useState("");
+  const [newVFieldType, setNewVFieldType] = useState<DataType>("text");
+  const [newGPFieldType, setNewGPFieldType] = useState<DataType>("text");
 
-  const saveVT = (next: VisitorTypeItem[]) => { setVTypes(next); localStorage.setItem("gp_vt_v1", JSON.stringify(next)); };
-  const saveGPT = (next: GPTypeItem[]) => { setGPTypes(next); localStorage.setItem("gp_gpt_v1", JSON.stringify(next)); };
-  const saveVF = (next: FieldConfig) => { setVFields(next); localStorage.setItem("gp_vfields_v1", JSON.stringify(next)); };
-  const saveGPF = (next: FieldConfig) => { setGPFields(next); localStorage.setItem("gp_gpfields_v1", JSON.stringify(next)); };
-  const saveCVF = (next: CustomFieldItem[]) => { setCustomVFields(next); localStorage.setItem("gp_custom_vfields_v1", JSON.stringify(next)); };
-  const saveCGPF = (next: CustomFieldItem[]) => { setCustomGPFields(next); localStorage.setItem("gp_custom_gpfields_v1", JSON.stringify(next)); };
+  const saveVT  = (next: VisitorTypeItem[])   => { setVTypes(next);          localStorage.setItem("gp_vt_v1",              JSON.stringify(next)); };
+  const saveGPT = (next: GPTypeItem[])         => { setGPTypes(next);         localStorage.setItem("gp_gpt_v1",             JSON.stringify(next)); };
+  const saveVF  = (next: FieldConfig)          => { setVFields(next);         localStorage.setItem("gp_vfields_v1",         JSON.stringify(next)); };
+  const saveGPF = (next: FieldConfig)          => { setGPFields(next);        localStorage.setItem("gp_gpfields_v1",        JSON.stringify(next)); };
+  const saveCVF = (next: CustomFieldItem[])    => { setCustomVFields(next);   localStorage.setItem("gp_custom_vfields_v1",  JSON.stringify(next)); };
+  const saveCGPF= (next: CustomFieldItem[])    => { setCustomGPFields(next);  localStorage.setItem("gp_custom_gpfields_v1", JSON.stringify(next)); };
+  const saveVFL = (next: FieldLabelOverrides)  => { setVFieldLabels(next);    localStorage.setItem("gp_vfield_labels_v1",   JSON.stringify(next)); };
+  const saveGPFL= (next: FieldLabelOverrides)  => { setGPFieldLabels(next);   localStorage.setItem("gp_gpfield_labels_v1",  JSON.stringify(next)); };
 
   const addVType = () => {
     if (!newVType.trim()) return;
@@ -373,12 +414,12 @@ function CustomizationTab() {
   };
   const addCustomVField = () => {
     if (!newVFieldLabel.trim()) return;
-    saveCVF([...customVFields, { id: Date.now().toString(), label: newVFieldLabel.trim(), enabled: true, required: false }]);
+    saveCVF([...customVFields, { id: Date.now().toString(), label: newVFieldLabel.trim(), enabled: true, required: false, dataType: newVFieldType }]);
     setNewVFieldLabel(""); toast.success("Custom field added");
   };
   const addCustomGPField = () => {
     if (!newGPFieldLabel.trim()) return;
-    saveCGPF([...customGPFields, { id: Date.now().toString(), label: newGPFieldLabel.trim(), enabled: true, required: false }]);
+    saveCGPF([...customGPFields, { id: Date.now().toString(), label: newGPFieldLabel.trim(), enabled: true, required: false, dataType: newGPFieldType }]);
     setNewGPFieldLabel(""); toast.success("Custom field added");
   };
 
@@ -500,16 +541,26 @@ function CustomizationTab() {
       >
         <div className="divide-y divide-border">
           <div className="grid grid-cols-[1fr_80px_80px_36px] gap-2 px-5 py-2.5 bg-secondary/50">
-            <span className="text-[10.5px] font-bold text-muted-foreground uppercase tracking-wide">Field</span>
+            <span className="text-[10.5px] font-bold text-muted-foreground uppercase tracking-wide">Field name &amp; type</span>
             <span className="text-[10.5px] font-bold text-muted-foreground uppercase tracking-wide text-center">Show</span>
             <span className="text-[10.5px] font-bold text-muted-foreground uppercase tracking-wide text-center">Required</span>
             <span />
           </div>
           {VISITOR_FORM_FIELDS.map(f => {
             const cfg = vFields[f.id] ?? { enabled: true, required: false };
+            const label = vFieldLabels[f.id] ?? f.label;
             return (
-              <div key={f.id} className="grid grid-cols-[1fr_80px_80px_36px] gap-2 items-center px-5 py-3">
-                <span className="text-[13px] text-foreground">{f.label}</span>
+              <div key={f.id} className="grid grid-cols-[1fr_80px_80px_36px] gap-2 items-center px-5 py-2.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <DataTypeBadge type="text" />
+                  <input
+                    className={cn(iCls, "text-[13px] flex-1")}
+                    value={label}
+                    onChange={e => saveVFL({ ...vFieldLabels, [f.id]: e.target.value })}
+                    placeholder={f.label}
+                    title="Rename this field label"
+                  />
+                </div>
                 <div className="flex justify-center"><Toggle checked={cfg.enabled} onChange={() => toggleVField(f.id, "enabled")} color="primary" /></div>
                 <div className="flex justify-center"><Toggle checked={cfg.required && cfg.enabled} onChange={() => cfg.enabled && toggleVField(f.id, "required")} color="amber" disabled={!cfg.enabled} /></div>
                 <div />
@@ -517,13 +568,16 @@ function CustomizationTab() {
             );
           })}
           {customVFields.map(f => (
-            <div key={f.id} className="grid grid-cols-[1fr_80px_80px_36px] gap-2 items-center px-5 py-2.5">
-              <input
-                className={cn(iCls, "text-[13px]")}
-                value={f.label}
-                onChange={e => saveCVF(customVFields.map(x => x.id === f.id ? { ...x, label: e.target.value } : x))}
-                placeholder="Field label…"
-              />
+            <div key={f.id} className="grid grid-cols-[1fr_80px_80px_36px] gap-2 items-center px-5 py-2.5 bg-primary/[0.02]">
+              <div className="flex items-center gap-2 min-w-0">
+                <DataTypeBadge type={f.dataType ?? "text"} />
+                <input
+                  className={cn(iCls, "text-[13px] flex-1")}
+                  value={f.label}
+                  onChange={e => saveCVF(customVFields.map(x => x.id === f.id ? { ...x, label: e.target.value } : x))}
+                  placeholder="Field label…"
+                />
+              </div>
               <div className="flex justify-center">
                 <Toggle checked={f.enabled} onChange={() => saveCVF(customVFields.map(x => x.id === f.id ? { ...x, enabled: !x.enabled } : x))} color="primary" />
               </div>
@@ -536,13 +590,20 @@ function CustomizationTab() {
               </button>
             </div>
           ))}
-          <div className="flex gap-2 px-5 py-3 bg-secondary/30">
+          <div className="flex gap-2 px-5 py-3 bg-secondary/30 flex-wrap">
+            <select
+              value={newVFieldType}
+              onChange={e => setNewVFieldType(e.target.value as DataType)}
+              className={cn(iCls, "w-32 flex-shrink-0 text-[12px]")}
+            >
+              {DATA_TYPES.map(dt => <option key={dt.value} value={dt.value}>{dt.label}</option>)}
+            </select>
             <input
-              className={cn(iCls, "flex-1 text-[13px]")}
+              className={cn(iCls, "flex-1 text-[13px] min-w-[160px]")}
               value={newVFieldLabel}
               onChange={e => setNewVFieldLabel(e.target.value)}
               onKeyDown={e => e.key === "Enter" && addCustomVField()}
-              placeholder="Add custom field label (e.g. Department, Badge No…)"
+              placeholder="Field label (e.g. Department, Badge No…)"
             />
             <button onClick={addCustomVField} className="btn-ghost flex-shrink-0 text-[12px]">+ Add Field</button>
           </div>
@@ -557,16 +618,26 @@ function CustomizationTab() {
       >
         <div className="divide-y divide-border">
           <div className="grid grid-cols-[1fr_80px_80px_36px] gap-2 px-5 py-2.5 bg-secondary/50">
-            <span className="text-[10.5px] font-bold text-muted-foreground uppercase tracking-wide">Field</span>
+            <span className="text-[10.5px] font-bold text-muted-foreground uppercase tracking-wide">Field name &amp; type</span>
             <span className="text-[10.5px] font-bold text-muted-foreground uppercase tracking-wide text-center">Show</span>
             <span className="text-[10.5px] font-bold text-muted-foreground uppercase tracking-wide text-center">Required</span>
             <span />
           </div>
           {GP_FORM_FIELDS.map(f => {
             const cfg = gpFields[f.id] ?? { enabled: true, required: false };
+            const label = gpFieldLabels[f.id] ?? f.label;
             return (
-              <div key={f.id} className="grid grid-cols-[1fr_80px_80px_36px] gap-2 items-center px-5 py-3">
-                <span className="text-[13px] text-foreground">{f.label}</span>
+              <div key={f.id} className="grid grid-cols-[1fr_80px_80px_36px] gap-2 items-center px-5 py-2.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <DataTypeBadge type="text" />
+                  <input
+                    className={cn(iCls, "text-[13px] flex-1")}
+                    value={label}
+                    onChange={e => saveGPFL({ ...gpFieldLabels, [f.id]: e.target.value })}
+                    placeholder={f.label}
+                    title="Rename this field label"
+                  />
+                </div>
                 <div className="flex justify-center"><Toggle checked={cfg.enabled} onChange={() => toggleGPField(f.id, "enabled")} color="teal" /></div>
                 <div className="flex justify-center"><Toggle checked={cfg.required && cfg.enabled} onChange={() => cfg.enabled && toggleGPField(f.id, "required")} color="amber" disabled={!cfg.enabled} /></div>
                 <div />
@@ -574,13 +645,16 @@ function CustomizationTab() {
             );
           })}
           {customGPFields.map(f => (
-            <div key={f.id} className="grid grid-cols-[1fr_80px_80px_36px] gap-2 items-center px-5 py-2.5">
-              <input
-                className={cn(iCls, "text-[13px]")}
-                value={f.label}
-                onChange={e => saveCGPF(customGPFields.map(x => x.id === f.id ? { ...x, label: e.target.value } : x))}
-                placeholder="Field label…"
-              />
+            <div key={f.id} className="grid grid-cols-[1fr_80px_80px_36px] gap-2 items-center px-5 py-2.5 bg-teal-500/[0.02]">
+              <div className="flex items-center gap-2 min-w-0">
+                <DataTypeBadge type={f.dataType ?? "text"} />
+                <input
+                  className={cn(iCls, "text-[13px] flex-1")}
+                  value={f.label}
+                  onChange={e => saveCGPF(customGPFields.map(x => x.id === f.id ? { ...x, label: e.target.value } : x))}
+                  placeholder="Field label…"
+                />
+              </div>
               <div className="flex justify-center">
                 <Toggle checked={f.enabled} onChange={() => saveCGPF(customGPFields.map(x => x.id === f.id ? { ...x, enabled: !x.enabled } : x))} color="teal" />
               </div>
@@ -593,13 +667,20 @@ function CustomizationTab() {
               </button>
             </div>
           ))}
-          <div className="flex gap-2 px-5 py-3 bg-secondary/30">
+          <div className="flex gap-2 px-5 py-3 bg-secondary/30 flex-wrap">
+            <select
+              value={newGPFieldType}
+              onChange={e => setNewGPFieldType(e.target.value as DataType)}
+              className={cn(iCls, "w-32 flex-shrink-0 text-[12px]")}
+            >
+              {DATA_TYPES.map(dt => <option key={dt.value} value={dt.value}>{dt.label}</option>)}
+            </select>
             <input
-              className={cn(iCls, "flex-1 text-[13px]")}
+              className={cn(iCls, "flex-1 text-[13px] min-w-[160px]")}
               value={newGPFieldLabel}
               onChange={e => setNewGPFieldLabel(e.target.value)}
               onKeyDown={e => e.key === "Enter" && addCustomGPField()}
-              placeholder="Add custom field label (e.g. Material, PO No…)"
+              placeholder="Field label (e.g. Material, PO No…)"
             />
             <button onClick={addCustomGPField} className="btn-ghost flex-shrink-0 text-[12px]">+ Add Field</button>
           </div>
@@ -611,57 +692,363 @@ function CustomizationTab() {
 
 // ─── Badge Templates Tab ──────────────────────────────────────────────────────
 
+interface TemplateConfig {
+  primaryColor: string;
+  accentColor: string;
+  showLogo: boolean;
+  showPhoto: boolean;
+  showQR: boolean;
+  fontSize: "sm" | "md" | "lg";
+}
+
+const defaultBadgeCfg: TemplateConfig = { primaryColor: "#c06b2c", accentColor: "#f9f5f0", showLogo: true, showPhoto: true, showQR: true, fontSize: "md" };
+const defaultGPCfg: TemplateConfig    = { primaryColor: "#0d9488", accentColor: "#f0fdfa", showLogo: true, showPhoto: false, showQR: false, fontSize: "md" };
+
+function loadBadgeCfg(): TemplateConfig {
+  try { const s = localStorage.getItem("gp_badge_cfg_v1"); if (s) return { ...defaultBadgeCfg, ...JSON.parse(s) }; } catch { /* */ }
+  return defaultBadgeCfg;
+}
+function loadGPCfg(): TemplateConfig {
+  try { const s = localStorage.getItem("gp_gp_cfg_v1"); if (s) return { ...defaultGPCfg, ...JSON.parse(s) }; } catch { /* */ }
+  return defaultGPCfg;
+}
+
+function TemplateLivePreview({ kind, templateId, cfg }: { kind: "badge" | "gp"; templateId: string; cfg: TemplateConfig }) {
+  const c = cfg.primaryColor;
+  const bg = cfg.accentColor;
+  const sz = cfg.fontSize === "sm" ? "text-[9px]" : cfg.fontSize === "lg" ? "text-[12px]" : "text-[10px]";
+
+  if (kind === "badge") {
+    if (templateId === "classic") return (
+      <div className="w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm bg-white flex">
+        <div className="w-2.5 h-full flex-shrink-0" style={{ backgroundColor: c }} />
+        <div className="flex flex-col items-center justify-center w-[38px] flex-shrink-0 bg-gray-50 border-r border-gray-100 gap-1 py-1">
+          {cfg.showPhoto && <div className="w-7 h-7 rounded-full border-2 bg-gray-200" style={{ borderColor: c }} />}
+          {cfg.showQR && <div className="w-6 h-6 bg-gray-300 rounded-sm" />}
+        </div>
+        <div className="flex-1 flex flex-col justify-center px-2 py-1.5 gap-0.5">
+          <div className={cn("font-bold text-gray-800", sz)}>Rajesh Kumar</div>
+          <div className={cn("text-gray-500", sz)}>Vendor · TechCorp</div>
+          <div className="mt-1 px-1 py-0.5 rounded text-[7px] font-bold text-white w-fit" style={{ backgroundColor: c }}>V-2024-0042</div>
+          {cfg.showLogo && <div className="text-[7px] font-bold mt-0.5" style={{ color: c }}>GatePass™</div>}
+        </div>
+      </div>
+    );
+    if (templateId === "minimal") return (
+      <div className="w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm bg-white flex flex-col justify-between p-3">
+        <div>
+          <div className={cn("font-bold text-gray-900", sz)}>Rajesh Kumar</div>
+          <div className={cn("text-gray-400 mt-0.5", sz)}>Vendor · TechCorp</div>
+        </div>
+        <div className="flex items-end justify-between">
+          <div className="text-[7px] font-mono text-gray-500">V-2024-0042</div>
+          {cfg.showQR && <div className="w-8 h-8 bg-gray-200 rounded-sm" />}
+        </div>
+        <div className="h-0.5 rounded-full w-full" style={{ backgroundColor: c }} />
+      </div>
+    );
+    if (templateId === "bold") return (
+      <div className="w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm flex flex-col" style={{ backgroundColor: bg }}>
+        <div className="h-5 flex items-center px-2.5" style={{ backgroundColor: c }}>
+          {cfg.showLogo && <span className="text-white text-[7px] font-bold">GatePass™</span>}
+        </div>
+        <div className="flex-1 flex items-center justify-between px-2.5">
+          <div>
+            <div className="text-[8px] font-semibold text-gray-500 uppercase tracking-wider">VISITOR ID</div>
+            <div className="text-[17px] font-black" style={{ color: c }}>V-0042</div>
+            <div className={cn("font-medium text-gray-700", sz)}>Rajesh Kumar</div>
+          </div>
+          {cfg.showPhoto && <div className="w-9 h-9 rounded-full bg-gray-200 border-2" style={{ borderColor: c }} />}
+        </div>
+      </div>
+    );
+    if (templateId === "corporate") return (
+      <div className="w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm bg-white flex flex-col">
+        <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-gray-100">
+          {cfg.showLogo && <span className="text-[7px] font-bold" style={{ color: c }}>GatePass™</span>}
+          <span className="text-[7px] font-mono text-gray-400 ml-auto">V-2024-0042</span>
+        </div>
+        <div className="flex flex-1 items-center gap-2 px-2.5">
+          {cfg.showPhoto && <div className="w-8 h-8 rounded-md bg-gray-200 flex-shrink-0 border border-gray-100" />}
+          <div>
+            <div className={cn("font-bold text-gray-800", sz)}>Rajesh Kumar</div>
+            <div className={cn("text-gray-400", sz)}>TechCorp · Vendor</div>
+          </div>
+        </div>
+        <div className="h-2.5 w-full" style={{ backgroundColor: c }} />
+      </div>
+    );
+    if (templateId === "photo") return (
+      <div className="w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm relative">
+        <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center">
+          <div className="text-gray-500 text-[9px]">Photo</div>
+        </div>
+        <div className="absolute bottom-0 left-0 right-0 px-2.5 py-1.5 text-white" style={{ background: `linear-gradient(transparent, ${c}dd)` }}>
+          <div className={cn("font-bold", sz)}>Rajesh Kumar</div>
+          <div className="text-[7px] opacity-80">V-2024-0042 · Vendor</div>
+        </div>
+      </div>
+    );
+    return (
+      <div className="w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm bg-white flex gap-2 p-2.5">
+        <div className="flex flex-col gap-1.5">
+          {cfg.showQR && <div className="w-12 h-12 bg-gray-800 rounded-sm p-1"><div className="w-full h-full grid grid-cols-3 gap-0.5">{[...Array(9)].map((_,i) => <div key={i} className={cn("rounded-[1px]", [0,2,6,8].includes(i) ? "bg-white" : "bg-gray-800/0")} />)}</div></div>}
+          {cfg.showPhoto && <div className="w-8 h-8 rounded-full bg-gray-200 border border-gray-100" />}
+        </div>
+        <div className="flex-1 flex flex-col justify-center gap-0.5">
+          <div className={cn("font-bold text-gray-800", sz)}>Rajesh Kumar</div>
+          <div className={cn("text-gray-400", sz)}>Vendor</div>
+          <div className="text-[7px] font-mono mt-1" style={{ color: c }}>V-2024-0042</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Gate pass previews
+  if (templateId === "detailed") return (
+    <div className="w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm bg-white flex flex-col">
+      <div className="flex items-center justify-between px-2.5 py-1.5" style={{ backgroundColor: c }}>
+        <span className="text-white text-[7px] font-bold">GATE PASS</span>
+        <span className="text-white text-[7px] opacity-80">GP-2024-001</span>
+      </div>
+      <div className="flex-1 p-2 grid grid-cols-2 gap-x-2 gap-y-0.5">
+        {["Vendor","Vehicle","Items","Purpose","Valid Till","Auth By"].map(l => (
+          <div key={l}>
+            <div className="text-[5.5px] text-gray-400 uppercase">{l}</div>
+            <div className="text-[7px] text-gray-700">—</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+  if (templateId === "corporate") return (
+    <div className="w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm bg-white flex flex-col">
+      <div className="px-2.5 py-1.5 flex items-center justify-between" style={{ backgroundColor: c }}>
+        {cfg.showLogo && <span className="text-white text-[7px] font-bold">GatePass™</span>}
+        <span className="text-white text-[7px]">GATE PASS</span>
+      </div>
+      <div className="flex flex-1">
+        <div className="flex-1 p-2 space-y-1">
+          {["Vendor","Purpose","Items"].map(l => (
+            <div key={l} className="flex gap-1">
+              <span className="text-[6px] text-gray-400 w-10 flex-shrink-0 uppercase">{l}</span>
+              <span className="text-[7px] text-gray-600">—</span>
+            </div>
+          ))}
+        </div>
+        <div className="w-14 border-l border-gray-100 p-2 space-y-1">
+          {["Valid","Auth","Ref"].map(l => (
+            <div key={l}>
+              <div className="text-[5.5px] text-gray-400 uppercase">{l}</div>
+              <div className="text-[7px] text-gray-700">—</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="h-1.5" style={{ backgroundColor: c }} />
+    </div>
+  );
+  if (templateId === "compact") return (
+    <div className="w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm bg-white p-2.5">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[7px] font-bold" style={{ color: c }}>GATE PASS</span>
+        <span className="text-[6.5px] font-mono text-gray-400">GP-001</span>
+      </div>
+      {["Vendor / Party","Vehicle No","Items","Valid Till"].map(l => (
+        <div key={l} className="flex gap-1 border-b border-gray-50 py-0.5">
+          <span className="text-[6px] text-gray-400 w-14 flex-shrink-0">{l}:</span>
+          <span className="text-[6.5px] text-gray-600 truncate">—</span>
+        </div>
+      ))}
+    </div>
+  );
+  if (templateId === "security") return (
+    <div className="w-[160px] h-[100px] rounded-lg border-2 border-red-300 overflow-hidden shadow-sm bg-white flex flex-col">
+      <div className="flex items-center justify-between px-2.5 py-1.5 bg-red-600">
+        <span className="text-white text-[7px] font-black tracking-wider">SECURITY PASS</span>
+      </div>
+      <div className="flex-1 p-2 flex flex-col justify-between">
+        <div className="text-[9px] font-black text-red-600">GP-2024-001</div>
+        <div className="space-y-0.5">
+          {["Vendor","Purpose","Auth"].map(l => (
+            <div key={l} className="flex gap-1">
+              <span className="text-[5.5px] text-gray-500 uppercase w-8 flex-shrink-0">{l}:</span>
+              <span className="text-[6.5px] text-gray-700">—</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="h-1 bg-red-600" />
+    </div>
+  );
+  return (
+    <div className="w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm bg-white p-2.5 flex flex-col justify-between">
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[7px] font-bold" style={{ color: c }}>Gate Pass</span>
+          <span className="text-[6.5px] font-mono text-gray-400">GP-001</span>
+        </div>
+        {["Vendor","Purpose"].map(l => (
+          <div key={l} className="flex gap-1 py-0.5">
+            <span className="text-[6px] text-gray-400 w-12 flex-shrink-0">{l}:</span>
+            <span className="text-[6.5px] text-gray-600">—</span>
+          </div>
+        ))}
+      </div>
+      <div className="h-0.5 rounded-full" style={{ backgroundColor: c }} />
+    </div>
+  );
+}
+
+function TemplateCustomizer({ cfg, onChange, kind }: { cfg: TemplateConfig; onChange: (c: TemplateConfig) => void; kind: "badge" | "gp" }) {
+  const set = <K extends keyof TemplateConfig>(k: K, v: TemplateConfig[K]) => onChange({ ...cfg, [k]: v });
+  const labelCls = "text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1";
+  return (
+    <div className="grid grid-cols-2 gap-4 p-5">
+      <div>
+        <label className={labelCls}>Primary Colour</label>
+        <div className="flex items-center gap-2">
+          <input type="color" value={cfg.primaryColor} onChange={e => set("primaryColor", e.target.value)}
+            className="w-9 h-9 rounded-lg cursor-pointer border border-border p-0.5 bg-transparent" />
+          <input value={cfg.primaryColor} onChange={e => set("primaryColor", e.target.value)}
+            className="flex-1 bg-secondary border border-border rounded-lg px-2 py-1.5 text-[12px] font-mono uppercase outline-none focus:border-primary" maxLength={7} />
+        </div>
+      </div>
+      <div>
+        <label className={labelCls}>Background Tint</label>
+        <div className="flex items-center gap-2">
+          <input type="color" value={cfg.accentColor} onChange={e => set("accentColor", e.target.value)}
+            className="w-9 h-9 rounded-lg cursor-pointer border border-border p-0.5 bg-transparent" />
+          <input value={cfg.accentColor} onChange={e => set("accentColor", e.target.value)}
+            className="flex-1 bg-secondary border border-border rounded-lg px-2 py-1.5 text-[12px] font-mono uppercase outline-none focus:border-primary" maxLength={7} />
+        </div>
+      </div>
+      <div>
+        <label className={labelCls}>Font Size</label>
+        <div className="flex gap-2">
+          {(["sm","md","lg"] as const).map(s => (
+            <button key={s} onClick={() => set("fontSize", s)}
+              className={cn("flex-1 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors", cfg.fontSize === s ? "bg-primary text-white border-primary" : "border-border text-muted-foreground hover:border-primary/40")}>
+              {s === "sm" ? "S" : s === "md" ? "M" : "L"}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        {kind === "badge" && (
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={cfg.showPhoto} onChange={e => set("showPhoto", e.target.checked)} className="w-3.5 h-3.5 rounded accent-primary" />
+            <span className="text-[12px] text-foreground">Show photo</span>
+          </label>
+        )}
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" checked={cfg.showLogo} onChange={e => set("showLogo", e.target.checked)} className="w-3.5 h-3.5 rounded accent-primary" />
+          <span className="text-[12px] text-foreground">Show logo / brand</span>
+        </label>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" checked={cfg.showQR} onChange={e => set("showQR", e.target.checked)} className="w-3.5 h-3.5 rounded accent-primary" />
+          <span className="text-[12px] text-foreground">Show QR code</span>
+        </label>
+      </div>
+    </div>
+  );
+}
+
 function BadgeTemplatesTab({ badgeTemplate, setBadgeTemplate, gpTemplate, setGpTemplate }: {
   badgeTemplate: string; setBadgeTemplate: (t: string) => void;
   gpTemplate: string; setGpTemplate: (t: string) => void;
 }) {
+  const [badgeCfg, setBadgeCfg] = useState<TemplateConfig>(loadBadgeCfg);
+  const [gpCfg, setGPCfg] = useState<TemplateConfig>(loadGPCfg);
+  const [badgeCustom, setBadgeCustom] = useState(false);
+  const [gpCustom, setGPCustom] = useState(false);
+
+  const saveBadgeCfg = (c: TemplateConfig) => { setBadgeCfg(c); localStorage.setItem("gp_badge_cfg_v1", JSON.stringify(c)); };
+  const saveGPCfg   = (c: TemplateConfig) => { setGPCfg(c);    localStorage.setItem("gp_gp_cfg_v1",    JSON.stringify(c)); };
+
   return (
     <div className="space-y-5">
-      <Card title="Visitor Badge Templates">
-        <div className="grid grid-cols-3 gap-3">
+      {/* ── Visitor Badge ── */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+        <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+          <h3 className="font-bold text-[13px] text-foreground">Visitor Badge Templates</h3>
+          <button onClick={() => setBadgeCustom(p => !p)}
+            className={cn("flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-lg border transition-colors",
+              badgeCustom ? "bg-primary/10 border-primary/30 text-primary" : "border-border text-muted-foreground hover:border-primary/30")}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+            {badgeCustom ? "Hide Customise" : "Customise"}
+          </button>
+        </div>
+        <div className="grid grid-cols-3 gap-3 p-5">
           {BADGE_TEMPLATES.map(t => (
-            <button key={t.id} onClick={() => { setBadgeTemplate(t.id); toast.success(`Badge template set to "${t.label}"`); }}
+            <button key={t.id} onClick={() => { setBadgeTemplate(t.id); toast.success(`Badge template: ${t.label}`); }}
               className={cn("border-[1.5px] rounded-xl overflow-hidden text-left transition-all",
                 badgeTemplate === t.id ? "border-primary shadow-[0_0_0_3px_rgba(192,107,44,0.15)]" : "border-border hover:border-primary/40")}>
-              <div className={cn("h-[88px] flex items-center justify-center", badgeTemplate === t.id ? "bg-orange-50" : "bg-secondary")}>
-                <BadgePreview id={t.id} active={badgeTemplate === t.id} />
+              <div className={cn("flex items-center justify-center py-3 px-2", badgeTemplate === t.id ? "bg-orange-50" : "bg-secondary")}>
+                <TemplateLivePreview kind="badge" templateId={t.id} cfg={badgeCfg} />
               </div>
-              <div className="px-3 py-2.5 border-t border-border">
-                <div className="text-[12.5px] font-semibold text-foreground flex items-center gap-1.5">
+              <div className="px-3 py-2 border-t border-border">
+                <div className="text-[12px] font-semibold text-foreground flex items-center gap-1.5">
                   {t.label}
-                  {badgeTemplate === t.id && <span className="text-[10px] bg-orange-100 text-orange-700 rounded-full px-1.5 py-0.5 font-bold">Active</span>}
+                  {badgeTemplate === t.id && <span className="text-[9.5px] bg-orange-100 text-orange-700 rounded-full px-1.5 py-0.5 font-bold">Active</span>}
                 </div>
-                <div className="text-[11px] text-muted-foreground mt-0.5">{t.desc}</div>
+                <div className="text-[10.5px] text-muted-foreground mt-0.5">{t.desc}</div>
               </div>
             </button>
           ))}
         </div>
-      </Card>
+        {badgeCustom && (
+          <div className="border-t border-border bg-secondary/30">
+            <div className="px-5 pt-3 pb-0">
+              <p className="text-[11.5px] text-muted-foreground">Customise how your visitor badges look — colours, photo, QR, and logo. Changes apply to all templates.</p>
+            </div>
+            <TemplateCustomizer kind="badge" cfg={badgeCfg} onChange={saveBadgeCfg} />
+          </div>
+        )}
+      </div>
 
-      <Card title="Gate Pass Templates">
-        <div className="grid grid-cols-3 gap-3">
+      {/* ── Gate Pass ── */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+        <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+          <h3 className="font-bold text-[13px] text-foreground">Gate Pass Templates</h3>
+          <button onClick={() => setGPCustom(p => !p)}
+            className={cn("flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-lg border transition-colors",
+              gpCustom ? "bg-teal-50 border-teal-300 text-teal-700" : "border-border text-muted-foreground hover:border-teal-400/40")}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+            {gpCustom ? "Hide Customise" : "Customise"}
+          </button>
+        </div>
+        <div className="grid grid-cols-3 gap-3 p-5">
           {GP_TEMPLATES.map(t => (
-            <button key={t.id} onClick={() => { setGpTemplate(t.id); toast.success(`Gate pass template set to "${t.label}"`); }}
+            <button key={t.id} onClick={() => { setGpTemplate(t.id); toast.success(`GP template: ${t.label}`); }}
               className={cn("border-[1.5px] rounded-xl overflow-hidden text-left transition-all",
                 gpTemplate === t.id ? "border-teal-500 shadow-[0_0_0_3px_rgba(20,184,166,0.12)]" : "border-border hover:border-teal-400/40")}>
-              <div className={cn("h-[88px] flex items-center justify-center", gpTemplate === t.id ? "bg-teal-50" : "bg-secondary")}>
-                <GPPreview id={t.id} active={gpTemplate === t.id} />
+              <div className={cn("flex items-center justify-center py-3 px-2", gpTemplate === t.id ? "bg-teal-50" : "bg-secondary")}>
+                <TemplateLivePreview kind="gp" templateId={t.id} cfg={gpCfg} />
               </div>
-              <div className="px-3 py-2.5 border-t border-border">
-                <div className="text-[12.5px] font-semibold text-foreground flex items-center gap-1.5">
+              <div className="px-3 py-2 border-t border-border">
+                <div className="text-[12px] font-semibold text-foreground flex items-center gap-1.5">
                   {t.label}
-                  {gpTemplate === t.id && <span className="text-[10px] bg-teal-50 text-teal-700 rounded-full px-1.5 py-0.5 font-bold">Active</span>}
+                  {gpTemplate === t.id && <span className="text-[9.5px] bg-teal-50 text-teal-700 rounded-full px-1.5 py-0.5 font-bold">Active</span>}
                 </div>
-                <div className="text-[11px] text-muted-foreground mt-0.5">{t.desc}</div>
+                <div className="text-[10.5px] text-muted-foreground mt-0.5">{t.desc}</div>
               </div>
             </button>
           ))}
         </div>
-        <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-[11.5px] text-blue-700 flex items-center gap-2">
+        {gpCustom && (
+          <div className="border-t border-border bg-secondary/30">
+            <div className="px-5 pt-3 pb-0">
+              <p className="text-[11.5px] text-muted-foreground">Customise gate pass appearance — colours, logo, and QR code. A4 size (210 × 297 mm), print-ready.</p>
+            </div>
+            <TemplateCustomizer kind="gp" cfg={gpCfg} onChange={saveGPCfg} />
+          </div>
+        )}
+        <div className="mx-5 mb-4 mt-1 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-[11.5px] text-blue-700 flex items-center gap-2">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5 flex-shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          Gate passes use A4 size (210 × 297 mm) for easy printing with full details.
+          Gate passes print at A4 size (210 × 297 mm) with full detail fields.
         </div>
-      </Card>
+      </div>
     </div>
   );
 }
@@ -1647,20 +2034,6 @@ function PasswordStrength({ password }: { password: string }) {
       </div>
     </div>
   );
-}
-
-function BadgePreview({ id, active }: { id: string; active: boolean }) {
-  const color = active ? "#c06b2c" : "#9aaa9a";
-  if (id === "classic") return <div className="flex flex-col items-center gap-1 py-2"><div className="w-8 h-1.5 rounded-sm" style={{ backgroundColor: color }} /><div className="w-8 h-8 rounded-full border-2" style={{ borderColor: color + "44", background: "#f4f6f4" }} /><div className="w-12 h-1 rounded" style={{ backgroundColor: color + "aa" }} /><div className="w-8 h-0.5 rounded" style={{ backgroundColor: "#e0d8d0" }} /></div>;
-  if (id === "minimal") return <div className="flex flex-col gap-1 py-2 px-3"><div className="w-10 h-1.5 rounded" style={{ backgroundColor: color + "aa" }} /><div className="w-7 h-1 rounded" style={{ backgroundColor: "#e0d8d0" }} /><div className="w-12 h-2 rounded mt-1" style={{ backgroundColor: color + "22" }} /><div className="w-8 h-0.5 rounded" style={{ backgroundColor: "#e0d8d0" }} /></div>;
-  return <div className="flex flex-col items-center gap-1 py-2"><div className="w-8 h-4 rounded" style={{ backgroundColor: color + "22" }} /><div className="text-[22px] font-black" style={{ color }}>ID</div><div className="w-12 h-1 rounded" style={{ backgroundColor: color + "55" }} /></div>;
-}
-
-function GPPreview({ id, active }: { id: string; active: boolean }) {
-  const color = active ? "#0d9488" : "#9aaa9a";
-  if (id === "detailed") return <div className="grid grid-cols-2 gap-1 p-3 w-full max-w-[80px]">{[1,2,3,4].map(i => <div key={i} className="h-3 rounded" style={{ backgroundColor: color + "33" }} />)}</div>;
-  if (id === "compact") return <div className="flex flex-col gap-1.5 p-3">{[1,2,3].map(i => <div key={i} className="h-1.5 rounded" style={{ backgroundColor: color + "55", width: `${60 + i * 10}%` }} />)}</div>;
-  return <div className="flex flex-col gap-1.5 p-3"><div className="h-1.5 rounded" style={{ backgroundColor: color + "55", width: "80%" }} /><div className="h-1.5 rounded" style={{ backgroundColor: color + "33", width: "60%" }} /><div className="h-2.5 rounded mt-1" style={{ backgroundColor: color + "22" }} /></div>;
 }
 
 function Card({ title, children, bodyPad = true }: { title: string; children: React.ReactNode; bodyPad?: boolean }) {

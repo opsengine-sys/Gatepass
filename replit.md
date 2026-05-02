@@ -80,13 +80,14 @@ Tables: `companies`, `users`, `offices`, `visitors`, `visitor_logs`, `gate_passe
 
 ## Super Admin Portal (AdminPanel)
 
-5-tab dashboard accessible at `/admin` (super_admin only):
+6-tab dashboard accessible at `/admin` (super_admin only):
 
 1. **Overview** — metric cards (companies, users, visitors, active licenses), license/plan breakdowns, recently added companies, expiring contracts. Graceful "access required" fallback if stats unavailable.
 2. **Companies** — full CRM table with contact/contract/license info, Edit modal with all fields + multi-contact editor (add/remove contacts with roles), "Enter as Admin" impersonation, Suspend
-3. **Licenses** — per-company product assignment with "All" toggle chip + individual product checkboxes + license status
+3. **Licenses** — per-company product assignment + license status + seat allocation. Summary bar (total/active/trial/seats). Per-company seat usage bar (green→amber→red at 70/90%), inline maxSeats editing, contract dates with expiry warnings. CompanyFormModal has Max Seats number input.
 4. **Users** — all users across platform, filter by company, inline role & company editing
-5. **Activity** — timeline of recent sign-ups and company creations
+5. **Platform Admins** — lists all super_admin users from `/api/admin/users`, invite-by-email modal, security callout ("never elevate company users"), DB assignment instructions
+6. **Activity** — timeline of recent sign-ups and company creations
 
 ### CompanyFormModal — multi-contact section
 - Primary Contact (legacy single contact fields)
@@ -99,14 +100,27 @@ Tables: `companies`, `users`, `offices`, `visitors`, `visitor_logs`, `gate_passe
 
 ## Settings Page (`/settings`)
 
-7-tab workspace settings page (all users):
+8-tab workspace settings page (all users):
 1. **Profile** — name, email (read-only from Clerk), role, company
-2. **Team & Users** — invite by email, role reference table
-3. **Badge Templates** — visitor badge layout picker (Classic/Minimal/Bold) + gate pass template picker (Minimal/Detailed A4/Compact)
-4. **Visitor Types** — read-only list of configured visitor and gate pass types
-5. **Notifications** — per-event toggle switches (in-app), email config placeholder
-6. **Integrations** — Microsoft 365 / Google Workspace toggles, LDAP coming soon
-7. **Appearance** — accent color swatches + custom color picker, font family select, theme picker
+2. **Customization** — visitor & GP types, form field configuration:
+   - Built-in field rows: inline editable label (stored in `gp_vfield_labels_v1` / `gp_gpfield_labels_v1`), TEXT data type badge
+   - Custom field rows: coloured `DataTypeBadge` (10 types: text/number/date/email/phone/boolean/select/file/url/textarea), editable label, enable/require toggles, delete
+   - Add field row: type selector dropdown + label input + Add button
+3. **Locations** — office management (live API), edit office details, active/inactive toggle
+4. **Badge Templates** — 6 visitor badge templates + 5 gate pass templates, each with full live previews rendered as miniature HTML layouts. Collapsible "Customise" panel per section: primary colour picker, background tint, font size (S/M/L), show/hide photo, logo, QR code. Config persisted to `gp_badge_cfg_v1` / `gp_gp_cfg_v1`.
+5. **Team & Users** — invite by email, role reference table
+6. **Notifications** — per-event toggle switches (in-app), email config placeholder
+7. **Integrations** — Microsoft 365 / Google Workspace toggles, LDAP coming soon
+8. **Appearance** — accent color swatches + custom color picker, font family select, theme picker
+
+### localStorage keys
+- `gp_branding_v1` — branding (logo, color, font)
+- `gp_vt_v1`, `gp_gpt_v1` — visitor & gate pass types
+- `gp_vfields_v1`, `gp_gpfields_v1` — built-in field enable/require config
+- `gp_custom_vfields_v1`, `gp_custom_gpfields_v1` — custom field definitions (include `dataType`)
+- `gp_vfield_labels_v1`, `gp_gpfield_labels_v1` — built-in field label overrides
+- `gp_badge_cfg_v1`, `gp_gp_cfg_v1` — template customizer config (colors, toggles, font size)
+- `gp_webhooks_v1`, `gp_apikeys_v1` — integrations config
 
 ## RegisterVisitorModal — dynamic visitor type fields
 

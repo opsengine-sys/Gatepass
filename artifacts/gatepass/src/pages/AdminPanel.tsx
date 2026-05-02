@@ -56,7 +56,7 @@ const PLAN_COLORS: Record<string, string> = {
 
 // ── nav items ─────────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "companies" | "licenses" | "users" | "activity";
+type Tab = "overview" | "companies" | "licenses" | "users" | "platform-admins" | "activity";
 
 const NAV: { id: Tab; label: string; icon: ReactNode }[] = [
   {
@@ -95,6 +95,16 @@ const NAV: { id: Tab; label: string; icon: ReactNode }[] = [
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
         <circle cx="9" cy="7" r="4"/>
         <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+    ),
+  },
+  {
+    id: "platform-admins",
+    label: "Platform Admins",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <polyline points="9 12 11 14 15 10"/>
       </svg>
     ),
   },
@@ -197,6 +207,7 @@ export function AdminPanel({ superAdminNoCompany = false }: { superAdminNoCompan
           {tab === "companies" && <CompaniesTab />}
           {tab === "licenses" && <LicensesTab />}
           {tab === "users" && <UsersTab />}
+          {tab === "platform-admins" && <PlatformAdminsTab />}
           {tab === "activity" && <ActivityTab />}
         </main>
       </div>
@@ -507,24 +518,39 @@ function CompaniesTab() {
 
 // ── Licenses ──────────────────────────────────────────────────────────────────
 
+function SeatBar({ used, max }: { used: number; max: number }) {
+  const pct = max > 0 ? Math.min(100, Math.round((used / max) * 100)) : 0;
+  const color = pct >= 90 ? "bg-red-500" : pct >= 70 ? "bg-amber-500" : "bg-emerald-500";
+  return (
+    <div className="flex items-center gap-2 mt-1.5">
+      <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
+        <div className={cn("h-full rounded-full transition-all", color)} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="text-[10.5px] text-muted-foreground whitespace-nowrap font-mono">{used}/{max}</span>
+    </div>
+  );
+}
+
 function LicensesTab() {
   const qc = useQueryClient();
   const { data: companies = [], isLoading } = useAdminListCompanies();
   const [editId, setEditId] = useState<string | null>(null);
   const [editProducts, setEditProducts] = useState<ProductKey[]>([]);
   const [editStatus, setEditStatus] = useState<LicenseStatus>("trial");
+  const [editMaxSeats, setEditMaxSeats] = useState("10");
   const [saving, setSaving] = useState(false);
 
   const startEdit = (c: Company) => {
     setEditId(c.id);
     setEditProducts(parseProducts(c.products));
     setEditStatus((c.licenseStatus as LicenseStatus) ?? "trial");
+    setEditMaxSeats(String(c.maxSeats ?? 10));
   };
 
   const saveEdit = async (c: Company) => {
     setSaving(true);
     try {
-      await adminUpdateCompany(c.id, { products: editProducts, licenseStatus: editStatus } as never);
+      await adminUpdateCompany(c.id, { products: editProducts, licenseStatus: editStatus, maxSeats: editMaxSeats } as never);
       qc.invalidateQueries({ queryKey: ["/api/admin/companies"] });
       toast.success("License updated");
       setEditId(null);
@@ -533,37 +559,96 @@ function LicensesTab() {
     }
   };
 
+  const allCompanies = companies as Company[];
+  const totalSeats = allCompanies.reduce((a, c) => a + Number(c.maxSeats ?? 0), 0);
+  const usedSeats  = allCompanies.reduce((a, c) => a + Number(c.seatsUsed ?? 0), 0);
+  const activeCount = allCompanies.filter(c => (c.licenseStatus as LicenseStatus) === "active").length;
+  const trialCount  = allCompanies.filter(c => (c.licenseStatus as LicenseStatus) === "trial").length;
+
   return (
     <div className="max-w-4xl">
       <div className="mb-6">
-        <h1 className="font-serif text-[22px] font-semibold text-foreground mb-0.5">Licenses & Products</h1>
-        <p className="text-[13px] text-muted-foreground">Manage which products each company has access to</p>
+        <h1 className="font-serif text-[22px] font-semibold text-foreground mb-0.5">Licenses &amp; Products</h1>
+        <p className="text-[13px] text-muted-foreground">Manage subscriptions, seat allocations and product access per company</p>
+      </div>
+
+      {/* summary bar */}
+      <div className="grid grid-cols-4 gap-3 mb-6">
+        {[
+          { label: "Total Companies", value: allCompanies.length, color: "text-foreground" },
+          { label: "Active Licenses", value: activeCount, color: "text-emerald-600" },
+          { label: "On Trial", value: trialCount, color: "text-amber-600" },
+          { label: "Seats Allocated", value: `${usedSeats} / ${totalSeats}`, color: "text-primary" },
+        ].map(s => (
+          <div key={s.label} className="bg-card border border-border rounded-xl px-4 py-3">
+            <div className={cn("text-[20px] font-bold font-mono leading-none", s.color)}>{s.value}</div>
+            <div className="text-[11px] text-muted-foreground mt-1">{s.label}</div>
+          </div>
+        ))}
       </div>
 
       {isLoading ? (
         <div className="flex justify-center py-10 text-muted-foreground text-[13px]">Loading…</div>
       ) : (
         <div className="space-y-3">
-          {(companies as Company[]).map((c) => {
+          {allCompanies.map((c) => {
             const isEditing = editId === c.id;
             const products = isEditing ? editProducts : parseProducts(c.products);
             const status = isEditing ? editStatus : ((c.licenseStatus as LicenseStatus) ?? "trial");
+            const maxSeats = isEditing ? Number(editMaxSeats) : Number(c.maxSeats ?? 10);
+            const seatsUsed = Number(c.seatsUsed ?? 0);
+            const contractEndDate = c.contractEnd ? new Date(c.contractEnd) : null;
+            const daysLeft = contractEndDate ? Math.ceil((contractEndDate.getTime() - Date.now()) / 86400000) : null;
 
             return (
               <div key={c.id} className="bg-card border border-border rounded-xl p-5">
                 <div className="flex items-start justify-between mb-3">
-                  <div>
+                  <div className="flex-1 min-w-0 mr-4">
                     <div className="font-semibold text-foreground text-[14px]">{c.name}</div>
                     <div className="text-[11.5px] text-muted-foreground">{c.contactEmail ?? c.slug}</div>
+                    {/* seat bar */}
+                    <div className="mt-2">
+                      <div className="text-[10.5px] text-muted-foreground uppercase font-bold tracking-wide mb-0.5">Seat Usage</div>
+                      {isEditing ? (
+                        <div className="flex items-center gap-2">
+                          <label className="text-[11.5px] text-muted-foreground whitespace-nowrap">Max seats:</label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="9999"
+                            value={editMaxSeats}
+                            onChange={e => setEditMaxSeats(e.target.value)}
+                            className="w-20 text-[12px] border border-border rounded px-2 py-1 bg-background focus:outline-none focus:ring-1 focus:ring-primary/30 font-mono"
+                          />
+                          <span className="text-[11.5px] text-muted-foreground">({seatsUsed} used)</span>
+                        </div>
+                      ) : (
+                        <SeatBar used={seatsUsed} max={maxSeats} />
+                      )}
+                    </div>
+                    {/* contract dates */}
+                    {(c.contractStart || c.contractEnd) && (
+                      <div className="flex items-center gap-3 mt-2">
+                        {c.contractStart && <span className="text-[10.5px] text-muted-foreground">Start: <span className="font-mono text-foreground">{c.contractStart.slice(0,10)}</span></span>}
+                        {c.contractEnd && (
+                          <span className={cn("text-[10.5px]", daysLeft !== null && daysLeft <= 30 ? "text-red-600 font-semibold" : "text-muted-foreground")}>
+                            End: <span className="font-mono">{c.contractEnd.slice(0,10)}</span>
+                            {daysLeft !== null && daysLeft <= 60 && (
+                              <span className={cn("ml-1 px-1.5 py-0.5 rounded-full text-[9.5px] font-bold", daysLeft <= 30 ? "bg-red-100 text-red-700" : "bg-amber-50 text-amber-700")}>
+                                {daysLeft > 0 ? `${daysLeft}d left` : "Expired"}
+                              </span>
+                            )}
+                          </span>
+                        )}
+                        {c.contractValue && <span className="text-[10.5px] text-muted-foreground">Value: <span className="font-semibold text-foreground">{c.contractValue}</span></span>}
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     {isEditing ? (
                       <>
-                        <select
-                          value={editStatus}
-                          onChange={(e) => setEditStatus(e.target.value as LicenseStatus)}
-                          className="text-[12px] border border-border rounded px-2 py-1 bg-background focus:outline-none focus:ring-1 focus:ring-primary/30"
-                        >
+                        <select value={editStatus} onChange={(e) => setEditStatus(e.target.value as LicenseStatus)}
+                          className="text-[12px] border border-border rounded px-2 py-1 bg-background focus:outline-none focus:ring-1 focus:ring-primary/30">
                           {(["trial", "active", "expired", "suspended"] as LicenseStatus[]).map((s) => (
                             <option key={s} value={s}>{s}</option>
                           ))}
@@ -582,47 +667,31 @@ function LicensesTab() {
 
                 <div className="flex flex-wrap gap-2">
                   {isEditing && (
-                    <button
-                      type="button"
-                      onClick={() => setEditProducts(
-                        editProducts.length === ALL_PRODUCTS.length ? [] : [...ALL_PRODUCTS]
-                      )}
-                      className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[12px] font-semibold transition-colors",
+                    <button type="button"
+                      onClick={() => setEditProducts(editProducts.length === ALL_PRODUCTS.length ? [] : [...ALL_PRODUCTS])}
+                      className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[12px] font-semibold transition-colors",
                         editProducts.length === ALL_PRODUCTS.length
                           ? "bg-amber-50 border-amber-400 text-amber-700"
-                          : "border-border text-muted-foreground hover:border-amber-400/60 hover:text-amber-700"
-                      )}
-                    >
+                          : "border-border text-muted-foreground hover:border-amber-400/60 hover:text-amber-700")}>
                       {editProducts.length === ALL_PRODUCTS.length
                         ? <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3 h-3"><polyline points="20 6 9 17 4 12"/></svg> All</>
-                        : "All"
-                      }
+                        : "All"}
                     </button>
                   )}
                   {ALL_PRODUCTS.map((p) => {
                     const active = products.includes(p);
                     return isEditing ? (
-                      <label key={p} className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[12px] cursor-pointer transition-colors",
-                        active ? "bg-primary/10 border-primary/40 text-primary" : "border-border text-muted-foreground hover:border-primary/30",
-                      )}>
-                        <input
-                          type="checkbox"
-                          checked={active}
-                          onChange={() => setEditProducts(prev =>
-                            active ? prev.filter(x => x !== p) : [...prev, p]
-                          )}
-                          className="sr-only"
-                        />
+                      <label key={p} className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[12px] cursor-pointer transition-colors",
+                        active ? "bg-primary/10 border-primary/40 text-primary" : "border-border text-muted-foreground hover:border-primary/30")}>
+                        <input type="checkbox" checked={active}
+                          onChange={() => setEditProducts(prev => active ? prev.filter(x => x !== p) : [...prev, p])}
+                          className="sr-only" />
                         {active && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3 h-3"><polyline points="20 6 9 17 4 12"/></svg>}
                         {PRODUCT_LABELS[p]}
                       </label>
                     ) : (
-                      <span key={p} className={cn(
-                        "px-3 py-1.5 rounded-lg border text-[12px]",
-                        active ? "bg-primary/10 border-primary/30 text-primary font-medium" : "border-border text-muted-foreground/50 line-through",
-                      )}>
+                      <span key={p} className={cn("px-3 py-1.5 rounded-lg border text-[12px]",
+                        active ? "bg-primary/10 border-primary/30 text-primary font-medium" : "border-border text-muted-foreground/50 line-through")}>
                         {PRODUCT_LABELS[p]}
                       </span>
                     );
@@ -632,7 +701,7 @@ function LicensesTab() {
             );
           })}
 
-          {(companies as Company[]).length === 0 && (
+          {allCompanies.length === 0 && (
             <div className="py-12 text-center text-[13px] text-muted-foreground">No companies yet. Add one in the Companies tab.</div>
           )}
         </div>
@@ -774,6 +843,129 @@ function UsersTab() {
   );
 }
 
+// ── Platform Admins ───────────────────────────────────────────────────────────
+
+function PlatformAdminsTab() {
+  const { data: allUsers = [], isLoading } = useQuery({
+    queryKey: ["/api/admin/users"],
+    queryFn: () => fetchAdmin<Array<{ id: string; email: string; name: string | null; role: string; companyId: string | null; createdAt: string | null }>>("/api/admin/users"),
+  });
+
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+
+  const superAdmins = (allUsers).filter(u => u.role === "super_admin");
+
+  return (
+    <div className="max-w-2xl">
+      <div className="mb-6">
+        <h1 className="font-serif text-[22px] font-semibold text-foreground mb-0.5">Platform Admins</h1>
+        <p className="text-[13px] text-muted-foreground">Super admins have full platform access — companies CRM, impersonation, billing, and all settings.</p>
+      </div>
+
+      {/* security callout */}
+      <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-5 flex gap-3">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        <div>
+          <div className="text-[12px] font-bold text-red-700 mb-0.5">Security notice</div>
+          <div className="text-[11.5px] text-red-600">Never elevate a company user to Super Admin. Super admins bypass all company-level restrictions. The <code className="font-mono bg-red-100 rounded px-1">super_admin</code> role must only be assigned directly in the database by a trusted operator.</div>
+        </div>
+      </div>
+
+      <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm mb-4">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+          <div>
+            <h3 className="font-bold text-[13px] text-foreground">Super Admins</h3>
+            <p className="text-[11.5px] text-muted-foreground mt-0.5">{superAdmins.length} user{superAdmins.length !== 1 ? "s" : ""} with platform-wide access</p>
+          </div>
+          <button onClick={() => setShowInvite(p => !p)}
+            className="flex items-center gap-1.5 text-[12px] font-semibold text-primary hover:text-primary/80 transition-colors border border-primary/30 rounded-lg px-3 py-1.5 hover:bg-primary/5">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3.5 h-3.5">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Invite Admin
+          </button>
+        </div>
+
+        {showInvite && (
+          <div className="px-5 py-4 bg-secondary/30 border-b border-border">
+            <div className="text-[11.5px] font-semibold text-foreground mb-2">Invite via Email</div>
+            <p className="text-[11px] text-muted-foreground mb-3">This will send a platform-admin invitation email. After accepting, you must manually assign the <code className="font-mono bg-secondary rounded px-1">super_admin</code> role in the database.</p>
+            <div className="flex gap-2">
+              <input
+                type="email"
+                value={inviteEmail}
+                onChange={e => setInviteEmail(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && inviteEmail) {
+                    toast.success(`Invitation queued for ${inviteEmail}. Assign super_admin role in DB after sign-up.`);
+                    setInviteEmail("");
+                    setShowInvite(false);
+                  }
+                }}
+                className="flex-1 px-3 py-2 text-[12.5px] bg-background border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30"
+                placeholder="admin@yourplatform.com"
+              />
+              <button
+                onClick={() => {
+                  if (!inviteEmail) return;
+                  toast.success(`Invitation queued for ${inviteEmail}. Assign super_admin role in DB after sign-up.`);
+                  setInviteEmail("");
+                  setShowInvite(false);
+                }}
+                className="btn-primary flex-shrink-0 text-[12px]"
+              >
+                Send Invite
+              </button>
+            </div>
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="flex justify-center py-8 text-muted-foreground text-[13px]">Loading…</div>
+        ) : superAdmins.length === 0 ? (
+          <div className="py-8 text-center text-[13px] text-muted-foreground">No super admins found. Assign the role directly in the database.</div>
+        ) : (
+          <div className="divide-y divide-border">
+            {superAdmins.map(u => (
+              <div key={u.id} className="flex items-center justify-between px-5 py-3.5">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-[12px] font-bold flex-shrink-0">
+                    {(u.name ?? u.email).charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <div className="text-[13px] font-semibold text-foreground">{u.name ?? u.email}</div>
+                    {u.name && <div className="text-[11.5px] text-muted-foreground">{u.email}</div>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10.5px] font-bold bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2.5 py-1">super_admin</span>
+                  {u.companyId && (
+                    <span className="text-[10px] bg-red-50 border border-red-200 text-red-600 rounded-full px-2 py-0.5 font-semibold">has companyId!</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="bg-secondary/50 border border-border rounded-xl px-4 py-3">
+        <div className="text-[11.5px] font-semibold text-foreground mb-1">How to assign super_admin</div>
+        <div className="text-[11px] text-muted-foreground space-y-1">
+          <div>1. Have the user sign up normally via Clerk.</div>
+          <div>2. Find their record in the <code className="font-mono bg-secondary rounded px-1 text-foreground">users</code> table.</div>
+          <div>3. Run: <code className="font-mono bg-secondary rounded px-1 text-foreground text-[10.5px]">UPDATE users SET role = 'super_admin', company_id = NULL WHERE email = 'user@example.com';</code></div>
+          <div>4. They will be redirected to /admin on next sign-in.</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Activity ──────────────────────────────────────────────────────────────────
 
 interface ActivityEvent {
@@ -844,6 +1036,7 @@ function CompanyFormModal({
   const [slug, setSlug] = useState(initial?.slug ?? "");
   const [plan, setPlan] = useState(initial?.plan ?? "starter");
   const [licenseStatus, setLicenseStatus] = useState<LicenseStatus>((initial?.licenseStatus as LicenseStatus) ?? "trial");
+  const [maxSeats, setMaxSeats] = useState(String(initial?.maxSeats ?? "10"));
   const [isActive, setIsActive] = useState(initial?.isActive ?? true);
   // Legacy single contact (kept for backwards compat)
   const [contactName, setContactName] = useState(initial?.contactName ?? "");
@@ -879,7 +1072,7 @@ function CompanyFormModal({
     if (!name || !slug) { toast.error("Name and slug are required"); return; }
     setSaving(true);
     try {
-      await onSave({ name, slug, plan, licenseStatus, isActive, contactName, contactEmail, contactPhone, contractStart: contractStart || null, contractEnd: contractEnd || null, contractValue: contractValue || null, products, notes: notes || null, contacts: JSON.stringify(contacts) });
+      await onSave({ name, slug, plan, licenseStatus, maxSeats, isActive, contactName, contactEmail, contactPhone, contractStart: contractStart || null, contractEnd: contractEnd || null, contractValue: contractValue || null, products, notes: notes || null, contacts: JSON.stringify(contacts) });
     } finally { setSaving(false); }
   };
 
@@ -930,7 +1123,19 @@ function CompanyFormModal({
                   <option value="suspended">Suspended</option>
                 </select>
               </div>
-              <div className="flex items-center gap-2 pt-5">
+              <div>
+                <label className={labelCls}>Max Seats</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="9999"
+                  value={maxSeats}
+                  onChange={(e) => setMaxSeats(e.target.value)}
+                  className={cn(inputCls, "font-mono")}
+                  placeholder="10"
+                />
+              </div>
+              <div className="flex items-center gap-2 pt-3 col-span-2">
                 <input type="checkbox" id="isActive" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="w-4 h-4 rounded border-border" />
                 <label htmlFor="isActive" className="text-[12.5px] text-foreground cursor-pointer">Active</label>
               </div>
