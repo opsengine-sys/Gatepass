@@ -726,7 +726,7 @@ function UsersTab() {
                         onChange={(e) => setEditRole(e.target.value)}
                         className="text-[12px] border border-border rounded px-1.5 py-0.5 bg-background focus:outline-none"
                       >
-                        {["super_admin", "admin", "security", "viewer"].map((r) => (
+                        {["admin", "security", "viewer"].map((r) => (
                           <option key={r} value={r}>{r.replace("_", " ")}</option>
                         ))}
                       </select>

@@ -259,6 +259,14 @@ router.patch(
     const { userId } = req.params;
     const { role, companyId, officeId, isActive } = req.body;
 
+    // Prevent promoting any user to super_admin via the API.
+    // super_admin can only be assigned directly in the database.
+    const ASSIGNABLE_ROLES = ["admin", "security", "viewer"];
+    if (role !== undefined && !ASSIGNABLE_ROLES.includes(role)) {
+      res.status(400).json({ error: `Role "${role}" cannot be assigned via the API. Use direct DB access for super_admin.` });
+      return;
+    }
+
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (role !== undefined) updates.role = role;
     if (companyId !== undefined) updates.companyId = companyId || null;
