@@ -184,6 +184,10 @@ export function AdminPanel({ superAdminNoCompany = false }: { superAdminNoCompan
         <span className="text-[12px] text-muted-foreground">Super Admin Console</span>
         <span className="text-muted-foreground/40 text-xs">·</span>
         <span className="text-[12px] font-semibold text-foreground capitalize">{tab}</span>
+        <div className="ml-auto flex items-center gap-2 bg-purple-50 border border-purple-200 rounded-full px-3 py-1">
+          <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+          <span className="text-[11px] font-semibold text-purple-700">Signed in as super_admin · same /sign-in page</span>
+        </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">

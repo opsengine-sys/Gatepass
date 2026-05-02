@@ -5,10 +5,15 @@ import { useBranding } from "@/contexts/BrandingContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { VISITOR_TYPES, TYPE_COLORS, GP_TYPES } from "@/types";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useListOffices, useCreateOffice, useUpdateOffice, useDeleteOffice,
+  useListUsers, useUpdateUser,
+} from "@workspace/api-client-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type SettingsTab = "profile" | "customization" | "badge-templates" | "team" | "notifications" | "integrations" | "appearance";
+type SettingsTab = "profile" | "customization" | "badge-templates" | "team" | "locations" | "notifications" | "integrations" | "appearance";
 type IntegSub = "sso" | "messaging" | "webhooks" | "api-keys";
 type MsgChannel = "email" | "whatsapp" | "sms";
 
@@ -19,6 +24,7 @@ const TABS: { id: SettingsTab; label: string; adminOnly?: boolean }[] = [
   { id: "customization", label: "Customization", adminOnly: true },
   { id: "badge-templates", label: "Badge Templates" },
   { id: "team", label: "Team & Users", adminOnly: true },
+  { id: "locations", label: "Locations", adminOnly: true },
   { id: "notifications", label: "Notifications" },
   { id: "integrations", label: "Integrations", adminOnly: true },
   { id: "appearance", label: "Appearance" },
@@ -132,6 +138,7 @@ export function Settings() {
       {tab === "customization" && <CustomizationTab />}
       {tab === "badge-templates" && <BadgeTemplatesTab badgeTemplate={badgeTemplate} setBadgeTemplate={setBadgeTemplate} gpTemplate={gpTemplate} setGpTemplate={setGpTemplate} />}
       {tab === "team" && <TeamTab />}
+      {tab === "locations" && <LocationsTab />}
       {tab === "notifications" && <NotificationsTab notifications={notifications} onToggle={toggleNotif} />}
       {tab === "integrations" && <IntegrationsTab />}
       {tab === "appearance" && <AppearanceTab />}
@@ -281,37 +288,58 @@ function ProfileTab({ user, isAdmin }: { user: ReturnType<typeof useApp>["user"]
 type VisitorTypeItem = { id: string; name: string; color: string; enabled: boolean };
 type GPTypeItem = { id: string; name: string; enabled: boolean };
 type FieldConfig = Record<string, { enabled: boolean; required: boolean }>;
+type CustomFieldItem = { id: string; label: string; enabled: boolean; required: boolean };
 
 function loadVisitorTypes(): VisitorTypeItem[] {
-  try {
-    const s = localStorage.getItem("gp_vt_v1");
-    if (s) return JSON.parse(s);
-  } catch { /* ignore */ }
+  try { const s = localStorage.getItem("gp_vt_v1"); if (s) return JSON.parse(s); } catch { /* ignore */ }
   return VISITOR_TYPES.map((t, i) => ({ id: String(i), name: t, color: TYPE_COLORS[t] ?? "#445368", enabled: true }));
 }
-
 function loadGPTypes(): GPTypeItem[] {
-  try {
-    const s = localStorage.getItem("gp_gpt_v1");
-    if (s) return JSON.parse(s);
-  } catch { /* ignore */ }
+  try { const s = localStorage.getItem("gp_gpt_v1"); if (s) return JSON.parse(s); } catch { /* ignore */ }
   return GP_TYPES.map((t, i) => ({ id: String(i), name: t, enabled: true }));
 }
-
 function loadVFields(): FieldConfig {
-  try {
-    const s = localStorage.getItem("gp_vfields_v1");
-    if (s) return JSON.parse(s);
-  } catch { /* ignore */ }
+  try { const s = localStorage.getItem("gp_vfields_v1"); if (s) return JSON.parse(s); } catch { /* ignore */ }
   return Object.fromEntries(VISITOR_FORM_FIELDS.map(f => [f.id, { enabled: true, required: false }]));
 }
-
 function loadGPFields(): FieldConfig {
-  try {
-    const s = localStorage.getItem("gp_gpfields_v1");
-    if (s) return JSON.parse(s);
-  } catch { /* ignore */ }
+  try { const s = localStorage.getItem("gp_gpfields_v1"); if (s) return JSON.parse(s); } catch { /* ignore */ }
   return Object.fromEntries(GP_FORM_FIELDS.map(f => [f.id, { enabled: true, required: false }]));
+}
+function loadCustomVFields(): CustomFieldItem[] {
+  try { const s = localStorage.getItem("gp_custom_vfields_v1"); if (s) return JSON.parse(s); } catch { /* ignore */ }
+  return [];
+}
+function loadCustomGPFields(): CustomFieldItem[] {
+  try { const s = localStorage.getItem("gp_custom_gpfields_v1"); if (s) return JSON.parse(s); } catch { /* ignore */ }
+  return [];
+}
+
+function AccordionSection({ title, badge, children, defaultOpen = false, accent }: {
+  title: string; badge?: string; children: React.ReactNode; defaultOpen?: boolean; accent?: string;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <button
+        onClick={() => setOpen(p => !p)}
+        className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-secondary/40 transition-colors text-left"
+      >
+        {accent && <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: accent }} />}
+        <span className="font-bold text-[13px] text-foreground flex-1">{title}</span>
+        {badge && (
+          <span className="text-[10.5px] font-semibold bg-secondary border border-border px-2 py-0.5 rounded-full text-muted-foreground mr-2">
+            {badge}
+          </span>
+        )}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+          className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform", open && "rotate-180")}>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {open && <div className="border-t border-border">{children}</div>}
+    </div>
+  );
 }
 
 function CustomizationTab() {
@@ -319,138 +347,264 @@ function CustomizationTab() {
   const [gpTypes, setGPTypes] = useState<GPTypeItem[]>(loadGPTypes);
   const [vFields, setVFields] = useState<FieldConfig>(loadVFields);
   const [gpFields, setGPFields] = useState<FieldConfig>(loadGPFields);
+  const [customVFields, setCustomVFields] = useState<CustomFieldItem[]>(loadCustomVFields);
+  const [customGPFields, setCustomGPFields] = useState<CustomFieldItem[]>(loadCustomGPFields);
   const [newVType, setNewVType] = useState("");
   const [newGPType, setNewGPType] = useState("");
+  const [newVFieldLabel, setNewVFieldLabel] = useState("");
+  const [newGPFieldLabel, setNewGPFieldLabel] = useState("");
 
   const saveVT = (next: VisitorTypeItem[]) => { setVTypes(next); localStorage.setItem("gp_vt_v1", JSON.stringify(next)); };
   const saveGPT = (next: GPTypeItem[]) => { setGPTypes(next); localStorage.setItem("gp_gpt_v1", JSON.stringify(next)); };
   const saveVF = (next: FieldConfig) => { setVFields(next); localStorage.setItem("gp_vfields_v1", JSON.stringify(next)); };
   const saveGPF = (next: FieldConfig) => { setGPFields(next); localStorage.setItem("gp_gpfields_v1", JSON.stringify(next)); };
+  const saveCVF = (next: CustomFieldItem[]) => { setCustomVFields(next); localStorage.setItem("gp_custom_vfields_v1", JSON.stringify(next)); };
+  const saveCGPF = (next: CustomFieldItem[]) => { setCustomGPFields(next); localStorage.setItem("gp_custom_gpfields_v1", JSON.stringify(next)); };
 
   const addVType = () => {
     if (!newVType.trim()) return;
-    const next = [...vTypes, { id: Date.now().toString(), name: newVType.trim(), color: "#445368", enabled: true }];
-    saveVT(next); setNewVType(""); toast.success("Visitor type added");
+    saveVT([...vTypes, { id: Date.now().toString(), name: newVType.trim(), color: "#445368", enabled: true }]);
+    setNewVType(""); toast.success("Visitor type added");
   };
-
   const addGPType = () => {
     if (!newGPType.trim()) return;
-    const next = [...gpTypes, { id: Date.now().toString(), name: newGPType.trim(), enabled: true }];
-    saveGPT(next); setNewGPType(""); toast.success("Gate pass type added");
+    saveGPT([...gpTypes, { id: Date.now().toString(), name: newGPType.trim(), enabled: true }]);
+    setNewGPType(""); toast.success("Gate pass type added");
+  };
+  const addCustomVField = () => {
+    if (!newVFieldLabel.trim()) return;
+    saveCVF([...customVFields, { id: Date.now().toString(), label: newVFieldLabel.trim(), enabled: true, required: false }]);
+    setNewVFieldLabel(""); toast.success("Custom field added");
+  };
+  const addCustomGPField = () => {
+    if (!newGPFieldLabel.trim()) return;
+    saveCGPF([...customGPFields, { id: Date.now().toString(), label: newGPFieldLabel.trim(), enabled: true, required: false }]);
+    setNewGPFieldLabel(""); toast.success("Custom field added");
   };
 
   const toggleVField = (id: string, key: "enabled" | "required") => {
     const next = { ...vFields, [id]: { ...vFields[id], [key]: !vFields[id][key] } };
-    saveVF(next); toast.success("Field configuration saved");
+    saveVF(next);
   };
-
   const toggleGPField = (id: string, key: "enabled" | "required") => {
     const next = { ...gpFields, [id]: { ...gpFields[id], [key]: !gpFields[id][key] } };
-    saveGPF(next); toast.success("Field configuration saved");
+    saveGPF(next);
   };
 
   return (
-    <div className="space-y-5">
-      <Card title="Visitor Types">
-        <div className="space-y-2 mb-3">
+    <div className="space-y-3">
+      {/* Visitor Types */}
+      <AccordionSection
+        title="Visitor Types"
+        badge={`${vTypes.filter(t => t.enabled).length} active`}
+        accent="#c06b2c"
+        defaultOpen
+      >
+        <div className="p-4 space-y-2">
           {vTypes.map(vt => (
-            <div key={vt.id} className="flex items-center gap-3">
-              <input type="color" value={vt.color} onChange={e => saveVT(vTypes.map(t => t.id === vt.id ? { ...t, color: e.target.value } : t))}
-                className="w-7 h-7 rounded cursor-pointer border border-border p-0 bg-transparent flex-shrink-0" />
-              <div className="flex-1 bg-secondary border border-border rounded-lg px-3 py-1.5 text-[13px] text-foreground">{vt.name}</div>
-              <button onClick={() => saveVT(vTypes.map(t => t.id === vt.id ? { ...t, enabled: !t.enabled } : t))}
-                className={cn("w-8 h-5 rounded-full relative transition-colors flex-shrink-0", vt.enabled ? "bg-primary" : "bg-border")}>
+            <div key={vt.id} className="flex items-center gap-2.5">
+              <input
+                type="color"
+                value={vt.color}
+                onChange={e => saveVT(vTypes.map(t => t.id === vt.id ? { ...t, color: e.target.value } : t))}
+                className="w-7 h-7 rounded-lg cursor-pointer border border-border p-0.5 bg-transparent flex-shrink-0"
+              />
+              <input
+                className={cn(iCls, "flex-1")}
+                value={vt.name}
+                onChange={e => saveVT(vTypes.map(t => t.id === vt.id ? { ...t, name: e.target.value } : t))}
+                placeholder="Type name…"
+              />
+              <button
+                onClick={() => saveVT(vTypes.map(t => t.id === vt.id ? { ...t, enabled: !t.enabled } : t))}
+                className={cn("w-8 h-5 rounded-full relative transition-colors flex-shrink-0", vt.enabled ? "bg-primary" : "bg-border")}
+              >
                 <span className={cn("absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all", vt.enabled ? "left-[14px]" : "left-0.5")} />
               </button>
               {vTypes.length > 2 && (
-                <button onClick={() => { saveVT(vTypes.filter(t => t.id !== vt.id)); toast.success("Type removed"); }}
-                  className="text-muted-foreground/50 hover:text-destructive transition-colors flex-shrink-0">
+                <button
+                  onClick={() => { saveVT(vTypes.filter(t => t.id !== vt.id)); toast.success("Type removed"); }}
+                  className="text-muted-foreground/40 hover:text-destructive transition-colors flex-shrink-0"
+                >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
               )}
             </div>
           ))}
+          <div className="flex gap-2 pt-1 border-t border-border mt-3">
+            <input
+              className={cn(iCls, "flex-1")}
+              value={newVType}
+              onChange={e => setNewVType(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && addVType()}
+              placeholder="New visitor type name…"
+            />
+            <button onClick={addVType} className="btn-primary flex-shrink-0">Add</button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <input className={cn(iCls, "flex-1")} value={newVType} onChange={e => setNewVType(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && addVType()} placeholder="Add new visitor type…" />
-          <button onClick={addVType} className="btn-primary flex-shrink-0">Add</button>
-        </div>
-      </Card>
+      </AccordionSection>
 
-      <Card title="Gate Pass Types">
-        <div className="space-y-2 mb-3">
+      {/* Gate Pass Types */}
+      <AccordionSection
+        title="Gate Pass Types"
+        badge={`${gpTypes.filter(t => t.enabled).length} active`}
+        accent="#0d9488"
+        defaultOpen
+      >
+        <div className="p-4 space-y-2">
           {gpTypes.map(gt => (
-            <div key={gt.id} className="flex items-center gap-3">
-              <div className="w-2.5 h-2.5 rounded-full bg-teal-600 flex-shrink-0" />
-              <div className="flex-1 bg-secondary border border-border rounded-lg px-3 py-1.5 text-[13px] text-foreground">{gt.name}</div>
-              <button onClick={() => saveGPT(gpTypes.map(t => t.id === gt.id ? { ...t, enabled: !t.enabled } : t))}
-                className={cn("w-8 h-5 rounded-full relative transition-colors flex-shrink-0", gt.enabled ? "bg-teal-600" : "bg-border")}>
+            <div key={gt.id} className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center flex-shrink-0">
+                <div className="w-2.5 h-2.5 rounded-full bg-teal-600" />
+              </div>
+              <input
+                className={cn(iCls, "flex-1")}
+                value={gt.name}
+                onChange={e => saveGPT(gpTypes.map(t => t.id === gt.id ? { ...t, name: e.target.value } : t))}
+                placeholder="Type name…"
+              />
+              <button
+                onClick={() => saveGPT(gpTypes.map(t => t.id === gt.id ? { ...t, enabled: !t.enabled } : t))}
+                className={cn("w-8 h-5 rounded-full relative transition-colors flex-shrink-0", gt.enabled ? "bg-teal-600" : "bg-border")}
+              >
                 <span className={cn("absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all", gt.enabled ? "left-[14px]" : "left-0.5")} />
               </button>
               {gpTypes.length > 2 && (
-                <button onClick={() => { saveGPT(gpTypes.filter(t => t.id !== gt.id)); toast.success("Type removed"); }}
-                  className="text-muted-foreground/50 hover:text-destructive transition-colors flex-shrink-0">
+                <button
+                  onClick={() => { saveGPT(gpTypes.filter(t => t.id !== gt.id)); toast.success("Type removed"); }}
+                  className="text-muted-foreground/40 hover:text-destructive transition-colors flex-shrink-0"
+                >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
               )}
             </div>
           ))}
+          <div className="flex gap-2 pt-1 border-t border-border mt-3">
+            <input
+              className={cn(iCls, "flex-1")}
+              value={newGPType}
+              onChange={e => setNewGPType(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && addGPType()}
+              placeholder="New gate pass type name…"
+            />
+            <button onClick={addGPType} className="btn-primary flex-shrink-0 !bg-teal-600 hover:!bg-teal-700">Add</button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <input className={cn(iCls, "flex-1")} value={newGPType} onChange={e => setNewGPType(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && addGPType()} placeholder="Add new gate pass type…" />
-          <button onClick={addGPType} className="btn-primary flex-shrink-0 !bg-teal-600 hover:!bg-teal-700">Add</button>
-        </div>
-      </Card>
+      </AccordionSection>
 
-      <Card title="Visitor Registration Form Fields" bodyPad={false}>
+      {/* Visitor Form Fields */}
+      <AccordionSection
+        title="Visitor Registration Form"
+        badge={`${Object.values(vFields).filter(f => f.enabled).length + customVFields.filter(f => f.enabled).length} fields on`}
+        accent="#3b82f6"
+      >
         <div className="divide-y divide-border">
-          <div className="grid grid-cols-[1fr_80px_80px] gap-2 px-4 py-2 bg-secondary/50">
+          <div className="grid grid-cols-[1fr_80px_80px_36px] gap-2 px-5 py-2.5 bg-secondary/50">
             <span className="text-[10.5px] font-bold text-muted-foreground uppercase tracking-wide">Field</span>
             <span className="text-[10.5px] font-bold text-muted-foreground uppercase tracking-wide text-center">Show</span>
             <span className="text-[10.5px] font-bold text-muted-foreground uppercase tracking-wide text-center">Required</span>
+            <span />
           </div>
           {VISITOR_FORM_FIELDS.map(f => {
             const cfg = vFields[f.id] ?? { enabled: true, required: false };
             return (
-              <div key={f.id} className="grid grid-cols-[1fr_80px_80px] gap-2 items-center px-4 py-3">
+              <div key={f.id} className="grid grid-cols-[1fr_80px_80px_36px] gap-2 items-center px-5 py-3">
                 <span className="text-[13px] text-foreground">{f.label}</span>
-                <div className="flex justify-center">
-                  <Toggle checked={cfg.enabled} onChange={() => toggleVField(f.id, "enabled")} color="primary" />
-                </div>
-                <div className="flex justify-center">
-                  <Toggle checked={cfg.required && cfg.enabled} onChange={() => cfg.enabled && toggleVField(f.id, "required")} color="amber" disabled={!cfg.enabled} />
-                </div>
+                <div className="flex justify-center"><Toggle checked={cfg.enabled} onChange={() => toggleVField(f.id, "enabled")} color="primary" /></div>
+                <div className="flex justify-center"><Toggle checked={cfg.required && cfg.enabled} onChange={() => cfg.enabled && toggleVField(f.id, "required")} color="amber" disabled={!cfg.enabled} /></div>
+                <div />
               </div>
             );
           })}
+          {customVFields.map(f => (
+            <div key={f.id} className="grid grid-cols-[1fr_80px_80px_36px] gap-2 items-center px-5 py-2.5">
+              <input
+                className={cn(iCls, "text-[13px]")}
+                value={f.label}
+                onChange={e => saveCVF(customVFields.map(x => x.id === f.id ? { ...x, label: e.target.value } : x))}
+                placeholder="Field label…"
+              />
+              <div className="flex justify-center">
+                <Toggle checked={f.enabled} onChange={() => saveCVF(customVFields.map(x => x.id === f.id ? { ...x, enabled: !x.enabled } : x))} color="primary" />
+              </div>
+              <div className="flex justify-center">
+                <Toggle checked={f.required && f.enabled} onChange={() => f.enabled && saveCVF(customVFields.map(x => x.id === f.id ? { ...x, required: !x.required } : x))} color="amber" disabled={!f.enabled} />
+              </div>
+              <button onClick={() => { saveCVF(customVFields.filter(x => x.id !== f.id)); toast.success("Field removed"); }}
+                className="text-muted-foreground/40 hover:text-destructive transition-colors flex justify-center">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+              </button>
+            </div>
+          ))}
+          <div className="flex gap-2 px-5 py-3 bg-secondary/30">
+            <input
+              className={cn(iCls, "flex-1 text-[13px]")}
+              value={newVFieldLabel}
+              onChange={e => setNewVFieldLabel(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && addCustomVField()}
+              placeholder="Add custom field label (e.g. Department, Badge No…)"
+            />
+            <button onClick={addCustomVField} className="btn-ghost flex-shrink-0 text-[12px]">+ Add Field</button>
+          </div>
         </div>
-      </Card>
+      </AccordionSection>
 
-      <Card title="Gate Pass Form Fields" bodyPad={false}>
+      {/* Gate Pass Form Fields */}
+      <AccordionSection
+        title="Gate Pass Form"
+        badge={`${Object.values(gpFields).filter(f => f.enabled).length + customGPFields.filter(f => f.enabled).length} fields on`}
+        accent="#0d9488"
+      >
         <div className="divide-y divide-border">
-          <div className="grid grid-cols-[1fr_80px_80px] gap-2 px-4 py-2 bg-secondary/50">
+          <div className="grid grid-cols-[1fr_80px_80px_36px] gap-2 px-5 py-2.5 bg-secondary/50">
             <span className="text-[10.5px] font-bold text-muted-foreground uppercase tracking-wide">Field</span>
             <span className="text-[10.5px] font-bold text-muted-foreground uppercase tracking-wide text-center">Show</span>
             <span className="text-[10.5px] font-bold text-muted-foreground uppercase tracking-wide text-center">Required</span>
+            <span />
           </div>
           {GP_FORM_FIELDS.map(f => {
             const cfg = gpFields[f.id] ?? { enabled: true, required: false };
             return (
-              <div key={f.id} className="grid grid-cols-[1fr_80px_80px] gap-2 items-center px-4 py-3">
+              <div key={f.id} className="grid grid-cols-[1fr_80px_80px_36px] gap-2 items-center px-5 py-3">
                 <span className="text-[13px] text-foreground">{f.label}</span>
-                <div className="flex justify-center">
-                  <Toggle checked={cfg.enabled} onChange={() => toggleGPField(f.id, "enabled")} color="teal" />
-                </div>
-                <div className="flex justify-center">
-                  <Toggle checked={cfg.required && cfg.enabled} onChange={() => cfg.enabled && toggleGPField(f.id, "required")} color="amber" disabled={!cfg.enabled} />
-                </div>
+                <div className="flex justify-center"><Toggle checked={cfg.enabled} onChange={() => toggleGPField(f.id, "enabled")} color="teal" /></div>
+                <div className="flex justify-center"><Toggle checked={cfg.required && cfg.enabled} onChange={() => cfg.enabled && toggleGPField(f.id, "required")} color="amber" disabled={!cfg.enabled} /></div>
+                <div />
               </div>
             );
           })}
+          {customGPFields.map(f => (
+            <div key={f.id} className="grid grid-cols-[1fr_80px_80px_36px] gap-2 items-center px-5 py-2.5">
+              <input
+                className={cn(iCls, "text-[13px]")}
+                value={f.label}
+                onChange={e => saveCGPF(customGPFields.map(x => x.id === f.id ? { ...x, label: e.target.value } : x))}
+                placeholder="Field label…"
+              />
+              <div className="flex justify-center">
+                <Toggle checked={f.enabled} onChange={() => saveCGPF(customGPFields.map(x => x.id === f.id ? { ...x, enabled: !x.enabled } : x))} color="teal" />
+              </div>
+              <div className="flex justify-center">
+                <Toggle checked={f.required && f.enabled} onChange={() => f.enabled && saveCGPF(customGPFields.map(x => x.id === f.id ? { ...x, required: !x.required } : x))} color="amber" disabled={!f.enabled} />
+              </div>
+              <button onClick={() => { saveCGPF(customGPFields.filter(x => x.id !== f.id)); toast.success("Field removed"); }}
+                className="text-muted-foreground/40 hover:text-destructive transition-colors flex justify-center">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+              </button>
+            </div>
+          ))}
+          <div className="flex gap-2 px-5 py-3 bg-secondary/30">
+            <input
+              className={cn(iCls, "flex-1 text-[13px]")}
+              value={newGPFieldLabel}
+              onChange={e => setNewGPFieldLabel(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && addCustomGPField()}
+              placeholder="Add custom field label (e.g. Material, PO No…)"
+            />
+            <button onClick={addCustomGPField} className="btn-ghost flex-shrink-0 text-[12px]">+ Add Field</button>
+          </div>
         </div>
-      </Card>
+      </AccordionSection>
     </div>
   );
 }
@@ -579,6 +733,198 @@ function TeamTab() {
     </div>
   );
 }
+
+// ─── Locations Tab ────────────────────────────────────────────────────────────
+
+type OfficeRow = { id: string; name: string; city: string; address?: string | null; isActive: boolean };
+
+function LocationsTab() {
+  const qc = useQueryClient();
+  const { data: offices = [] } = useListOffices() as { data: OfficeRow[] };
+  const createOfficeMut = useCreateOffice();
+  const updateOfficeMut = useUpdateOffice();
+  const deleteOfficeMut = useDeleteOffice();
+
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newCity, setNewCity] = useState("");
+  const [newAddr, setNewAddr] = useState("");
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editCity, setEditCity] = useState("");
+  const [editAddr, setEditAddr] = useState("");
+
+  const refetch = () => qc.invalidateQueries({ queryKey: ["listOffices"] });
+
+  const handleAdd = () => {
+    if (!newName.trim() || !newCity.trim()) { toast.error("Name and city are required"); return; }
+    createOfficeMut.mutate(
+      { data: { name: newName.trim(), city: newCity.trim(), address: newAddr.trim() || undefined } },
+      {
+        onSuccess: () => { toast.success("Location added"); setAdding(false); setNewName(""); setNewCity(""); setNewAddr(""); refetch(); },
+        onError: () => toast.error("Failed to add location"),
+      }
+    );
+  };
+
+  const startEdit = (o: OfficeRow) => {
+    setEditId(o.id); setEditName(o.name); setEditCity(o.city); setEditAddr(o.address ?? "");
+  };
+
+  const saveEdit = () => {
+    if (!editId) return;
+    if (!editName.trim() || !editCity.trim()) { toast.error("Name and city are required"); return; }
+    updateOfficeMut.mutate(
+      { officeId: editId, data: { name: editName.trim(), city: editCity.trim(), address: editAddr.trim() || undefined } },
+      {
+        onSuccess: () => { toast.success("Location updated"); setEditId(null); refetch(); },
+        onError: () => toast.error("Failed to update location"),
+      }
+    );
+  };
+
+  const toggleActive = (o: OfficeRow) => {
+    updateOfficeMut.mutate(
+      { officeId: o.id, data: { isActive: !o.isActive } },
+      {
+        onSuccess: () => { toast.success(o.isActive ? "Location deactivated" : "Location activated"); refetch(); },
+        onError: () => toast.error("Failed to update"),
+      }
+    );
+  };
+
+  const handleDelete = (id: string) => {
+    deleteOfficeMut.mutate(
+      { officeId: id },
+      {
+        onSuccess: () => { toast.success("Location removed"); refetch(); },
+        onError: () => toast.error("Failed to remove"),
+      }
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[13px] font-semibold text-foreground">Office Locations</p>
+          <p className="text-[12px] text-muted-foreground">Add and manage the offices / branches for your organisation</p>
+        </div>
+        <button onClick={() => setAdding(true)} className="btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3.5 h-3.5">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Add Location
+        </button>
+      </div>
+
+      {adding && (
+        <Card title="New Location">
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Office Name *">
+                <input className={iCls} value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Mumbai HQ" />
+              </Field>
+              <Field label="City *">
+                <input className={iCls} value={newCity} onChange={e => setNewCity(e.target.value)} placeholder="e.g. Mumbai" />
+              </Field>
+            </div>
+            <Field label="Address (optional)">
+              <input className={iCls} value={newAddr} onChange={e => setNewAddr(e.target.value)} placeholder="e.g. 4th Floor, Bandra Kurla Complex" />
+            </Field>
+            <div className="flex gap-2 justify-end pt-1">
+              <button onClick={() => setAdding(false)} className="btn-ghost">Cancel</button>
+              <button onClick={handleAdd} disabled={createOfficeMut.isPending} className="btn-primary">
+                {createOfficeMut.isPending ? "Saving…" : "Save Location"}
+              </button>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {offices.length === 0 && !adding && (
+        <div className="border border-dashed border-border rounded-xl py-12 text-center text-muted-foreground text-[13px]">
+          No locations yet. Add your first office above.
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {offices.map(o => (
+          <div key={o.id} className={cn("bg-card border border-border rounded-xl overflow-hidden", !o.isActive && "opacity-60")}>
+            {editId === o.id ? (
+              <div className="p-4 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Office Name *">
+                    <input className={iCls} value={editName} onChange={e => setEditName(e.target.value)} />
+                  </Field>
+                  <Field label="City *">
+                    <input className={iCls} value={editCity} onChange={e => setEditCity(e.target.value)} />
+                  </Field>
+                </div>
+                <Field label="Address">
+                  <input className={iCls} value={editAddr} onChange={e => setEditAddr(e.target.value)} placeholder="Optional" />
+                </Field>
+                <div className="flex gap-2 justify-end pt-1">
+                  <button onClick={() => setEditId(null)} className="btn-ghost">Cancel</button>
+                  <button onClick={saveEdit} disabled={updateOfficeMut.isPending} className="btn-primary">
+                    {updateOfficeMut.isPending ? "Saving…" : "Save Changes"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-4 px-4 py-3.5">
+                <div className="w-9 h-9 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center flex-shrink-0">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#c06b2c" strokeWidth="1.8" className="w-4.5 h-4.5">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    <polyline points="9 22 9 12 15 12 15 22"/>
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[13px] font-semibold text-foreground">{o.name}</span>
+                    {!o.isActive && (
+                      <span className="text-[10px] font-bold bg-secondary text-muted-foreground px-1.5 py-0.5 rounded-full">Inactive</span>
+                    )}
+                  </div>
+                  <div className="text-[12px] text-muted-foreground mt-0.5">
+                    {o.city}{o.address ? ` · ${o.address}` : ""}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => toggleActive(o)}
+                    className={cn("w-9 h-5 rounded-full relative transition-colors", o.isActive ? "bg-primary" : "bg-border")}
+                  >
+                    <span className={cn("absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all", o.isActive ? "left-[18px]" : "left-0.5")} />
+                  </button>
+                  <button
+                    onClick={() => startEdit(o)}
+                    className="text-[12px] text-muted-foreground border border-border rounded-lg px-2.5 py-1 hover:bg-secondary transition-colors"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(o.id)}
+                    className="text-[12px] text-destructive border border-destructive/30 rounded-lg px-2.5 py-1 hover:bg-red-50 transition-colors"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-[12px] text-blue-700 flex items-start gap-2">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 flex-shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Each location appears in the office picker. Users are assigned to a location during onboarding. Inactive locations won't appear for new visitors.
+      </div>
+    </div>
+  );
+}
+
+// ─── Users in Team Tab (real API) ─────────────────────────────────────────────
 
 // ─── Notifications Tab ────────────────────────────────────────────────────────
 
