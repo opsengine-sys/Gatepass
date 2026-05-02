@@ -1,6 +1,7 @@
 import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { HeroShader } from "@/components/HeroShader";
 
 const features = [
   {
@@ -128,13 +129,59 @@ const badgeBg: Record<string, string> = {
   Growth: "bg-blue-50 text-blue-600",
 };
 
-function AnimatedGradient() {
+function HeroBg() {
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none select-none" aria-hidden>
-      <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[900px] h-[500px] rounded-full opacity-[0.07]"
-        style={{ background: "radial-gradient(ellipse, #c06b2c 0%, transparent 70%)" }} />
-      <div className="absolute top-1/2 -right-40 w-[400px] h-[400px] rounded-full opacity-[0.04]"
-        style={{ background: "radial-gradient(circle, #c06b2c 0%, transparent 70%)" }} />
+    <div className="absolute inset-0 pointer-events-none select-none overflow-hidden" aria-hidden>
+
+      {/* ① CSS base — visible immediately, no JS required */}
+      {/* Large warm-orange ellipse top-left */}
+      <div className="absolute" style={{
+        top: "-10%", left: "-5%",
+        width: "70%", height: "80%",
+        borderRadius: "50%",
+        background: "radial-gradient(ellipse at center, rgba(192,107,44,0.22) 0%, transparent 70%)",
+        filter: "blur(48px)",
+      }} />
+      {/* Mid amber blob top-right */}
+      <div className="absolute" style={{
+        top: "-15%", right: "-8%",
+        width: "55%", height: "75%",
+        borderRadius: "50%",
+        background: "radial-gradient(ellipse at center, rgba(217,143,60,0.18) 0%, transparent 68%)",
+        filter: "blur(56px)",
+      }} />
+      {/* Soft peach centre glow */}
+      <div className="absolute" style={{
+        top: "10%", left: "25%",
+        width: "50%", height: "60%",
+        borderRadius: "50%",
+        background: "radial-gradient(ellipse at center, rgba(251,191,114,0.15) 0%, transparent 65%)",
+        filter: "blur(40px)",
+      }} />
+      {/* Warm lower-left accent */}
+      <div className="absolute" style={{
+        bottom: "5%", left: "5%",
+        width: "35%", height: "45%",
+        borderRadius: "50%",
+        background: "radial-gradient(ellipse at center, rgba(192,107,44,0.10) 0%, transparent 70%)",
+        filter: "blur(36px)",
+      }} />
+
+      {/* ② Dot grid for texture */}
+      <div className="absolute inset-0" style={{
+        backgroundImage: "radial-gradient(circle, rgba(192,107,44,0.14) 1px, transparent 1px)",
+        backgroundSize: "30px 30px",
+        maskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 75%, transparent 100%)",
+        WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 75%, transparent 100%)",
+      }} />
+
+      {/* ③ WebGL animated layer (adds organic motion on top of CSS) */}
+      <HeroShader className="absolute inset-0 w-full h-full" />
+
+      {/* ④ Bottom fade — blend back to page background */}
+      <div className="absolute inset-x-0 bottom-0 h-32" style={{
+        background: "linear-gradient(to bottom, transparent, hsl(var(--background)))",
+      }} />
     </div>
   );
 }
@@ -220,8 +267,8 @@ export function LandingPage() {
       <main className="flex-1">
 
         {/* ── Hero ──────────────────────────────────────────────── */}
-        <section className="relative pt-24 pb-20 px-6 overflow-hidden">
-          <AnimatedGradient />
+        <section className="relative pt-28 pb-24 px-6 overflow-hidden">
+          <HeroBg />
           <div className="max-w-4xl mx-auto text-center relative z-10">
 
             <div className="inline-flex items-center gap-2 bg-primary/8 border border-primary/20 text-primary rounded-full px-3.5 py-1.5 text-[12px] font-semibold mb-8">
