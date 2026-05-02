@@ -1,0 +1,1833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>GatePass — Visitor & Pass Management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f4f6f4;--bg2:#ffffff;--bg3:#eef2ee;--bg4:#e2e8e2;
+  --border:#dce4dc;--border2:#c4d0c4;
+  --text:#0f1a0f;--text2:#2d3d2d;--muted:#637063;--muted2:#9aaa9a;
+  --accent:#1e7d3a;--accent2:#175f2b;--accent3:#0f4020;
+  --accent-d:rgba(30,125,58,.09);--accent-g:rgba(30,125,58,.05);
+  --accent-l:rgba(30,125,58,.15);
+  --green:#1e7d3a;--green-d:rgba(30,125,58,.1);--green-l:#e8f4eb;
+  --red:#c0392b;--red-d:rgba(192,57,43,.1);
+  --blue:#1a5fa8;--blue-d:rgba(26,95,168,.1);
+  --purple:#6b3fa0;--purple-d:rgba(107,63,160,.1);
+  --amber:#8a6a0a;--amber-d:rgba(138,106,10,.12);
+  --slate:#3d5063;--slate-d:rgba(61,80,99,.1);
+  --teal:#176878;--teal-d:rgba(23,104,120,.1);
+  --gold:#7a5c00;--gold-d:rgba(122,92,0,.1);
+  --sh:0 1px 3px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.07);
+  --sh-sm:0 1px 2px rgba(0,0,0,.04);
+  --sh-lg:0 8px 40px rgba(0,0,0,.13);
+  --r:8px;--r-lg:13px;--r-xl:20px;
+  --ui:'Plus Jakarta Sans',sans-serif;
+  --ser:'DM Serif Display',serif;
+  --mono:'JetBrains Mono',monospace;
+}
+html,body{height:100%;font-family:var(--ui);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;font-size:14px}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+
+/* ─── App Shell ──────────────────────────────────────────────────────────── */
+.app{display:flex;height:100vh;overflow:hidden}
+
+/* ─── Sidebar ────────────────────────────────────────────────────────────── */
+.sidebar{width:232px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;transition:transform .25s ease;z-index:50}
+.sidebar-head{padding:16px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.logo-mark{width:32px;height:32px;background:var(--accent);border-radius:8px;display:grid;place-items:center;flex-shrink:0}
+.logo-mark svg{color:#fff;width:17px;height:17px}
+.logo-title{font-weight:800;font-size:14px;letter-spacing:-.4px;color:var(--text)}
+.logo-sub{font-size:9px;color:var(--muted2);letter-spacing:.3px;margin-top:.5px}
+.sidebar-user{margin:10px 12px;background:var(--green-l);border:1px solid rgba(30,125,58,.2);border-radius:8px;padding:9px 11px;display:flex;align-items:center;gap:9px}
+.user-avatar{width:28px;height:28px;border-radius:50%;background:var(--accent);display:grid;place-items:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0}
+.user-name{font-size:12px;font-weight:600;color:var(--text2)}
+.user-role{font-size:10px;color:var(--accent);font-weight:500}
+.user-loc{font-size:9.5px;color:var(--muted2);margin-top:1px}
+.sidebar-nav{flex:1;padding:6px 8px;overflow-y:auto}
+.nav-sec{font-size:9px;color:var(--muted2);text-transform:uppercase;letter-spacing:1.2px;padding:13px 8px 4px;font-weight:700}
+.nav-item{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:7px;cursor:pointer;transition:all .12s;font-size:12.5px;color:var(--muted);font-weight:500;margin-bottom:1px;user-select:none}
+.nav-item:hover{background:var(--bg3);color:var(--text2)}
+.nav-item.active{background:var(--accent-d);color:var(--accent);font-weight:600}
+.nav-item.active-gp{background:var(--teal-d);color:var(--teal);font-weight:600}
+.nav-item svg{flex-shrink:0;width:15px;height:15px}
+.nav-item.locked{opacity:.4;cursor:not-allowed}
+.nav-item.locked:hover{background:transparent;color:var(--muted)}
+.nav-badge{margin-left:auto;background:var(--accent);color:#fff;font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:99px;min-width:18px;text-align:center}
+.sidebar-foot{padding:10px 12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+.office-chip{background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:8px 10px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:border-color .14s}
+.office-chip:hover{border-color:var(--border2)}
+.office-chip.no-change{cursor:default}
+.office-chip.no-change:hover{border-color:var(--border)}
+.office-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;animation:pulse 2.5s infinite}
+.office-name{font-size:11px;font-weight:600;color:var(--text2);flex:1;line-height:1.3}
+.office-sub{font-size:9px;color:var(--muted2)}
+.logout-btn{display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:7px;cursor:pointer;font-size:12px;color:var(--muted);transition:all .12s;font-weight:500}
+.logout-btn:hover{background:var(--red-d);color:var(--red)}
+.logout-btn svg{width:14px;height:14px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ─── Main ───────────────────────────────────────────────────────────────── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{height:50px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 18px;gap:10px;background:var(--bg2);flex-shrink:0}
+.topbar-title{font-weight:700;font-size:13.5px;flex:1;letter-spacing:-.2px}
+.mod-chip{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;padding:3px 8px;border-radius:99px}
+.mod-v{background:var(--accent-d);color:var(--accent)}
+.mod-gp{background:var(--teal-d);color:var(--teal)}
+.live-pill{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);background:var(--bg3);border:1px solid var(--border);border-radius:99px;padding:3px 9px}
+.live-dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 2.5s infinite}
+.content{flex:1;overflow-y:auto;padding:22px}
+
+/* ─── Buttons ────────────────────────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:7px;font-size:12.5px;font-weight:600;cursor:pointer;border:none;transition:all .14s;font-family:var(--ui);white-space:nowrap;letter-spacing:-.1px}
+.btn svg{width:13px;height:13px;flex-shrink:0}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent2);box-shadow:0 3px 10px rgba(30,125,58,.28)}
+.btn-teal{background:var(--teal);color:#fff}
+.btn-teal:hover{background:#125568}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border)}
+.btn-ghost:hover{background:var(--bg3);border-color:var(--border2)}
+.btn-danger{background:var(--red-d);color:var(--red);border:1px solid rgba(192,57,43,.18)}
+.btn-danger:hover{background:rgba(192,57,43,.18)}
+.btn-success{background:var(--green-d);color:var(--green);border:1px solid rgba(30,125,58,.2)}
+.btn-success:hover{background:rgba(30,125,58,.18)}
+.btn-amber{background:var(--amber-d);color:var(--amber);border:1px solid rgba(138,106,10,.2)}
+.btn-amber:hover{background:rgba(138,106,10,.2)}
+.btn-sm{padding:4px 9px;font-size:11.5px;border-radius:6px}
+.btn-sm svg{width:12px;height:12px}
+
+/* ─── Cards ──────────────────────────────────────────────────────────────── */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm)}
+.card-hdr{padding:16px 18px 0;display:flex;align-items:center;justify-content:space-between}
+.card-title{font-weight:700;font-size:12.5px;letter-spacing:-.1px}
+.card-body{padding:14px 18px}
+
+/* ─── Stats ──────────────────────────────────────────────────────────────── */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;transition:all .18s;box-shadow:var(--sh-sm)}
+.stat-card:hover{box-shadow:var(--sh);transform:translateY(-1px)}
+.stat-ico{width:30px;height:30px;border-radius:7px;display:grid;place-items:center;margin-bottom:11px}
+.stat-ico svg{width:16px;height:16px}
+.stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.9px;font-weight:600;margin-bottom:4px}
+.stat-value{font-size:26px;font-weight:800;line-height:1;letter-spacing:-.5px}
+.stat-delta{font-size:10px;color:var(--muted2);margin-top:4px}
+
+/* ─── Table ──────────────────────────────────────────────────────────────── */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead tr{border-bottom:1px solid var(--border)}
+th{padding:8px 14px;text-align:left;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.9px;font-weight:700;white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s;cursor:pointer}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--bg3)}
+td{padding:9px 14px;font-size:12.5px;vertical-align:middle}
+.td-name{display:flex;align-items:center;gap:8px}
+.av{width:28px;height:28px;border-radius:50%;background:var(--accent-d);border:1px solid var(--border);display:grid;place-items:center;font-size:10px;font-weight:700;color:var(--accent);flex-shrink:0;overflow:hidden}
+.av img{width:100%;height:100%;object-fit:cover}
+
+/* ─── Badges ─────────────────────────────────────────────────────────────── */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:600;white-space:nowrap}
+.badge-green{background:var(--green-d);color:var(--green)}
+.badge-red{background:var(--red-d);color:var(--red)}
+.badge-blue{background:var(--blue-d);color:var(--blue)}
+.badge-purple{background:var(--purple-d);color:var(--purple)}
+.badge-amber{background:var(--amber-d);color:var(--amber)}
+.badge-slate{background:var(--slate-d);color:var(--slate)}
+.badge-teal{background:var(--teal-d);color:var(--teal)}
+.badge-gold{background:var(--gold-d);color:var(--gold)}
+.sdot{width:4px;height:4px;border-radius:50%;background:currentColor;display:inline-block}
+
+/* ─── Visitor ID chip ────────────────────────────────────────────────────── */
+.vid{display:inline-flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:2px 7px;font-family:var(--mono);font-size:9.5px;color:var(--muted);letter-spacing:.4px}
+.vid.active{background:rgba(30,125,58,.06);border-color:rgba(30,125,58,.25);color:var(--green)}
+.vid.on-break{background:var(--amber-d);border-color:rgba(138,106,10,.25);color:var(--amber)}
+
+/* ─── Modal ──────────────────────────────────────────────────────────────── */
+.overlay{position:fixed;inset:0;background:rgba(15,26,15,.45);backdrop-filter:blur(3px);z-index:200;display:flex;align-items:center;justify-content:center;padding:14px}
+.overlay.hidden{display:none}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r-xl);width:100%;max-width:540px;max-height:92vh;overflow-y:auto;box-shadow:var(--sh-lg)}
+.modal-lg{max-width:700px}
+.modal-hdr{padding:20px 20px 0;display:flex;align-items:flex-start;justify-content:space-between}
+.modal-title{font-family:var(--ser);font-size:18px;font-weight:400;color:var(--text)}
+.modal-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.modal-close{background:var(--bg3);border:1px solid var(--border);border-radius:6px;width:24px;height:24px;display:grid;place-items:center;cursor:pointer;color:var(--muted);flex-shrink:0;transition:all .12s}
+.modal-close:hover{background:var(--bg4);color:var(--text)}
+.modal-close svg{width:13px;height:13px}
+.modal-body{padding:18px 20px}
+.modal-foot{padding:0 20px 20px;display:flex;gap:7px;justify-content:flex-end;flex-wrap:wrap}
+
+/* ─── Forms ──────────────────────────────────────────────────────────────── */
+.sdiv{font-size:9.5px;color:var(--muted2);text-transform:uppercase;letter-spacing:1px;font-weight:700;padding:14px 0 9px;border-bottom:1px solid var(--border);margin-bottom:12px}
+.fg{margin-bottom:11px}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.flabel{display:block;font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+.req{color:var(--red)}
+.fi{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:8px 11px;font-size:13px;color:var(--text);font-family:var(--ui);transition:all .14s;outline:none;appearance:none;-webkit-appearance:none}
+.fi:focus{border-color:var(--accent);background:var(--bg2);box-shadow:0 0 0 3px var(--accent-g)}
+.fi::placeholder{color:var(--muted2)}
+select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%239aaa9a' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;padding-right:28px;cursor:pointer}
+textarea.fi{resize:vertical;min-height:64px;line-height:1.55}
+.ferr{font-size:10.5px;color:var(--red);margin-top:3px;display:flex;align-items:center;gap:3px}
+.ferr svg{width:11px;height:11px;flex-shrink:0}
+
+/* Type selector */
+.tgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.tcard{border:1.5px solid var(--border);border-radius:8px;padding:9px 11px;cursor:pointer;transition:all .12s;font-size:12px;font-weight:500;color:var(--text2);text-align:center;line-height:1.35;user-select:none}
+.tcard:hover{border-color:var(--border2);background:var(--bg3)}
+.tcard.sel{background:var(--accent-d);border-color:var(--accent);color:var(--accent)}
+
+/* GP type */
+.gptgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.gptcard{border:1.5px solid var(--border);border-radius:9px;padding:11px 13px;cursor:pointer;transition:all .12s;user-select:none}
+.gptcard:hover{border-color:var(--border2);background:var(--bg3)}
+.gptcard.sel{background:var(--teal-d);border-color:var(--teal)}
+.gptcard.sel .gptcard-title{color:var(--teal)}
+.gptcard-title{font-size:12.5px;font-weight:600;color:var(--text2);margin-bottom:2px}
+.gptcard-sub{font-size:10.5px;color:var(--muted)}
+
+/* Photo */
+.pzone{border:1.5px dashed var(--border2);border-radius:var(--r);aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;background:var(--bg3);cursor:pointer;transition:border-color .14s}
+.pzone:hover{border-color:var(--accent)}
+.pzone video,.pzone img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+.pph{display:flex;flex-direction:column;align-items:center;gap:7px;color:var(--muted);z-index:1;pointer-events:none}
+.pph svg{width:26px;height:26px;opacity:.45}
+.pph span{font-size:11.5px}
+.pctrls{display:flex;gap:6px;margin-top:6px}
+
+/* Link box */
+.link-box{display:flex;align-items:center;gap:7px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:7px 11px}
+.link-box code{flex:1;font-size:10px;color:var(--muted);font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Badge card */
+.bcard{background:#fff;border-radius:13px;padding:0;text-align:center;font-family:'Plus Jakarta Sans',sans-serif;color:#0f1a0f;width:310px;overflow:hidden;box-shadow:0 3px 20px rgba(0,0,0,.11)}
+.bcard-strip{height:7px;width:100%}
+.bcard-inner{padding:20px 18px 16px}
+.bcard-org{font-size:7.5px;text-transform:uppercase;letter-spacing:2.5px;color:#999;margin-bottom:13px;font-weight:700}
+.bcard-photo{width:64px;height:64px;border-radius:50%;margin:0 auto 11px;border:2.5px solid #eef2ee;overflow:hidden;background:#f4f6f4;display:flex;align-items:center;justify-content:center}
+.bcard-photo img{width:100%;height:100%;object-fit:cover}
+.bcard-init{font-size:19px;font-weight:800;color:#c0c8c0}
+.bcard-name{font-size:16px;font-weight:800;margin-bottom:3px;letter-spacing:-.3px}
+.bcard-co{font-size:10.5px;color:#888;margin-bottom:9px}
+.bcard-pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:11px}
+.bcard-vid{background:#f4f6f4;border:1.5px solid #dce4dc;border-radius:9px;padding:8px 11px;margin-bottom:11px;text-align:left}
+.bcard-vid-lbl{font-size:7.5px;text-transform:uppercase;letter-spacing:1.5px;color:#aaa;font-weight:700;margin-bottom:3px}
+.bcard-vid-val{font-family:monospace;font-size:13.5px;font-weight:700;letter-spacing:.4px}
+.bcard-vid-note{font-size:8.5px;color:#888;margin-top:2px}
+.bcard-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;text-align:left;margin-bottom:9px}
+.bcard-cell{background:#f4f6f4;border-radius:6px;padding:5px 7px}
+.bcard-key{font-size:7px;text-transform:uppercase;letter-spacing:1px;color:#bbb;font-weight:700;margin-bottom:1px}
+.bcard-val{font-size:10px;font-weight:600;color:#2d3d2d}
+.bcard-foot{background:#eef2ee;border-top:1px solid #dce4dc;padding:6px 11px;font-size:7.5px;color:#9aaa9a;text-transform:uppercase;letter-spacing:1px;display:flex;justify-content:space-between}
+
+/* GP print card - A4 size versions */
+.gpcard{background:#fff;border-radius:13px;overflow:hidden;width:330px;font-family:'Plus Jakarta Sans',sans-serif;box-shadow:0 3px 20px rgba(0,0,0,.11)}
+.gpcard-a4{background:#fff;border-radius:0;overflow:visible;width:210mm;min-height:297mm;font-family:'Plus Jakarta Sans',sans-serif;box-shadow:0 3px 20px rgba(0,0,0,.11);padding:20mm;box-sizing:border-box}
+.gpcard-strip{height:6px}
+.gpcard-inner{padding:18px}
+.gpcard-a4-inner{padding:0}
+.gpcard-org{font-size:7.5px;letter-spacing:2px;text-transform:uppercase;color:#999;font-weight:700;margin-bottom:11px}
+.gpcard-title{font-size:14px;font-weight:700;margin-bottom:3px}
+.gpcard-pill{display:inline-block;padding:2px 8px;border-radius:99px;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:11px}
+.gpcard-id{background:#f4f6f4;border:1.5px solid #dce4dc;border-radius:8px;padding:8px 11px;margin-bottom:11px}
+.gpcard-id-lbl{font-size:7.5px;text-transform:uppercase;letter-spacing:1.5px;color:#aaa;font-weight:700;margin-bottom:3px}
+.gpcard-id-val{font-family:monospace;font-size:13px;font-weight:700;letter-spacing:.4px}
+.gpcard-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:9px}
+.gpcard-cell{background:#f4f6f4;border-radius:6px;padding:5px 7px}
+.gpcard-key{font-size:7px;text-transform:uppercase;letter-spacing:1px;color:#bbb;font-weight:700;margin-bottom:1px}
+.gpcard-val{font-size:10px;font-weight:600;color:#2d3d2d}
+.gpcard-items{background:#f4f6f4;border-radius:7px;padding:8px 10px;margin-bottom:9px}
+.gpcard-items-hdr{font-size:7.5px;text-transform:uppercase;letter-spacing:1px;color:#aaa;font-weight:700;margin-bottom:4px}
+.gpcard-item{font-size:10px;color:#444;padding:2.5px 0;border-bottom:1px solid #e8eee8}
+.gpcard-item:last-child{border-bottom:none}
+.gpcard-a4-item{font-size:13px;color:#2d3d2d;padding:8px 0;border-bottom:1px solid #e8eee8;display:flex;justify-content:space-between}
+.gpcard-a4-item:last-child{border-bottom:none}
+.gpcard-foot{background:#eef2ee;border-top:1px solid #dce4dc;padding:6px 11px;font-size:7.5px;color:#9aaa9a;text-transform:uppercase;letter-spacing:1px;display:flex;justify-content:space-between}
+
+/* Page */
+.phdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+.ptitle{font-family:var(--ser);font-size:20px;font-weight:400;color:var(--text);letter-spacing:-.2px}
+.psub{font-size:12px;color:var(--muted);margin-top:2px}
+.fbar{display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.sbar{display:flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:0 10px}
+.sbar input{background:none;border:none;outline:none;font-size:12.5px;color:var(--text);font-family:var(--ui);padding:7px 0;width:190px}
+.sbar input::placeholder{color:var(--muted2)}
+.sbar svg{width:13px;height:13px;color:var(--muted2);flex-shrink:0}
+
+/* Timeline */
+.tl-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.tl-item:last-child{border-bottom:none}
+.tl-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.tl-title{font-size:12px;font-weight:500;color:var(--text2)}
+.tl-time{font-size:10px;color:var(--muted2);margin-top:1px}
+
+/* Toast */
+.toast-wrap{position:fixed;bottom:18px;right:18px;z-index:300;display:flex;flex-direction:column;gap:6px;pointer-events:none}
+.toast{background:var(--text);color:#fff;border-radius:8px;padding:9px 14px;font-size:12px;box-shadow:var(--sh-lg);display:flex;align-items:center;gap:8px;animation:tIn .2s ease;min-width:190px}
+.toast svg{width:13px;height:13px;flex-shrink:0}
+@keyframes tIn{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+
+/* Empty */
+.empty{text-align:center;padding:40px 18px;color:var(--muted)}
+.empty svg{width:32px;height:32px;opacity:.18;margin:0 auto 9px;display:block}
+.empty h3{font-size:13.5px;font-weight:600;color:var(--text2);margin-bottom:3px}
+.empty p{font-size:12px}
+
+/* Info box */
+.ibox{border-radius:8px;padding:10px 12px;font-size:12px;display:flex;align-items:flex-start;gap:7px;line-height:1.55;margin-bottom:14px}
+.ibox svg{width:13px;height:13px;flex-shrink:0;margin-top:1px}
+.ibox-green{background:var(--accent-d);border:1px solid rgba(30,125,58,.2);color:var(--accent2)}
+.ibox-amber{background:var(--amber-d);border:1px solid rgba(138,106,10,.2);color:var(--amber)}
+.ibox-red{background:var(--red-d);border:1px solid rgba(192,57,43,.18);color:var(--red)}
+
+/* Dropdown */
+.ddwrap{position:relative;display:inline-block}
+.ddmenu{position:absolute;right:0;top:calc(100% + 5px);background:var(--bg2);border:1px solid var(--border);border-radius:9px;box-shadow:var(--sh);z-index:60;min-width:155px;padding:4px;display:none}
+.ddmenu.open{display:block}
+.dditem{padding:7px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;color:var(--text2)}
+.dditem:hover{background:var(--bg3)}
+
+/* Office picker */
+.off-opt{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-radius:7px;cursor:pointer;font-size:12.5px;transition:all .12s}
+.off-opt:hover{background:var(--bg3)}
+.off-opt.sel{background:var(--accent-d);color:var(--accent);font-weight:600}
+.off-opt svg{width:13px;height:13px}
+
+/* RBAC ────────────────────────────────────────────────────────────────────── */
+.login-wrap{min-height:100vh;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px}
+.login-card{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:32px 36px;width:100%;max-width:440px;box-shadow:var(--sh-lg)}
+.login-logo{text-align:center;margin-bottom:24px}
+.login-logo-icon{width:48px;height:48px;background:var(--accent);border-radius:12px;display:grid;place-items:center;margin:0 auto 14px}
+.login-logo-icon svg{color:#fff;width:24px;height:24px}
+.login-logo h1{font-family:var(--ser);font-size:23px;color:var(--text)}
+.login-logo p{font-size:12.5px;color:var(--muted);margin-top:4px}
+.role-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.role-card{border:1.5px solid var(--border);border-radius:9px;padding:11px 12px;cursor:pointer;transition:all .14s;user-select:none}
+.role-card:hover{border-color:var(--border2);background:var(--bg3)}
+.role-card.sel{border-color:var(--accent);background:var(--accent-d)}
+.role-card-top{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-bottom:3px;flex-wrap:nowrap;min-width:0}
+.role-card-name{font-size:11.5px;font-weight:700;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.role-card-desc{font-size:10px;color:var(--muted);line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.role-card.sel .role-card-name{color:var(--accent)}
+.role-badge{display:inline-flex;align-items:center;flex-shrink:0;padding:1px 6px;border-radius:99px;font-size:9px;font-weight:700;white-space:nowrap}
+.rb-super{background:var(--gold-d);color:var(--gold)}
+.rb-admin{background:var(--accent-d);color:var(--accent)}
+.rb-sec{background:var(--blue-d);color:var(--blue)}
+.rb-viewer{background:var(--slate-d);color:var(--slate)}
+
+/* ─── Micro animations ───────────────────────────────────────────────────── */
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+@keyframes scaleIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+.anim-fade{animation:fadeIn .22s ease both}
+.anim-slide{animation:slideDown .2s ease both}
+.anim-scale{animation:scaleIn .18s ease both}
+.content>*{animation:fadeIn .25s ease both}
+.stat-card{animation:fadeIn .28s ease both}
+.stat-card:nth-child(1){animation-delay:.03s}
+.stat-card:nth-child(2){animation-delay:.07s}
+.stat-card:nth-child(3){animation-delay:.11s}
+.stat-card:nth-child(4){animation-delay:.15s}
+.nav-item{transition:background .12s,color .12s,transform .1s}
+.nav-item:hover{transform:translateX(2px)}
+.nav-item.active,.nav-item.active-gp{transform:none}
+.btn{transition:background .14s,box-shadow .14s,transform .1s,color .14s}
+.btn:hover{transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+.card{animation:fadeIn .25s ease both}
+tbody tr{transition:background .1s,transform .1s}
+tbody tr:hover{transform:translateX(1px)}
+.modal{animation:scaleIn .2s ease both}
+.overlay{animation:fadeIn .18s ease both}
+.toast{animation:slideDown .22s cubic-bezier(.34,1.56,.64,1) both}
+.badge{transition:opacity .12s}
+.tl-item{animation:fadeIn .2s ease both}
+.tl-item:nth-child(1){animation-delay:.02s}
+.tl-item:nth-child(2){animation-delay:.05s}
+.tl-item:nth-child(3){animation-delay:.08s}
+.ddmenu{animation:slideDown .15s ease both}
+.role-card{transition:border-color .14s,background .14s,transform .12s}
+.role-card:hover{transform:translateY(-1px)}
+.login-card{animation:scaleIn .25s cubic-bezier(.34,1.3,.64,1)}
+.sidebar-user{animation:fadeIn .3s ease both}
+.fi{transition:border-color .14s,background .14s,box-shadow .14s}
+.pzone{transition:border-color .18s,background .18s}
+.off-opt{transition:background .12s,transform .1s}
+.off-opt:hover{transform:translateX(3px)}
+.office-chip{transition:border-color .14s,background .14s}
+
+/* ─── Settings page ──────────────────────────────────────────────────────── */
+.settings-tabs{display:flex;gap:2px;background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:3px;margin-bottom:20px;width:fit-content}
+.stab{padding:6px 14px;border-radius:7px;font-size:12.5px;font-weight:500;cursor:pointer;color:var(--muted);transition:all .14s}
+.stab:hover{color:var(--text2)}
+.stab.active{background:var(--bg2);color:var(--text);font-weight:600;box-shadow:var(--sh-sm)}
+.user-row{display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid var(--border);animation:fadeIn .2s ease both}
+.user-row:last-child{border-bottom:none}
+.user-row:hover{background:var(--bg3)}
+.user-av{width:32px;height:32px;border-radius:50%;background:var(--accent);display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+.color-swatch{width:28px;height:28px;border-radius:6px;cursor:pointer;border:2px solid transparent;transition:all .14s}
+.color-swatch:hover,.color-swatch.active{border-color:var(--text);transform:scale(1.1)}
+.template-card{border:1.5px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;transition:all .14s;animation:fadeIn .2s ease both}
+.template-card:hover{border-color:var(--accent);box-shadow:var(--sh)}
+.template-card.active{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-d)}
+.template-preview{background:var(--bg3);height:100px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted)}
+.template-label{padding:9px 12px;font-size:12px;font-weight:600;border-top:1px solid var(--border)}
+
+/* ─── Integration cards ──────────────────────────────────────────────────── */
+.int-card{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1px solid var(--border);border-radius:10px;background:var(--bg2);transition:all .14s;animation:fadeIn .22s ease both}
+.int-card:hover{border-color:var(--border2);box-shadow:var(--sh)}
+.int-logo{width:36px;height:36px;border-radius:8px;display:grid;place-items:center;flex-shrink:0}
+.int-name{font-size:13px;font-weight:600;color:var(--text2)}
+.int-desc{font-size:11px;color:var(--muted);margin-top:1px}
+.int-status{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:500;margin-left:auto}
+.int-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.toggle{width:36px;height:20px;background:var(--border2);border-radius:99px;cursor:pointer;position:relative;transition:background .18s;flex-shrink:0}
+.toggle.on{background:var(--accent)}
+.toggle-knob{position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left .18s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle.on .toggle-knob{left:19px}
+
+/* Pub page */
+.pub-wrap{min-height:100vh;background:var(--bg);display:flex;flex-direction:column;align-items:center;padding:26px 14px}
+.pub-card{background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:30px;width:100%;max-width:490px;box-shadow:0 4px 24px rgba(0,0,0,.07)}
+.pub-logo{text-align:center;margin-bottom:24px}
+.pub-logo-icon{width:40px;height:40px;background:var(--accent);border-radius:10px;display:grid;place-items:center;margin:0 auto 10px}
+.pub-logo-icon svg{color:#fff;width:21px;height:21px}
+.pub-logo h1{font-family:var(--ser);font-size:20px;color:var(--text)}
+.pub-logo p{font-size:12px;color:var(--muted);margin-top:3px}
+.pub-btn{width:100%;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:11px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:var(--ui);transition:all .14s}
+.pub-btn:hover{background:var(--accent2)}
+.pub-back{display:inline-flex;align-items:center;gap:5px;background:none;border:none;cursor:pointer;color:var(--muted);font-size:12px;font-family:var(--ui);padding:0 0 14px;transition:color .12s}
+.pub-back:hover{color:var(--text)}
+.pub-back svg{width:14px;height:14px}
+
+/* Hamburger */
+.hbg{display:none;background:var(--bg3);border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--muted);padding:5px;align-items:center;justify-content:center}
+.hbg svg{width:19px;height:19px}
+.mob-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.22);z-index:40}
+
+/* Break row */
+.brk-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px}
+.brk-row:last-child{border-bottom:none}
+
+@media(max-width:1100px){.stats-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:768px){
+  .hbg{display:flex}
+  .sidebar{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0);box-shadow:var(--sh-lg)}
+  .mob-ov.open{display:block}
+  .content{padding:14px}
+  .stats-grid{grid-template-columns:1fr 1fr}
+  .fgrid{grid-template-columns:1fr}
+  .tgrid{grid-template-columns:1fr 1fr}
+  .gptgrid{grid-template-columns:1fr}
+  .dash-g{grid-template-columns:1fr!important}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast-wrap" id="toastWrap"></div>
+<script>
+// ── Icons ─────────────────────────────────────────────────────────────────────
+const I={
+  grid:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`,
+  users:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+  log:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
+  link:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`,
+  plus:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+  x:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+  cam:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>`,
+  search:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
+  dl:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
+  badge:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><circle cx="12" cy="10" r="3"/></svg>`,
+  out:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
+  in:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>`,
+  menu:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>`,
+  building:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`,
+  check:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`,
+  copy:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`,
+  print:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>`,
+  retake:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>`,
+  alert:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+  wa:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>`,
+  back:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>`,
+  eye:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`,
+  pin:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`,
+  id:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>`,
+  coffee:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 8h1a4 4 0 0 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V8z"/></svg>`,
+  box:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`,
+  truck:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>`,
+  food:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>`,
+  clip:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>`,
+  shield:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
+  lock:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`,
+  star:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+  img:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`,
+  logout:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
+  settings:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
+  usermgmt:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>`,
+  palette:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12.5" r="1"/><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8z"/></svg>`,
+  template:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>`,
+  integrations:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`,
+  edit2:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+  trash:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`,
+};
+
+// ── Constants ──────────────────────────────────────────────────────────────────
+const OFFICES=[
+  "Hyderabad — Raheja Mindspace",
+  "Hyderabad — DLF Cybercity",
+  "Bangalore — Embassy Tech Village",
+  "Mumbai — BKC",
+  "Chennai — Tidel Park",
+  "Pune — Hinjewadi",
+];
+
+// RBAC: roles and what they can do
+// superadmin → all offices, all actions
+// admin → assigned offices, all actions
+// security → assigned offices, check in/out/break/badge. NO register, view only GP
+// viewer → assigned offices, view only (no actions)
+const ROLES={
+  superadmin:{label:"Super Admin",badge:"rb-super",desc:"All offices, all actions",
+    canRegister:true,canCheckin:true,canCheckout:true,canBreak:true,canBadge:true,
+    canGP:true,canCreateGP:true,canCloseGP:true,canExport:true,canChangeOffice:true,allOffices:true},
+  admin:{label:"Location Admin",badge:"rb-admin",desc:"Assigned office(s), full control",
+    canRegister:true,canCheckin:true,canCheckout:true,canBreak:true,canBadge:true,
+    canGP:true,canCreateGP:true,canCloseGP:true,canExport:true,canChangeOffice:false,allOffices:false},
+  security:{label:"Security Officer",badge:"rb-sec",desc:"Assigned office, check-in/out only",
+    canRegister:false,canCheckin:true,canCheckout:true,canBreak:true,canBadge:true,
+    canGP:false,canCreateGP:false,canCloseGP:false,canExport:false,canChangeOffice:false,allOffices:false},
+  viewer:{label:"Viewer",badge:"rb-viewer",desc:"Assigned office, view only",
+    canRegister:false,canCheckin:false,canCheckout:false,canBreak:false,canBadge:false,
+    canGP:true,canCreateGP:false,canCloseGP:false,canExport:false,canChangeOffice:false,allOffices:false},
+};
+
+// Demo users
+const DEMO_USERS=[
+  {id:"u1",name:"Naga B.",email:"naga@icims.com",role:"superadmin",offices:OFFICES},
+  {id:"u2",name:"Sathish Kumar",email:"sathish@icims.com",role:"admin",offices:[OFFICES[0]]},
+  {id:"u3",name:"Ravi (Security)",email:"ravi.sec@icims.com",role:"security",offices:[OFFICES[0],OFFICES[1]]},
+  {id:"u4",name:"Priya (Security)",email:"priya.sec@icims.com",role:"security",offices:[OFFICES[2]]},
+  {id:"u5",name:"Arjun Viewer",email:"arjun@icims.com",role:"viewer",offices:[OFFICES[0]]},
+];
+
+const VTYPES=[
+  {id:"vendor",    label:"Vendor",              color:"amber", nb:true},
+  {id:"candidate", label:"Interview Candidate", color:"blue",  nb:true},
+  {id:"guest",     label:"Guest",               color:"green", nb:true},
+  {id:"leadership",label:"Leadership Visit",    color:"purple",nb:false},
+  {id:"employee",  label:"Employee (Forgot ID)",color:"slate", nb:true},
+];
+const POC_CFG={
+  vendor:    {show:true,hl:"Host / Point of Contact",pl:"Host Phone"},
+  candidate: {show:true,hl:"HR Point of Contact",    pl:"HR Phone"},
+  guest:     {show:true,hl:"Host Name",               pl:"Host Phone"},
+  leadership:{show:true,hl:"Host / Sponsor",          pl:"Host Phone"},
+  employee:  {show:false},
+};
+const NEEDS_PURPOSE={vendor:true,candidate:true,guest:true,leadership:true,employee:false};
+const TCOLORS={vendor:"#8a6a0a",candidate:"#1a5fa8",guest:"#1e7d3a",leadership:"#6b3fa0",employee:"#3d5063"};
+const GP_TYPES=[
+  {id:"material",  label:"Materials / Supplies",  sub:"Raw materials, equipment, tools",icon:"box"},
+  {id:"food",      label:"Food & Beverages",       sub:"Catering, delivery, pantry",     icon:"food"},
+  {id:"outgoing",  label:"Outgoing Assets",        sub:"Company property leaving",        icon:"truck"},
+  {id:"contractor",label:"Contractor Supplies",    sub:"Contractor tools & equipment",   icon:"clip"},
+];
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function uid6(){return Math.random().toString(36).slice(2,8).toUpperCase();}
+function genVID(){return"GP-"+uid6()+"-"+uid6();}
+function genGPID(){return"GPP-"+uid6();}
+function uid(){return Math.random().toString(36).slice(2,9);}
+function today(){return new Date().toISOString().split("T")[0];}
+function fmtTime(d){if(!d)return"—";return new Date(d).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});}
+function fmtDate(d){if(!d)return"—";return new Date(d).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"});}
+function fmtDT(d){if(!d)return"—";return fmtDate(d)+", "+fmtTime(d);}
+function initials(n){return(n||"?").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2);}
+function escH(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function escAttr(s){return String(s||"").replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/"/g,"&quot;");}
+function sameDay(d1,d2){return new Date(d1).toDateString()===new Date(d2).toDateString();}
+function can(perm){return !!(state.currentUser&&ROLES[state.currentUser.role]?.[perm]);}
+function userOffices(){return state.currentUser?.offices||[];}
+function inUserOffice(office){return can("allOffices")||userOffices().includes(office);}
+
+function typeBH(type){
+  const t=VTYPES.find(v=>v.id===type);
+  return`<span class="badge badge-${t?.color||'slate'}"><span class="sdot"></span>${t?.label||type}</span>`;
+}
+function statusBH(s,ob){
+  if(ob) return`<span class="badge badge-amber"><span class="sdot"></span>On Break</span>`;
+  if(s==="checked-in")  return`<span class="badge badge-green"><span class="sdot"></span>Checked In</span>`;
+  if(s==="checked-out") return`<span class="badge badge-slate"><span class="sdot"></span>Checked Out</span>`;
+  if(s==="pending")     return`<span class="badge badge-amber"><span class="sdot"></span>Pending</span>`;
+  return"";
+}
+function gpStatus(s){
+  if(s==="open")   return`<span class="badge badge-green"><span class="sdot"></span>Open</span>`;
+  if(s==="closed") return`<span class="badge badge-slate"><span class="sdot"></span>Closed</span>`;
+  if(s==="pending")return`<span class="badge badge-amber"><span class="sdot"></span>Pending</span>`;
+  return"";
+}
+function avH(v,sz=28){
+  const fs=Math.round(sz*0.36);
+  if(v.photo)return`<div class="av" style="width:${sz}px;height:${sz}px"><img src="${v.photo}"/></div>`;
+  return`<div class="av" style="width:${sz}px;height:${sz}px;font-size:${fs}px">${initials(v.name)}</div>`;
+}
+function vidH(v){
+  const ob=v.onBreak,active=v.status==="checked-in"&&!ob;
+  return`<span class="vid ${ob?"on-break":active?"active":""}">${I.id} ${escH(v.visitorId||"—")}</span>`;
+}
+function roleBadge(role){
+  const r=ROLES[role];
+  return`<span class="role-badge ${r?.badge||""}">${r?.label||role}</span>`;
+}
+
+// ── Export ─────────────────────────────────────────────────────────────────────
+function exportCSV(){
+  if(!can("canExport")){addToast("No export permission");return;}
+  const loc=state.office;
+  const vs=state.visitors.filter(v=>v.office===loc);
+  const cols=["visitorId","name","company","email","phone","type","host","hostPhone","office","purpose","address","contractRef","serviceType","jobId","interviewRound","relationship","homeOffice","visitAgenda","employeeId","department","status","onBreak","checkin","checkout","breakCount"];
+  const rows=vs.map(v=>cols.map(c=>{
+    const val=c==="breakCount"?(v.breaks||[]).length:v[c];
+    return`"${(val===null||val===undefined?"":String(val)).replace(/"/g,'""')}"`;
+  }).join(","));
+  const blob=new Blob([cols.join(",")+"\n"+rows.join("\n")],{type:"text/csv"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`visitors-${loc.split("—")[0].trim().replace(/\s+/g,"-")}-${Date.now()}.csv`;a.click();
+  addToast("Exported "+vs.length+" visitors");
+}
+function exportJSON(){
+  if(!can("canExport")){addToast("No export permission");return;}
+  const vs=state.visitors.filter(v=>v.office===state.office);
+  const blob=new Blob([JSON.stringify(vs,null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`visitors-${Date.now()}.json`;a.click();
+  addToast("Exported as JSON");
+}
+function exportGPCSV(){
+  if(!can("canExport")){addToast("No export permission");return;}
+  const gps=state.gatePasses.filter(g=>g.office===state.office);
+  const cols=["gpId","type","requestedBy","requesterPhone","vendor","vehicleNo","office","expectedDate","purpose","status","createdAt","closedAt","items"];
+  const rows=gps.map(g=>cols.map(c=>{
+    const val=c==="items"?JSON.stringify(g.items||[]):g[c];
+    return`"${(val===null||val===undefined?"":String(val)).replace(/"/g,'""')}"`;
+  }).join(","));
+  const blob=new Blob([cols.join(",")+"\n"+rows.join("\n")],{type:"text/csv"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`gatepasses-${Date.now()}.csv`;a.click();
+  addToast("Exported gate passes");
+}
+
+// ── Badge HTML ─────────────────────────────────────────────────────────────────
+function bHTML(v){
+  const t=VTYPES.find(x=>x.id===v.type),c=TCOLORS[v.type]||"#1e7d3a";
+  const photo=v.photo?`<img src="${v.photo}" style="width:100%;height:100%;object-fit:cover"/>`:`<span class="bcard-init">${initials(v.name)}</span>`;
+  const active=v.status==="checked-in"||v.status==="pending";
+  const validity=active?(v.onBreak?"On Break — ID still valid":"Valid until check-out"):"Expired";
+  return`<div class="bcard"><div class="bcard-strip" style="background:${c}"></div><div class="bcard-inner">
+    <div class="bcard-org">iCIMS · Visitor Pass</div>
+    <div class="bcard-photo" style="border-color:${c}44">${photo}</div>
+    <div class="bcard-name">${escH(v.name)}</div>
+    <div class="bcard-co">${escH(v.company||"")}</div>
+    <div class="bcard-pill" style="background:${c}18;color:${c}">${t?.label||v.type}</div>
+    <div class="bcard-vid" style="border-color:${active?c+"44":"#dce4dc"}">
+      <div class="bcard-vid-lbl">Visitor ID</div>
+      <div class="bcard-vid-val" style="color:${active?c:"#9aaa9a"}">${escH(v.visitorId||"—")}</div>
+      <div class="bcard-vid-note">${validity}</div>
+    </div>
+    <div class="bcard-grid">
+      <div class="bcard-cell"><div class="bcard-key">Host</div><div class="bcard-val">${escH(v.host||"—")}</div></div>
+      <div class="bcard-cell"><div class="bcard-key">Purpose</div><div class="bcard-val">${escH(v.purpose||"—")}</div></div>
+      <div class="bcard-cell"><div class="bcard-key">Date</div><div class="bcard-val">${fmtDate(v.checkin)}</div></div>
+      <div class="bcard-cell"><div class="bcard-key">Check-in</div><div class="bcard-val">${fmtTime(v.checkin)}</div></div>
+    </div>
+  </div><div class="bcard-foot"><span>${escH(v.office||"")}</span><span style="font-family:monospace">${escH(v.visitorId||"")}</span></div></div>`;
+}
+function gpHTML(g){
+  const t=GP_TYPES.find(x=>x.id===g.type),c="#176878";
+  const tpl=state.branding.gpTemplate||"minimal";
+  const comp=state.branding.companyName||"iCIMS";
+  
+  // A4 detailed template
+  if(tpl==="detailed"){
+    const items=(g.items||[]).map(it=>`<div class="gpcard-a4-item"><span class="gpcard-a4-item-name">${escH(it.name)}</span><span class="gpcard-a4-item-qty">${escH(it.qty)}</span><span class="gpcard-a4-item-desc">${escH(it.desc||"")}</span></div>`).join("")||"<div class='gpcard-a4-item' style='color:#bbb;justify-content:center'>No items listed</div>";
+    return`<div class="gpcard-a4"><div class="gpcard-a4-strip" style="background:${c}"></div>
+      <div class="gpcard-a4-org">${comp} · Gate Pass Authorization</div>
+      <div class="gpcard-a4-title">${escH(t?.label||g.type)}</div>
+      <div class="gpcard-a4-pill" style="background:${c}18;color:${c}">${escH(g.gpId)}</div>
+      <div class="gpcard-a4-id"><div class="gpcard-a4-id-lbl">Pass Authorization ID</div><div class="gpcard-a4-id-val">${escH(g.gpId)}</div></div>
+      <div class="gpcard-a4-grid">
+        <div class="gpcard-a4-cell"><div class="gpcard-a4-key">Requested By</div><div class="gpcard-a4-val">${escH(g.requestedBy)}</div></div>
+        <div class="gpcard-a4-cell"><div class="gpcard-a4-key">Contact Phone</div><div class="gpcard-a4-val">${escH(g.requesterPhone||"—")}</div></div>
+        <div class="gpcard-a4-cell"><div class="gpcard-a4-key">Vendor/Supplier</div><div class="gpcard-a4-val">${escH(g.vendor||"—")}</div></div>
+        <div class="gpcard-a4-cell"><div class="gpcard-a4-key">Vehicle Number</div><div class="gpcard-a4-val">${escH(g.vehicleNo||"—")}</div></div>
+        <div class="gpcard-a4-cell"><div class="gpcard-a4-key">Expected Date</div><div class="gpcard-a4-val">${escH(g.expectedDate||"—")}</div></div>
+        <div class="gpcard-a4-cell"><div class="gpcard-a4-key">Office Location</div><div class="gpcard-a4-val">${escH(g.office||"—")}</div></div>
+        <div class="gpcard-a4-cell" style="grid-column:1/-1"><div class="gpcard-a4-key">Purpose</div><div class="gpcard-a4-val">${escH(g.purpose||"—")}</div></div>
+      </div>
+      <div class="gpcard-a4-items"><div class="gpcard-a4-items-hdr">Itemized List — ${(g.items||[]).length} Item${(g.items||[]).length!==1?"s":""}</div>${items}</div>
+      <div class="gpcard-a4-foot"><span>${escH(g.office||"")}</span><span>Issued: ${fmtDate(g.createdAt)}${g.closedAt?" • Closed: "+fmtDate(g.closedAt):""}</span></div>
+    </div>`;
+  }
+  
+  // Compact or Minimal (original card style)
+  const items=(g.items||[]).map(it=>`<div class="gpcard-item">${escH(it.name)} — ${escH(it.qty)}${it.desc?" ("+escH(it.desc)+")":""}</div>`).join("")||"<div class='gpcard-item' style='color:#bbb'>No items</div>";
+  return`<div class="gpcard"><div class="gpcard-strip" style="background:${c}"></div><div class="gpcard-inner">
+    <div class="gpcard-org">${comp} · Gate Pass</div>
+    <div class="gpcard-title">${escH(t?.label||g.type)}</div>
+    <div class="gpcard-pill" style="background:${c}18;color:${c}">${escH(g.gpId)}</div>
+    <div class="gpcard-id"><div class="gpcard-id-lbl">Pass ID</div><div class="gpcard-id-val" style="color:${c}">${escH(g.gpId)}</div></div>
+    <div class="gpcard-grid">
+      <div class="gpcard-cell"><div class="gpcard-key">Requested By</div><div class="gpcard-val">${escH(g.requestedBy)}</div></div>
+      <div class="gpcard-cell"><div class="gpcard-key">Vendor</div><div class="gpcard-val">${escH(g.vendor||"—")}</div></div>
+      <div class="gpcard-cell"><div class="gpcard-key">Expected</div><div class="gpcard-val">${escH(g.expectedDate||"—")}</div></div>
+      <div class="gpcard-cell"><div class="gpcard-key">Vehicle</div><div class="gpcard-val">${escH(g.vehicleNo||"—")}</div></div>
+    </div>
+    <div class="gpcard-items"><div class="gpcard-items-hdr">Items</div>${items}</div>
+  </div><div class="gpcard-foot"><span>${escH(g.office||"")}</span><span>${fmtDate(g.createdAt)}</span></div></div>`;
+}
+async function exportBadgePNG(v){
+  addToast("Generating image…");
+  const wrap=document.createElement("div");
+  wrap.style.cssText="position:fixed;left:-9999px;top:0;background:transparent";
+  // inline all badge styles
+  const style=`<style>*{box-sizing:border-box;margin:0;padding:0}.bcard{background:#fff;border-radius:13px;text-align:center;font-family:'Plus Jakarta Sans',sans-serif;color:#0f1a0f;width:310px;overflow:hidden}.bcard-strip{height:7px}.bcard-inner{padding:20px 18px 16px}.bcard-org{font-size:7.5px;text-transform:uppercase;letter-spacing:2.5px;color:#999;margin-bottom:13px;font-weight:700}.bcard-photo{width:64px;height:64px;border-radius:50%;margin:0 auto 11px;border:2.5px solid #eef2ee;overflow:hidden;background:#f4f6f4;display:flex;align-items:center;justify-content:center}.bcard-photo img{width:100%;height:100%;object-fit:cover}.bcard-init{font-size:19px;font-weight:800;color:#c0c8c0}.bcard-name{font-size:16px;font-weight:800;margin-bottom:3px}.bcard-co{font-size:10.5px;color:#888;margin-bottom:9px}.bcard-pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:11px}.bcard-vid{background:#f4f6f4;border:1.5px solid #dce4dc;border-radius:9px;padding:8px 11px;margin-bottom:11px;text-align:left}.bcard-vid-lbl{font-size:7.5px;text-transform:uppercase;letter-spacing:1.5px;color:#aaa;font-weight:700;margin-bottom:3px}.bcard-vid-val{font-family:monospace;font-size:13.5px;font-weight:700;letter-spacing:.4px}.bcard-vid-note{font-size:8.5px;color:#888;margin-top:2px}.bcard-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;text-align:left;margin-bottom:9px}.bcard-cell{background:#f4f6f4;border-radius:6px;padding:5px 7px}.bcard-key{font-size:7px;text-transform:uppercase;letter-spacing:1px;color:#bbb;font-weight:700;margin-bottom:1px}.bcard-val{font-size:10px;font-weight:600;color:#2d3d2d}.bcard-foot{background:#eef2ee;border-top:1px solid #dce4dc;padding:6px 11px;font-size:7.5px;color:#9aaa9a;text-transform:uppercase;letter-spacing:1px;display:flex;justify-content:space-between}</style>`;
+  wrap.innerHTML=style+bHTML(v);
+  document.body.appendChild(wrap);
+  await new Promise(r=>setTimeout(r,250));
+  try{
+    const canvas=await html2canvas(wrap.querySelector(".bcard"),{scale:2,useCORS:true,backgroundColor:"#ffffff"});
+    const a=document.createElement("a");a.href=canvas.toDataURL("image/png");a.download=`badge-${v.visitorId||v.name}.png`;a.click();
+    addToast("Badge downloaded as PNG");
+  }catch(e){addToast("PNG export failed — try Print");}
+  document.body.removeChild(wrap);
+}
+function printBadge(v){
+  const w=window.open("","_blank","width=380,height=560");
+  w.document.write(`<!DOCTYPE html><html><head><title>Badge</title><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet"><style>*{box-sizing:border-box;margin:0;padding:0}body{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f4f6f4;font-family:'Plus Jakarta Sans',sans-serif}.bcard{background:#fff;border-radius:13px;text-align:center;width:310px;overflow:hidden;box-shadow:0 3px 20px rgba(0,0,0,.11)}.bcard-strip{height:7px}.bcard-inner{padding:20px 18px 16px}.bcard-org{font-size:7.5px;text-transform:uppercase;letter-spacing:2.5px;color:#999;margin-bottom:13px;font-weight:700}.bcard-photo{width:64px;height:64px;border-radius:50%;margin:0 auto 11px;border:2.5px solid #eef2ee;overflow:hidden;background:#f4f6f4;display:flex;align-items:center;justify-content:center}.bcard-photo img{width:100%;height:100%;object-fit:cover}.bcard-init{font-size:19px;font-weight:800;color:#c0c8c0}.bcard-name{font-size:16px;font-weight:800;margin-bottom:3px}.bcard-co{font-size:10.5px;color:#888;margin-bottom:9px}.bcard-pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:11px}.bcard-vid{background:#f4f6f4;border:1.5px solid #dce4dc;border-radius:9px;padding:8px 11px;margin-bottom:11px;text-align:left}.bcard-vid-lbl{font-size:7.5px;text-transform:uppercase;letter-spacing:1.5px;color:#aaa;font-weight:700;margin-bottom:3px}.bcard-vid-val{font-family:monospace;font-size:13.5px;font-weight:700;letter-spacing:.4px}.bcard-vid-note{font-size:8.5px;color:#888;margin-top:2px}.bcard-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;text-align:left;margin-bottom:9px}.bcard-cell{background:#f4f6f4;border-radius:6px;padding:5px 7px}.bcard-key{font-size:7px;text-transform:uppercase;letter-spacing:1px;color:#bbb;font-weight:700;margin-bottom:1px}.bcard-val{font-size:10px;font-weight:600;color:#2d3d2d}.bcard-foot{background:#eef2ee;border-top:1px solid #dce4dc;padding:6px 11px;font-size:7.5px;color:#9aaa9a;text-transform:uppercase;letter-spacing:1px;display:flex;justify-content:space-between}@media print{body{background:#fff}@page{size:85mm 135mm;margin:0}}</style></head><body>${bHTML(v)}</body></html>`);
+  w.document.close();setTimeout(()=>w.print(),700);
+}
+function printGP(g){
+  const tpl=state.branding.gpTemplate||"minimal";
+  const isA4=tpl==="detailed";
+  const w=window.open("","_blank",isA4?"width=800,height=1100":"width=400,height=560");
+  const a4Styles=`body{background:#fff;padding:0}.gpcard-a4{box-shadow:none;margin:0}@page{size:A4;margin:0}@media print{body{background:#fff}@page{size:A4;margin:0}}`;
+  const regularStyles=`body{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f4f6f4}@media print{body{background:#fff}@page{size:85mm 135mm;margin:0}}`;
+  
+  w.document.write(`<!DOCTYPE html><html><head><title>Gate Pass - ${escH(g.gpId)}</title><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet"><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Plus Jakarta Sans',sans-serif}
+.gpcard{background:#fff;border-radius:13px;overflow:hidden;width:330px;box-shadow:0 3px 20px rgba(0,0,0,.11)}.gpcard-strip{height:6px}.gpcard-inner{padding:18px}.gpcard-org{font-size:7.5px;letter-spacing:2px;text-transform:uppercase;color:#999;font-weight:700;margin-bottom:11px}.gpcard-title{font-size:14px;font-weight:700;margin-bottom:3px}.gpcard-pill{display:inline-block;padding:2px 8px;border-radius:99px;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:11px}.gpcard-id{background:#f4f6f4;border:1.5px solid #dce4dc;border-radius:8px;padding:8px 11px;margin-bottom:11px}.gpcard-id-lbl{font-size:7.5px;text-transform:uppercase;letter-spacing:1.5px;color:#aaa;font-weight:700;margin-bottom:3px}.gpcard-id-val{font-family:monospace;font-size:13px;font-weight:700;letter-spacing:.4px}.gpcard-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:9px}.gpcard-cell{background:#f4f6f4;border-radius:6px;padding:5px 7px}.gpcard-key{font-size:7px;text-transform:uppercase;letter-spacing:1px;color:#bbb;font-weight:700;margin-bottom:1px}.gpcard-val{font-size:10px;font-weight:600;color:#2d3d2d}.gpcard-items{background:#f4f6f4;border-radius:7px;padding:8px 10px;margin-bottom:9px}.gpcard-items-hdr{font-size:7.5px;text-transform:uppercase;letter-spacing:1px;color:#aaa;font-weight:700;margin-bottom:4px}.gpcard-item{font-size:10px;color:#444;padding:2.5px 0;border-bottom:1px solid #e8eee8}.gpcard-item:last-child{border-bottom:none}.gpcard-foot{background:#eef2ee;border-top:1px solid #dce4dc;padding:6px 11px;font-size:7.5px;color:#9aaa9a;text-transform:uppercase;letter-spacing:1px;display:flex;justify-content:space-between}
+.gpcard-a4{background:#fff;width:210mm;min-height:297mm;padding:15mm 20mm;box-sizing:border-box;display:flex;flex-direction:column}.gpcard-a4-strip{height:8px;width:100%;margin:0 0 20px 0}.gpcard-a4-org{font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:#666;font-weight:700;margin-bottom:16px;text-align:center}.gpcard-a4-title{font-size:24px;font-weight:800;margin-bottom:12px;text-align:center;color:#2d3d2d;border-bottom:3px solid #176878;padding-bottom:12px}.gpcard-a4-pill{display:block;text-align:center;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin:0 auto 20px;width:fit-content}.gpcard-a4-id{background:#f4f6f4;border:2px solid #dce4dc;border-radius:10px;padding:18px 20px;margin-bottom:24px;text-align:center}.gpcard-a4-id-lbl{font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#888;font-weight:700;margin-bottom:8px}.gpcard-a4-id-val{font-family:monospace;font-size:22px;font-weight:800;letter-spacing:.8px;color:#176878}.gpcard-a4-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:24px}.gpcard-a4-cell{background:#f9faf9;border:1px solid #e8eee8;border-radius:8px;padding:14px 16px}.gpcard-a4-key{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:#999;font-weight:700;margin-bottom:6px}.gpcard-a4-val{font-size:15px;font-weight:600;color:#0f1a0f;line-height:1.4}.gpcard-a4-items{background:#f9faf9;border:1px solid #e8eee8;border-radius:10px;padding:18px 20px;margin-bottom:24px;flex:1}.gpcard-a4-items-hdr{font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:#888;font-weight:700;margin-bottom:12px;border-bottom:2px solid #dce4dc;padding-bottom:8px}.gpcard-a4-item{font-size:14px;color:#2d3d2d;padding:10px 0;border-bottom:1px solid #e8eee8;display:flex;justify-content:space-between;align-items:flex-start}.gpcard-a4-item:last-child{border-bottom:none}.gpcard-a4-item-name{font-weight:600;flex:1}.gpcard-a4-item-qty{color:#637063;margin:0 12px;white-space:nowrap}.gpcard-a4-item-desc{color:#9aaa9a;font-size:12px;flex:1;text-align:right}.gpcard-a4-foot{background:#f4f6f4;border-top:3px solid #176878;padding:16px 20px;font-size:12px;color:#637063;display:flex;justify-content:space-between;margin-top:auto}
+${isA4?a4Styles:regularStyles}</style></head><body>${gpHTML(g)}</body></html>`);
+  w.document.close();setTimeout(()=>w.print(),700);
+}
+
+// ── State ──────────────────────────────────────────────────────────────────────
+let state={
+  currentUser:null,
+  loginRole:null,
+  module:"visitors",
+  page:"dashboard",
+  office:OFFICES[0],
+  sidebarOpen:false,
+  pubView:false,
+  modal:null,modalData:null,
+  settingsTab:"users",
+  branding:{
+    companyName:"iCIMS",
+    primaryColor:"#1e7d3a",
+    secondaryColor:"#175f2b",
+    logoText:"GP",
+    logoUrl:null,
+    font:"Plus Jakarta Sans",
+    visitorTemplate:"classic",
+    gpTemplate:"minimal",
+    siteBgColor:"#f4f6f4",
+    sidebarColor:"#ffffff",
+    accentColor:"#1e7d3a"
+  },
+  managedUsers:[...DEMO_USERS.map(u=>({...u}))],
+  editingUser:null,
+  customTemplates:[],
+  integrations:{microsoft:{enabled:false,tenant:"",clientId:""},google:{enabled:false,domain:""}},
+  vSearch:"",vTypeF:"all",vStatusF:"all",
+  gpSearch:"",gpTypeF:"all",gpStatusF:"all",
+  regForm:null,regErrors:{},
+  pubForm:null,pubErrors:{},pubDone:false,_lastPubV:null,
+  gpForm:null,gpErrors:{},
+  visitors:[
+    {id:uid(),visitorId:"GP-RAVI01-VEN001",name:"Ravi Shankar",company:"Infosys Ltd",email:"ravi@infosys.com",phone:"9876543210",type:"vendor",host:"Sathish Kumar",hostPhone:"",office:OFFICES[0],purpose:"Contract Review",address:"14 MG Road, Bangalore",contractRef:"PO-2025-0042",serviceType:"IT Services",status:"checked-in",checkin:new Date(Date.now()-2*3600000).toISOString(),checkout:null,photo:null,onBreak:false,breaks:[]},
+    {id:uid(),visitorId:"GP-PRIY02-CAN002",name:"Priya Mehta",company:"",email:"",phone:"9123456789",type:"candidate",host:"Harika Reddy",hostPhone:"",office:OFFICES[0],purpose:"Senior Dev Interview",address:"",jobId:"SWE-2025-047",interviewRound:"Round 2 — Technical",status:"checked-in",checkin:new Date(Date.now()-3600000).toISOString(),checkout:null,photo:null,onBreak:true,breaks:[{out:new Date(Date.now()-1800000).toISOString(),returnTime:null}]},
+    {id:uid(),visitorId:"GP-ANAN03-LEA003",name:"Anand Krishnamurthy",company:"iCIMS HQ",email:"anand@icims.com",phone:"",type:"leadership",host:"Srini Vasudevan",hostPhone:"",office:OFFICES[0],purpose:"Q3 Business Review",address:"",homeOffice:"iCIMS NJ HQ",visitAgenda:"Q3 Review",status:"checked-out",checkin:new Date(Date.now()-5*3600000).toISOString(),checkout:new Date(Date.now()-3600000).toISOString(),photo:null,onBreak:false,breaks:[]},
+    {id:uid(),visitorId:"GP-AMIT04-EMP004",name:"Amit Sharma",company:"iCIMS",email:"",phone:"9111222333",type:"employee",host:"",hostPhone:"",office:OFFICES[0],purpose:"",address:"",employeeId:"EMP-10087",department:"Engineering",status:"checked-in",checkin:new Date(Date.now()-1800000).toISOString(),checkout:null,photo:null,onBreak:false,breaks:[]},
+    {id:uid(),visitorId:"GP-TEST05-VEN099",name:"Demo BLR Visitor",company:"Test Co",email:"",phone:"",type:"vendor",host:"BLR Host",hostPhone:"",office:OFFICES[2],purpose:"Demo",address:"",status:"checked-in",checkin:new Date(Date.now()-900000).toISOString(),checkout:null,photo:null,onBreak:false,breaks:[]},
+  ],
+  logs:[
+    {id:uid(),type:"checkin",visitor:"Ravi Shankar",vid:"GP-RAVI01-VEN001",time:new Date(Date.now()-2*3600000).toISOString(),office:OFFICES[0],note:""},
+    {id:uid(),type:"checkin",visitor:"Priya Mehta",vid:"GP-PRIY02-CAN002",time:new Date(Date.now()-3600000).toISOString(),office:OFFICES[0],note:""},
+    {id:uid(),type:"break-out",visitor:"Priya Mehta",vid:"GP-PRIY02-CAN002",time:new Date(Date.now()-1800000).toISOString(),office:OFFICES[0],note:"Step out"},
+    {id:uid(),type:"checkin",visitor:"Amit Sharma",vid:"GP-AMIT04-EMP004",time:new Date(Date.now()-1800000).toISOString(),office:OFFICES[0],note:"Temp badge"},
+    {id:uid(),type:"checkout",visitor:"Anand Krishnamurthy",vid:"GP-ANAN03-LEA003",time:new Date(Date.now()-3600000).toISOString(),office:OFFICES[0],note:""},
+  ],
+  gatePasses:[
+    {id:uid(),gpId:"GPP-MAT001",type:"material",requestedBy:"Facilities",requesterPhone:"",vendor:"Ashok Hardware",vehicleNo:"TS09EF1234",office:OFFICES[0],expectedDate:today(),purpose:"Office renovation",status:"open",createdAt:new Date(Date.now()-3600000).toISOString(),closedAt:null,items:[{name:"PVC Pipes",qty:"20 units",desc:"2 inch"},{name:"Cement",qty:"10 bags",desc:""}]},
+    {id:uid(),gpId:"GPP-FOD002",type:"food",requestedBy:"Admin",requesterPhone:"",vendor:"Meals on Wheels",vehicleNo:"TS07AB5678",office:OFFICES[0],expectedDate:today(),purpose:"Team lunch",status:"closed",createdAt:new Date(Date.now()-5*3600000).toISOString(),closedAt:new Date(Date.now()-2*3600000).toISOString(),items:[{name:"Veg Biryani",qty:"40 portions",desc:""}]},
+  ],
+  gpLogs:[
+    {id:uid(),type:"created",passId:"GPP-MAT001",by:"Facilities",time:new Date(Date.now()-3600000).toISOString(),office:OFFICES[0]},
+    {id:uid(),type:"closed",passId:"GPP-FOD002",by:"Security",time:new Date(Date.now()-2*3600000).toISOString(),office:OFFICES[0]},
+  ],
+};
+
+// ── Toast ──────────────────────────────────────────────────────────────────────
+function addToast(msg){
+  const el=document.createElement("div");el.className="toast";el.innerHTML=I.check+" "+escH(msg);
+  document.getElementById("toastWrap").appendChild(el);
+  setTimeout(()=>el.remove(),3000);
+}
+
+// ── Blank forms ────────────────────────────────────────────────────────────────
+function blankVF(){
+  return{name:"",company:"",email:"",phone:"",type:"vendor",host:"",hostPhone:"",purpose:"",office:state.office,photo:null,
+    contractRef:"",serviceType:"",jobId:"",interviewRound:"",relationship:"",homeOffice:"",visitAgenda:"",employeeId:"",department:"",address:""};
+}
+function blankGPF(){return{type:"material",requestedBy:"",requesterPhone:"",vendor:"",vehicleNo:"",expectedDate:today(),purpose:"",office:state.office,items:[{name:"",qty:"",desc:""}]};}
+
+// ── Validation ─────────────────────────────────────────────────────────────────
+function validateVF(f){
+  const e={};
+  if(!f.name?.trim())e.name="Name is required";
+  const poc=POC_CFG[f.type];
+  if(poc?.show&&!f.host?.trim())e.host=poc.hl+" is required";
+  if(NEEDS_PURPOSE[f.type]&&!f.purpose?.trim())e.purpose="Purpose is required";
+  const extra=[{k:"employeeId",l:"Employee ID",req:true,type:"employee"}];
+  extra.forEach(x=>{if(f.type===x.type&&x.req&&!f[x.k]?.trim())e[x.k]=x.l+" is required";});
+  return e;
+}
+function validateGPF(f){
+  const e={};
+  if(!f.requestedBy?.trim())e.requestedBy="Requester is required";
+  if(!f.purpose?.trim())e.purpose="Purpose is required";
+  if(!f.items.some(i=>i.name.trim()))e.items="Add at least one item";
+  return e;
+}
+
+// ── Visitor form HTML ──────────────────────────────────────────────────────────
+const TYPE_EXTRA_MAP={
+  vendor:[{k:"contractRef",l:"Contract / PO Reference",p:"e.g. PO-2025-0042"},{k:"serviceType",l:"Service Category",p:"e.g. IT Hardware"}],
+  candidate:[{k:"jobId",l:"Job ID / Role",p:"e.g. SWE-2025-047"},{k:"interviewRound",l:"Interview Round",p:"e.g. Round 2 — Technical"}],
+  guest:[{k:"relationship",l:"Relationship to Host",p:"e.g. Family, Friend"}],
+  leadership:[{k:"homeOffice",l:"Home Office / BU",p:"e.g. iCIMS NJ HQ"},{k:"visitAgenda",l:"Visit Agenda",p:"e.g. Q3 Review"}],
+  employee:[{k:"employeeId",l:"Employee ID",p:"e.g. EMP-10042",req:true},{k:"department",l:"Department",p:"e.g. Engineering"}],
+};
+function vFormHTML(f,prefix,errors){
+  const poc=POC_CFG[f.type];
+  const offOpts=OFFICES.map(o=>`<option value="${escH(o)}"${f.office===o?" selected":""}>${escH(o)}</option>`).join("");
+  const extra=TYPE_EXTRA_MAP[f.type]||[];
+  let pocSec="";
+  if(poc?.show){
+    pocSec=`<div class="sdiv">${escH(poc.hl)} <span class="req" style="font-size:9px">— Required</span></div>
+    <div class="fgrid">
+      <div class="fg"><label class="flabel">${escH(poc.hl)} <span class="req">*</span></label>
+        <input class="fi" value="${escH(f.host)}" placeholder="${escH(poc.hl)}" oninput="sf('${prefix}','host',this.value)"/>
+        ${errors.host?`<div class="ferr">${I.alert} ${errors.host}</div>`:""}
+      </div>
+      <div class="fg"><label class="flabel">${escH(poc.pl)}</label>
+        <input class="fi" value="${escH(f.hostPhone)}" placeholder="Optional" oninput="sf('${prefix}','hostPhone',this.value)"/>
+      </div>
+    </div>`;
+  }
+  let visitSec=`<div class="sdiv">Visit Details</div>`;
+  if(NEEDS_PURPOSE[f.type])visitSec+=`<div class="fg"><label class="flabel">Purpose <span class="req">*</span></label>
+    <input class="fi" value="${escH(f.purpose)}" placeholder="Brief reason" oninput="sf('${prefix}','purpose',this.value)"/>
+    ${errors.purpose?`<div class="ferr">${I.alert} ${errors.purpose}</div>`:""}
+  </div>`;
+  visitSec+=`<div class="fg"><label class="flabel">Office <span class="req">*</span></label><select class="fi" onchange="sf('${prefix}','office',this.value)">${offOpts}</select></div>`;
+  let extraSec="";
+  if(extra.length){extraSec=`<div class="sdiv">Additional Details</div><div class="fgrid">
+    ${extra.map(x=>`<div class="fg"><label class="flabel">${escH(x.l)}${x.req?'<span class="req"> *</span>':""}</label>
+      <input class="fi" value="${escH(f[x.k]||"")}" placeholder="${escH(x.p)}" oninput="sf('${prefix}','${x.k}',this.value)"/>
+      ${errors[x.k]?`<div class="ferr">${I.alert} ${errors[x.k]}</div>`:""}
+    </div>`).join("")}
+  </div>`;}
+  return`
+    <div class="fg"><div class="flabel">Visitor Type <span class="req">*</span></div>
+      <div class="tgrid">${VTYPES.map(t=>`<div class="tcard${f.type===t.id?" sel":""}" onclick="sf('${prefix}','type','${t.id}')">${t.label}</div>`).join("")}</div>
+    </div>
+    <div class="sdiv">Personal Details</div>
+    <div class="fgrid">
+      <div class="fg"><label class="flabel">Full Name <span class="req">*</span></label>
+        <input class="fi" value="${escH(f.name)}" placeholder="e.g. Ravi Shankar" oninput="sf('${prefix}','name',this.value)"/>
+        ${errors.name?`<div class="ferr">${I.alert} ${errors.name}</div>`:""}
+      </div>
+      <div class="fg"><label class="flabel">Company</label>
+        <input class="fi" value="${escH(f.company)}" placeholder="Optional" oninput="sf('${prefix}','company',this.value)"/>
+      </div>
+      <div class="fg"><label class="flabel">Email</label>
+        <input class="fi" type="email" value="${escH(f.email)}" placeholder="Optional" oninput="sf('${prefix}','email',this.value)"/>
+      </div>
+      <div class="fg"><label class="flabel">Phone</label>
+        <input class="fi" value="${escH(f.phone)}" placeholder="Optional" oninput="sf('${prefix}','phone',this.value)"/>
+      </div>
+    </div>
+    ${pocSec}${visitSec}${extraSec}
+    <div class="sdiv">Photo</div>
+    <div class="pzone" id="pz_${prefix}" onclick="startCam('${prefix}')">
+      <div class="pph">${I.cam}<span>Click to open camera</span></div>
+      ${f.photo?`<img src="${f.photo}"/>`:""}
+      <video id="pv_${prefix}" autoplay playsinline style="display:none;width:100%;height:100%;object-fit:cover;position:absolute;inset:0"></video>
+    </div>
+    <div class="pctrls" id="pc_${prefix}">
+      <button class="btn btn-ghost btn-sm" id="pbS_${prefix}" onclick="startCam('${prefix}')">${I.cam} Open Camera</button>
+      <button class="btn btn-primary btn-sm" id="pbC_${prefix}" style="display:none" onclick="captureCam('${prefix}')">${I.cam} Capture</button>
+      <button class="btn btn-ghost btn-sm" id="pbX_${prefix}" style="display:none" onclick="stopCam('${prefix}')">Cancel</button>
+      ${f.photo?`<button class="btn btn-ghost btn-sm" onclick="retakeCam('${prefix}')">${I.retake} Retake</button>`:""}
+    </div>`;
+}
+
+// ── GP form HTML ───────────────────────────────────────────────────────────────
+function gpFormHTML(f,errors){
+  const offOpts=OFFICES.map(o=>`<option value="${escH(o)}"${f.office===o?" selected":""}>${escH(o)}</option>`).join("");
+  const items=f.items.map((it,i)=>`<div style="display:grid;grid-template-columns:2fr 1fr 2fr auto;gap:7px;margin-bottom:7px;align-items:center">
+    <input class="fi" value="${escH(it.name)}" placeholder="Item name" oninput="gpItem(${i},'name',this.value)"/>
+    <input class="fi" value="${escH(it.qty)}" placeholder="Qty" oninput="gpItem(${i},'qty',this.value)"/>
+    <input class="fi" value="${escH(it.desc)}" placeholder="Description" oninput="gpItem(${i},'desc',this.value)"/>
+    <button class="btn btn-danger btn-sm" onclick="rmGPItem(${i})">${I.x}</button>
+  </div>`).join("");
+  return`<div class="fg"><div class="flabel">Pass Type <span class="req">*</span></div>
+    <div class="gptgrid">${GP_TYPES.map(t=>`<div class="gptcard${f.type===t.id?" sel":""}" onclick="sfgp('type','${t.id}')"><div class="gptcard-title">${t.label}</div><div class="gptcard-sub">${t.sub}</div></div>`).join("")}</div>
+  </div>
+  <div class="sdiv">Requester & Logistics</div>
+  <div class="fgrid">
+    <div class="fg"><label class="flabel">Requested By <span class="req">*</span></label>
+      <input class="fi" value="${escH(f.requestedBy)}" placeholder="e.g. Facilities Team" oninput="sfgp('requestedBy',this.value)"/>
+      ${errors.requestedBy?`<div class="ferr">${I.alert} ${errors.requestedBy}</div>`:""}
+    </div>
+    <div class="fg"><label class="flabel">Phone</label><input class="fi" value="${escH(f.requesterPhone)}" placeholder="Optional" oninput="sfgp('requesterPhone',this.value)"/></div>
+    <div class="fg"><label class="flabel">Vendor / Supplier</label><input class="fi" value="${escH(f.vendor)}" placeholder="e.g. Ashok Hardware" oninput="sfgp('vendor',this.value)"/></div>
+    <div class="fg"><label class="flabel">Vehicle No.</label><input class="fi" value="${escH(f.vehicleNo)}" placeholder="e.g. TS09EF1234" oninput="sfgp('vehicleNo',this.value)"/></div>
+    <div class="fg"><label class="flabel">Expected Date</label><input class="fi" type="date" value="${escH(f.expectedDate)}" oninput="sfgp('expectedDate',this.value)"/></div>
+    <div class="fg"><label class="flabel">Office</label><select class="fi" onchange="sfgp('office',this.value)">${offOpts}</select></div>
+  </div>
+  <div class="fg"><label class="flabel">Purpose <span class="req">*</span></label>
+    <input class="fi" value="${escH(f.purpose)}" placeholder="Brief description" oninput="sfgp('purpose',this.value)"/>
+    ${errors.purpose?`<div class="ferr">${I.alert} ${errors.purpose}</div>`:""}
+  </div>
+  <div class="sdiv">Items ${errors.items?`<span style="color:var(--red);font-size:9px;margin-left:8px">${errors.items}</span>`:""}</div>
+  <div id="gpItemsList">${items}</div>
+  <button class="btn btn-ghost btn-sm" onclick="addGPItem()" style="margin-top:4px">${I.plus} Add Item</button>`;
+}
+
+// ── Camera ─────────────────────────────────────────────────────────────────────
+const _streams={};
+window.startCam=async function(p){
+  try{
+    const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"}});
+    _streams[p]=s;const vid=document.getElementById("pv_"+p);if(!vid)return;
+    vid.srcObject=s;vid.style.display="block";
+    document.getElementById("pbS_"+p).style.display="none";
+    document.getElementById("pbC_"+p).style.display="flex";
+    document.getElementById("pbX_"+p).style.display="flex";
+    const ph=document.querySelector("#pz_"+p+" .pph");if(ph)ph.style.display="none";
+  }catch{alert("Camera access denied");}
+};
+window.stopCam=function(p){
+  if(_streams[p]){_streams[p].getTracks().forEach(t=>t.stop());delete _streams[p];}
+  if(p==="reg")renderModal();else renderPub();
+};
+window.captureCam=function(p){
+  const vid=document.getElementById("pv_"+p);if(!vid)return;
+  const c=document.createElement("canvas");c.width=vid.videoWidth;c.height=vid.videoHeight;
+  c.getContext("2d").drawImage(vid,0,0);
+  if(_streams[p]){_streams[p].getTracks().forEach(t=>t.stop());delete _streams[p];}
+  const data=c.toDataURL("image/jpeg");
+  if(p==="reg"){state.regForm.photo=data;renderModal();}else{state.pubForm.photo=data;renderPub();}
+};
+window.retakeCam=function(p){if(p==="reg"){state.regForm.photo=null;renderModal();}else{state.pubForm.photo=null;renderPub();}};
+
+// ── Field setters ──────────────────────────────────────────────────────────────
+window.sf=function(p,k,v){
+  if(p==="reg"){
+    state.regForm[k]=v;
+    // Only re-render if changing type (to update form fields)
+    if(k==="type")renderModal();
+  }else{
+    state.pubForm[k]=v;
+    if(k==="type")renderPub();
+  }
+};
+window.sfgp=function(k,v){
+  state.gpForm[k]=v;
+  // Only re-render if changing type
+  if(k==="type")renderModal();
+};
+window.gpItem=function(i,k,v){state.gpForm.items[i][k]=v;};
+window.addGPItem=function(){state.gpForm.items.push({name:"",qty:"",desc:""});renderModal();};
+window.rmGPItem=function(i){state.gpForm.items.splice(i,1);renderModal();};
+
+// ── Navigation & modals ────────────────────────────────────────────────────────
+window.navTo=function(id){
+  if(id==="pub"){state.pubView=true;state.pubForm=blankVF();state.pubErrors={};state.pubDone=false;state.sidebarOpen=false;render();return;}
+  if(["gpdashboard","gatepasses","gplogs"].includes(id)){
+    if(!can("canGP")){addToast("You don't have access to Gate Passes");return;}
+    state.module="gatepasses";
+  }else if(id==="settings"){
+    if(!["superadmin","admin"].includes(state.currentUser?.role)){addToast("Admin access required");return;}
+    state.module="settings";
+    if(!state.settingsTab)state.settingsTab="users";
+  }else state.module="visitors";
+  state.page=id;state.sidebarOpen=false;render();
+};
+window.closeSidebar=()=>{state.sidebarOpen=false;render();};
+window.toggleSidebar=()=>{state.sidebarOpen=!state.sidebarOpen;render();};
+window.closePub=()=>{state.pubView=false;state.pubDone=false;render();};
+window.openModal=function(name,data){
+  if(name==="register"&&!can("canRegister")){addToast("Security officers cannot register — use Check In");return;}
+  if(name==="newgp"&&!can("canCreateGP")){addToast("No permission to create gate passes");return;}
+  state.modal=name;
+  if(name==="register"){state.regForm=blankVF();state.regErrors={};}
+  if(name==="newgp"){state.gpForm=blankGPF();state.gpErrors={};}
+  if(data)state.modalData=data;
+  renderModal();
+};
+window.closeModal=function(){
+  Object.keys(_streams).forEach(k=>stopCam(k));
+  state.modal=null;state.modalData=null;renderModal();
+};
+window.openDetail=function(id){state.modal="detail";state.modalData=state.visitors.find(v=>v.id===id);renderModal();};
+window.openBadge=function(id){
+  if(!can("canBadge")){addToast("No badge permission");return;}
+  state.modal="badge";state.modalData=state.visitors.find(v=>v.id===id);renderModal();
+};
+window.openGPDetail=function(id){state.modal="gpdetail";state.modalData=state.gatePasses.find(g=>g.id===id);renderModal();};
+// FIX: selectOffice uses a data index instead of string to avoid JSON.stringify in onclick attr
+window.selectOffice=function(idx){
+  const o=OFFICES[idx];if(!o)return;
+  if(!can("allOffices")&&!userOffices().includes(o)){addToast("You don't have access to "+o);return;}
+  state.office=o;closeModal();render();
+};
+window.toggleDD=function(){document.getElementById("ddMenu")?.classList.toggle("open");};
+window.toggleGPDD=function(){document.getElementById("gpDD")?.classList.toggle("open");};
+window.copyText=function(t){navigator.clipboard.writeText(t).then(()=>addToast("Copied"));};
+
+// ── Visitor actions ────────────────────────────────────────────────────────────
+window.doCheckin=function(id){
+  if(!can("canCheckin")){addToast("No check-in permission");return;}
+  const v=state.visitors.find(x=>x.id===id);if(!v)return;
+  if(v.status==="checked-in"&&!v.onBreak){addToast(v.name+" is already checked in");return;}
+  if(v.status==="checked-out"&&v.checkout&&sameDay(v.checkout,new Date())){addToast(v.name+" already checked out today");return;}
+  const now=new Date().toISOString();
+  v.status="checked-in";v.checkin=now;v.checkout=null;v.onBreak=false;
+  state.logs.push({id:uid(),type:"checkin",visitor:v.name,vid:v.visitorId,time:now,office:v.office,note:""});
+  addToast(v.name+" checked in");render();
+};
+window.doCheckout=function(id){
+  if(!can("canCheckout")){addToast("No check-out permission");return;}
+  const v=state.visitors.find(x=>x.id===id);if(!v)return;
+  if(v.status==="checked-out"){addToast(v.name+" already checked out");return;}
+  const now=new Date().toISOString();
+  if(v.onBreak&&v.breaks?.length){const l=v.breaks[v.breaks.length-1];if(l&&!l.returnTime)l.returnTime=now;}
+  v.status="checked-out";v.checkout=now;v.onBreak=false;
+  state.logs.push({id:uid(),type:"checkout",visitor:v.name,vid:v.visitorId,time:now,office:v.office,note:""});
+  addToast(v.name+" checked out");render();
+};
+window.doBreakOut=function(id){
+  if(!can("canBreak")){addToast("No break permission");return;}
+  const v=state.visitors.find(x=>x.id===id);if(!v||v.status!=="checked-in")return;
+  if(v.onBreak){addToast(v.name+" is already on a break");return;}
+  const now=new Date().toISOString();
+  if(!v.breaks)v.breaks=[];
+  v.breaks.push({out:now,returnTime:null});v.onBreak=true;
+  state.logs.push({id:uid(),type:"break-out",visitor:v.name,vid:v.visitorId,time:now,office:v.office,note:"Stepped out"});
+  addToast(v.name+" stepped out — still checked in");render();
+};
+window.doBreakReturn=function(id){
+  if(!can("canBreak")){addToast("No break permission");return;}
+  const v=state.visitors.find(x=>x.id===id);if(!v||!v.onBreak)return;
+  const now=new Date().toISOString();
+  const l=v.breaks[v.breaks.length-1];if(l&&!l.returnTime)l.returnTime=now;
+  v.onBreak=false;
+  state.logs.push({id:uid(),type:"break-return",visitor:v.name,vid:v.visitorId,time:now,office:v.office,note:"Returned"});
+  addToast(v.name+" returned from break");render();
+};
+window.submitReg=function(){
+  const e=validateVF(state.regForm);
+  if(Object.keys(e).length){state.regErrors=e;renderModal();return;}
+  const vid=genVID();
+  const v={...state.regForm,id:uid(),visitorId:vid,status:"checked-in",checkin:new Date().toISOString(),checkout:null,onBreak:false,breaks:[]};
+  state.visitors.push(v);
+  state.logs.push({id:uid(),type:"checkin",visitor:v.name,vid,time:v.checkin,office:v.office,note:"Registered"});
+  addToast(v.name+" checked in — "+vid);closeModal();render();
+};
+window.submitPub=function(){
+  const e=validateVF(state.pubForm);
+  if(Object.keys(e).length){state.pubErrors=e;renderPub();return;}
+  const vid=genVID();
+  const v={...state.pubForm,id:uid(),visitorId:vid,status:"pending",checkin:new Date().toISOString(),checkout:null,onBreak:false,breaks:[]};
+  state.visitors.push(v);
+  state.logs.push({id:uid(),type:"checkin",visitor:v.name,vid,time:v.checkin,office:v.office,note:"Via link"});
+  state._lastPubV=v;state.pubDone=true;addToast(v.name+" registered — "+vid);renderPub();
+};
+window.submitGP=function(){
+  const e=validateGPF(state.gpForm);
+  if(Object.keys(e).length){state.gpErrors=e;renderModal();return;}
+  const g={...state.gpForm,id:uid(),gpId:genGPID(),status:"open",createdAt:new Date().toISOString(),closedAt:null,items:state.gpForm.items.filter(i=>i.name.trim())};
+  state.gatePasses.push(g);
+  state.gpLogs.push({id:uid(),type:"created",passId:g.gpId,by:g.requestedBy,time:g.createdAt,office:g.office});
+  addToast("Gate pass "+g.gpId+" created");closeModal();render();
+};
+window.closeGP=function(id){
+  if(!can("canCloseGP")){addToast("No permission to close passes");return;}
+  const g=state.gatePasses.find(x=>x.id===id);if(!g)return;
+  g.status="closed";g.closedAt=new Date().toISOString();
+  state.gpLogs.push({id:uid(),type:"closed",passId:g.gpId,by:state.currentUser?.name||"Security",time:g.closedAt,office:g.office});
+  addToast("Gate pass "+g.gpId+" closed");render();
+};
+window.doPrintBadge=function(id){const v=state.visitors.find(x=>x.id===id);if(v)printBadge(v);};
+window.dlBadgePNG=function(id){const v=state.visitors.find(x=>x.id===id);if(v)exportBadgePNG(v);};
+window.doPrintGP=function(id){const g=state.gatePasses.find(x=>x.id===id);if(g)printGP(g);};
+window.exportCSV=exportCSV;window.exportJSON=exportJSON;window.exportGPCSV=exportGPCSV;
+
+// ── Login ──────────────────────────────────────────────────────────────────────
+function renderLogin(){
+  document.getElementById("app").innerHTML=`
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="login-logo-icon">${I.building}</div>
+        <h1>GatePass</h1>
+        <p>Visitor & Gate Pass Management · iCIMS</p>
+      </div>
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:10px">Select your role to demo</div>
+      <div class="role-grid" id="roleGrid">
+        ${DEMO_USERS.map((u,i)=>{
+          const r=ROLES[u.role];
+          const locStr=u.offices.length===OFFICES.length?"All offices":u.offices.length>1?u.offices.length+" offices":u.offices[0]?.split("—")[0].trim()||"All";
+          return`<div class="role-card${state.loginRole===i?" sel":""}" onclick="selectLoginRole(${i})">
+            <div class="role-card-top"><div class="role-card-name">${u.name}</div><span class="role-badge ${r.badge}">${r.label}</span></div>
+            <div class="role-card-desc">${locStr}</div>
+          </div>`;
+        }).join("")}
+      </div>
+      ${state.loginRole!==null?`
+      <div class="ibox ibox-green">${I.shield}
+        <div>Logging in as <strong>${DEMO_USERS[state.loginRole].name}</strong> (${ROLES[DEMO_USERS[state.loginRole].role].label}). Access: ${DEMO_USERS[state.loginRole].offices.length===OFFICES.length?"All offices":DEMO_USERS[state.loginRole].offices.map(o=>o.split("—")[0].trim()).join(", ")}</div>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="doLogin()">${I.check} Enter GatePass</button>`
+      :`<button class="btn btn-ghost" style="width:100%;opacity:.5" disabled>Select a role above</button>`}
+    </div>
+  </div>`;
+}
+window.selectLoginRole=function(i){state.loginRole=i;renderLogin();};
+window.doLogin=function(){
+  const u=DEMO_USERS[state.loginRole];if(!u)return;
+  state.currentUser=u;
+  state.office=u.offices[0]||OFFICES[0];
+  render();
+};
+window.doLogout=function(){state.currentUser=null;state.loginRole=null;render();};
+
+// ── Main render ────────────────────────────────────────────────────────────────
+function render(){
+  if(!state.currentUser){renderLogin();return;}
+  if(state.pubView){renderPub();return;}
+  const u=state.currentUser,r=ROLES[u.role];
+  const loc=state.office;
+  const locV=state.visitors.filter(v=>v.office===loc);
+  const ci=locV.filter(v=>v.status==="checked-in").length;
+  const locGP=state.gatePasses.filter(g=>g.office===loc);
+  const openGP=locGP.filter(g=>g.status==="open").length;
+
+  const navItems=[
+    {sec:"Visitors"},
+    {id:"dashboard",  label:"Dashboard",      icon:I.grid, mod:"visitors"},
+    {id:"visitors",   label:"Visitors",        icon:I.users,mod:"visitors",badge:ci||null},
+    {id:"logs",       label:"Activity Log",    icon:I.log,  mod:"visitors"},
+    {id:"pub",        label:"Visitor Link",    icon:I.link, mod:"visitors",locked:!r.canRegister&&!r.canCheckin},
+    {sec:"Gate Passes"},
+    {id:"gpdashboard",label:"GP Dashboard",   icon:I.grid, mod:"gp",locked:!r.canGP},
+    {id:"gatepasses", label:"Gate Passes",     icon:I.clip, mod:"gp",badge:openGP||null,locked:!r.canGP},
+    {id:"gplogs",     label:"GP Activity Log", icon:I.log,  mod:"gp",locked:!r.canGP},
+    {sec:"Admin"},
+    {id:"settings",   label:"Settings",        icon:I.settings, mod:"settings",locked:!["superadmin","admin"].includes(u.role)},
+  ];
+
+  document.getElementById("app").innerHTML=`
+  <div class="app">
+    <div class="mob-ov${state.sidebarOpen?" open":""}" onclick="closeSidebar()"></div>
+    <nav class="sidebar${state.sidebarOpen?" open":""}">
+      <div class="sidebar-head">
+        <div class="logo-mark">${I.building}</div>
+        <div><div class="logo-title">GatePass</div><div class="logo-sub">Visitor & Pass Mgmt</div></div>
+      </div>
+      <div class="sidebar-user">
+        <div class="user-avatar">${initials(u.name)}</div>
+        <div><div class="user-name">${escH(u.name)}</div><div class="user-role">${ROLES[u.role].label}</div><div class="user-loc">${escH(loc.split("—")[0].trim())}</div></div>
+      </div>
+      <div class="sidebar-nav">
+        ${navItems.map(n=>{
+          if(n.sec)return`<div class="nav-sec">${n.sec}</div>`;
+          const act=state.page===n.id;
+          const cls=act?(n.mod==="gp"?"active-gp":"active"):"";
+          const locked=n.locked?" locked":"";
+          return`<div class="nav-item ${cls}${locked}" onclick="${n.locked?"addToast('Access restricted for your role')":"navTo('"+n.id+"')"}">${n.icon}<span style="flex:1">${n.label}</span>${n.locked?I.lock:""}${!n.locked&&n.badge?`<span class="nav-badge">${n.badge}</span>`:""}</div>`;
+        }).join("")}
+      </div>
+      <div class="sidebar-foot">
+        <div class="office-chip${!r.canChangeOffice&&!r.allOffices?" no-change":""}" onclick="event.stopPropagation();${r.canChangeOffice||r.allOffices?"openModal('office')":"addToast('Location fixed for your role')"}">  
+          <div class="office-dot"></div>
+          <div style="flex:1"><div class="office-name">${escH(loc.split("—")[0].trim())}</div><div class="office-sub">${escH((loc.split("—")[1]||"").trim())}</div></div>
+          ${r.canChangeOffice||r.allOffices?I.pin:""}
+        </div>
+        <div class="logout-btn" onclick="doLogout()">${I.logout}<span>Sign out</span></div>
+      </div>
+    </nav>
+    <div class="main">
+      <div class="topbar">
+        <button class="hbg" onclick="toggleSidebar()">${I.menu}</button>
+        <span class="mod-chip ${state.module==="gatepasses"?"mod-gp":state.module==="settings"?"mod-gp":"mod-v"}">${state.module==="gatepasses"?"Gate Passes":state.module==="settings"?"Settings":"Visitors"}</span>
+        <div class="topbar-title">${{dashboard:"Dashboard",visitors:"Visitors",logs:"Activity Log",pub:"Visitor Link",gpdashboard:"GP Dashboard",gatepasses:"Gate Passes",gplogs:"GP Activity Log",settings:"Settings"}[state.page]||""}</div>
+        <div class="live-pill"><div class="live-dot"></div>${ci} inside · ${openGP} open passes</div>
+      </div>
+      <div class="content" id="pc"></div>
+    </div>
+  </div>`;
+
+  if(state.page==="dashboard")renderDash();
+  else if(state.page==="visitors")renderVisitors();
+  else if(state.page==="logs")renderLogs();
+  else if(state.page==="gpdashboard")renderGPDash();
+  else if(state.page==="gatepasses")renderGPs();
+  else if(state.page==="gplogs")renderGPLogs();
+  else if(state.page==="settings")renderSettings();
+
+  renderModal();
+  document.addEventListener("click",e=>{
+    if(!e.target.closest(".ddwrap")){
+      document.getElementById("ddMenu")?.classList.remove("open");
+      document.getElementById("gpDD")?.classList.remove("open");
+    }
+  },{once:true});
+}
+
+// ── Visitor Dashboard ──────────────────────────────────────────────────────────
+function renderDash(){
+  const loc=state.office;
+  const vs=state.visitors.filter(v=>v.office===loc);
+  const ci=vs.filter(v=>v.status==="checked-in").length;
+  const td=vs.filter(v=>sameDay(v.checkin,new Date())).length;
+  const pend=vs.filter(v=>v.status==="pending").length;
+  const ob=vs.filter(v=>v.onBreak).length;
+  const activeRows=vs.filter(v=>v.status==="checked-in"||v.onBreak).map(v=>`
+    <div style="display:flex;align-items:center;gap:9px;padding:8px 18px;border-bottom:1px solid var(--border)">
+      ${avH(v)}
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:12.5px">${escH(v.name)}</div>
+        <div style="display:flex;align-items:center;gap:5px;margin-top:2px">${vidH(v)}${v.onBreak?`<span class="badge badge-amber" style="font-size:9px"><span class="sdot"></span>Break</span>`:""}<span style="font-size:10.5px;color:var(--muted)">since ${fmtTime(v.checkin)}</span></div>
+      </div>${typeBH(v.type)}
+    </div>`).join("")||`<div class="empty">${I.building}<h3>All clear</h3><p>No visitors at ${loc.split("—")[0].trim()}</p></div>`;
+  const logRows=state.logs.filter(l=>l.office===loc).slice(-8).reverse().map(l=>{
+    const cls={checkin:"green","break-out":"amber","break-return":"blue",checkout:"slate"};
+    const lbl={checkin:"checked in","break-out":"stepped out","break-return":"returned",checkout:"checked out"};
+    return`<div class="tl-item"><div class="tl-dot" style="background:var(--${cls[l.type]||"slate"})"></div>
+      <div><div class="tl-title">${escH(l.visitor)} ${lbl[l.type]||l.type}</div><div class="tl-time">${fmtTime(l.time)}${l.note?" · "+escH(l.note):""}</div></div></div>`;}).join("")||"<p style='color:var(--muted);font-size:12px'>No activity yet</p>";
+  const icons={Inside:I.users,"On Break":I.coffee,Today:I.grid,Pending:I.in};
+  document.getElementById("pc").innerHTML=`
+    <div class="phdr"><div><div class="ptitle">Overview</div><div class="psub">${loc}</div></div></div>
+    <div class="stats-grid">
+      ${[{l:"Inside",v:ci,c:"green",d:"Right now"},{l:"On Break",v:ob,c:"amber",d:"Stepped out"},{l:"Today",v:td,c:"blue",d:fmtDate(new Date())},{l:"Pending",v:pend,c:"purple",d:"Not arrived"}].map(s=>`<div class="stat-card"><div class="stat-ico" style="background:var(--${s.c}-d);color:var(--${s.c})">${icons[s.l]||I.users}</div><div class="stat-label">${s.l}</div><div class="stat-value">${s.v}</div><div class="stat-delta">${s.d}</div></div>`).join("")}
+    </div>
+    <div class="dash-g" style="display:grid;grid-template-columns:3fr 2fr;gap:13px">
+      <div class="card"><div class="card-hdr"><div class="card-title">Active Visitors</div></div><div style="padding-top:4px">${activeRows}</div></div>
+      <div class="card"><div class="card-hdr"><div class="card-title">Recent Activity</div></div><div class="card-body">${logRows}</div></div>
+    </div>`;
+}
+
+// ── Visitors Table ─────────────────────────────────────────────────────────────
+function renderVisitors(){
+  const loc=state.office,q=state.vSearch.toLowerCase();
+  const filtered=state.visitors.filter(v=>{
+    if(v.office!==loc)return false;
+    const mQ=!q||[v.name,v.company,v.host,v.email,v.phone,v.visitorId].some(s=>(s||"").toLowerCase().includes(q));
+    return mQ&&(state.vTypeF==="all"||v.type===state.vTypeF)&&(state.vStatusF==="all"||v.status===state.vStatusF);
+  });
+  const tOpts=`<option value="all">All Types</option>${VTYPES.map(t=>`<option value="${t.id}"${state.vTypeF===t.id?" selected":""}>${t.label}</option>`).join("")}`;
+  const sOpts=`<option value="all">All Status</option><option value="checked-in">Checked In</option><option value="checked-out">Checked Out</option><option value="pending">Pending</option>`;
+  const rows=filtered.length?filtered.map(v=>{
+    const ciToday=v.status==="checked-in";
+    const coToday=v.status==="checked-out"&&v.checkout&&sameDay(v.checkout,new Date());
+    const canCI=v.status!=="checked-in"&&!coToday&&can("canCheckin");
+    const canCO=v.status==="checked-in"&&can("canCheckout");
+    const canBOut=ciToday&&!v.onBreak&&can("canBreak");
+    const canRet=v.onBreak&&can("canBreak");
+    return`<tr onclick="openDetail('${v.id}')">
+      <td><div class="td-name">${avH(v)}<div><div style="font-weight:600">${escH(v.name)}</div><div style="margin-top:1px">${vidH(v)}</div></div></div></td>
+      <td>${typeBH(v.type)}</td>
+      <td style="font-size:12px">${escH(v.host||"—")}</td>
+      <td>${statusBH(v.status,v.onBreak)}</td>
+      <td style="font-size:12px;color:var(--muted)">${fmtTime(v.checkin)}</td>
+      <td onclick="event.stopPropagation()"><div style="display:flex;gap:4px;flex-wrap:wrap">
+        ${canCI?`<button class="btn btn-success btn-sm" title="Check In" onclick="event.stopPropagation();doCheckin('${v.id}')">${I.in}</button>`:""}
+        ${canCO?`<button class="btn btn-danger btn-sm" title="Check Out" onclick="event.stopPropagation();doCheckout('${v.id}')">${I.out}</button>`:""}
+        ${canBOut?`<button class="btn btn-amber btn-sm" title="Step Out" onclick="event.stopPropagation();doBreakOut('${v.id}')">${I.coffee}</button>`:""}
+        ${canRet?`<button class="btn btn-success btn-sm" title="Return" onclick="event.stopPropagation();doBreakReturn('${v.id}')">${I.check}</button>`:""}
+        ${can("canBadge")&&VTYPES.find(t=>t.id===v.type)?.nb?`<button class="btn btn-ghost btn-sm" title="Badge" onclick="event.stopPropagation();openBadge('${v.id}')">${I.badge}</button>`:""}
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openDetail('${v.id}')">${I.eye}</button>
+      </div></td>
+    </tr>`;}).join(""):`<tr><td colspan="6"><div class="empty">${I.search}<h3>No results</h3><p>No visitors at this location</p></div></td></tr>`;
+
+  document.getElementById("pc").innerHTML=`
+    <div class="phdr">
+      <div><div class="ptitle">Visitors</div><div class="psub">${loc} · ${filtered.length} shown</div></div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        ${can("canExport")?`<div class="ddwrap"><button class="btn btn-ghost btn-sm" onclick="toggleDD()">${I.dl} Export</button>
+          <div class="ddmenu" id="ddMenu">
+            <div class="dditem" onclick="exportCSV();toggleDD()">Export CSV</div>
+            <div class="dditem" onclick="exportJSON();toggleDD()">Export JSON</div>
+          </div></div>`:""}
+        <button class="btn btn-ghost btn-sm" onclick="openModal('sendlink')">${I.link} Share Link</button>
+        ${can("canRegister")?`<button class="btn btn-primary" onclick="openModal('register')">${I.plus} Register</button>`:""}
+      </div>
+    </div>
+    <div class="fbar">
+      <div class="sbar">${I.search}<input value="${escH(state.vSearch)}" placeholder="Search name, ID, host…" oninput="state.vSearch=this.value;renderVisitors()"/></div>
+      <select class="fi" style="width:auto;font-size:12px;padding:6px 26px 6px 10px" onchange="state.vTypeF=this.value;renderVisitors()">${tOpts}</select>
+      <select class="fi" style="width:auto;font-size:12px;padding:6px 26px 6px 10px" onchange="state.vStatusF=this.value;renderVisitors()">${sOpts}</select>
+    </div>
+    <div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Visitor</th><th>Type</th><th>Host / POC</th><th>Status</th><th>Check-in</th><th>Actions</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div></div>`;
+}
+
+// ── Activity Log ───────────────────────────────────────────────────────────────
+function renderLogs(){
+  const loc=state.office;
+  const logs=state.logs.filter(l=>l.office===loc);
+  const lbl={checkin:"Check In","break-out":"Step Out","break-return":"Return",checkout:"Check Out"};
+  const col={checkin:"green","break-out":"amber","break-return":"blue",checkout:"slate"};
+  const rows=[...logs].reverse().map(l=>`<tr>
+    <td style="font-weight:600;font-size:12.5px">${escH(l.visitor)}</td>
+    <td><span style="font-family:var(--mono);font-size:9.5px;color:var(--muted)">${escH(l.vid||"—")}</span></td>
+    <td><span class="badge badge-${col[l.type]||"slate"}"><span class="sdot"></span>${lbl[l.type]||l.type}</span></td>
+    <td style="font-size:12px">${fmtTime(l.time)}<span style="color:var(--muted2);margin-left:6px;font-size:10px">${fmtDate(l.time)}</span></td>
+    <td style="font-size:12px;color:var(--muted)">${escH(l.note||"—")}</td>
+  </tr>`).join("")||`<tr><td colspan="5"><div class="empty">${I.log}<h3>No activity</h3></div></td></tr>`;
+  document.getElementById("pc").innerHTML=`
+    <div class="phdr"><div><div class="ptitle">Activity Log</div><div class="psub">${loc}</div></div>
+      ${can("canExport")?`<button class="btn btn-ghost btn-sm" onclick="exportCSV()">${I.dl} Export CSV</button>`:""}
+    </div>
+    <div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Visitor</th><th>Visitor ID</th><th>Event</th><th>Time</th><th>Note</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div></div>`;
+}
+
+// ── GP Dashboard ───────────────────────────────────────────────────────────────
+function renderGPDash(){
+  const loc=state.office;
+  const gps=state.gatePasses.filter(g=>g.office===loc);
+  const open=gps.filter(g=>g.status==="open").length;
+  const closed=gps.filter(g=>g.status==="closed").length;
+  const recentRows=gps.slice(-5).reverse().map(g=>{
+    const t=GP_TYPES.find(x=>x.id===g.type);
+    return`<div style="display:flex;align-items:center;gap:9px;padding:8px 18px;border-bottom:1px solid var(--border)">
+      <div style="width:28px;height:28px;border-radius:7px;background:var(--teal-d);display:grid;place-items:center;color:var(--teal);flex-shrink:0">${I[t?.icon||"box"]}</div>
+      <div style="flex:1"><div style="font-weight:600;font-size:12.5px">${escH(g.gpId)}</div><div style="font-size:11px;color:var(--muted)">${t?.label} · ${escH(g.requestedBy)}</div></div>
+      ${gpStatus(g.status)}
+    </div>`;}).join("")||`<div class="empty">${I.box}<h3>No gate passes</h3></div>`;
+  document.getElementById("pc").innerHTML=`
+    <div class="phdr"><div><div class="ptitle">Gate Pass Overview</div><div class="psub">${loc}</div></div>
+      ${can("canCreateGP")?`<button class="btn btn-teal" onclick="openModal('newgp')">${I.plus} New Gate Pass</button>`:""}
+    </div>
+    <div class="stats-grid">
+      ${[{l:"Open Passes",v:open,c:"green",d:"Active",ico:I.clip},{l:"Closed",v:closed,c:"slate",d:"Completed",ico:I.check},{l:"Today",v:gps.filter(g=>sameDay(g.createdAt,new Date())).length,c:"teal",d:fmtDate(new Date()),ico:I.grid},{l:"Total",v:gps.length,c:"purple",d:"This location",ico:I.box}].map(s=>`<div class="stat-card"><div class="stat-ico" style="background:var(--${s.c}-d);color:var(--${s.c})">${s.ico}</div><div class="stat-label">${s.l}</div><div class="stat-value">${s.v}</div><div class="stat-delta">${s.d}</div></div>`).join("")}
+    </div>
+    <div class="card"><div class="card-hdr"><div class="card-title">Recent Gate Passes</div></div><div style="padding-top:4px">${recentRows}</div></div>`;
+}
+
+// ── Gate Passes Table ──────────────────────────────────────────────────────────
+function renderGPs(){
+  const loc=state.office,q=state.gpSearch.toLowerCase();
+  const filtered=state.gatePasses.filter(g=>{
+    if(g.office!==loc)return false;
+    const mQ=!q||[g.gpId,g.requestedBy,g.vendor,g.purpose].some(s=>(s||"").toLowerCase().includes(q));
+    return mQ&&(state.gpTypeF==="all"||g.type===state.gpTypeF)&&(state.gpStatusF==="all"||g.status===state.gpStatusF);
+  });
+  const tOpts=`<option value="all">All Types</option>${GP_TYPES.map(t=>`<option value="${t.id}"${state.gpTypeF===t.id?" selected":""}>${t.label}</option>`).join("")}`;
+  const sOpts=`<option value="all">All Status</option><option value="open">Open</option><option value="closed">Closed</option>`;
+  const rows=filtered.length?filtered.map(g=>{
+    const t=GP_TYPES.find(x=>x.id===g.type);
+    return`<tr onclick="openGPDetail('${g.id}')">
+      <td><span style="font-family:var(--mono);font-size:10.5px;font-weight:600">${escH(g.gpId)}</span></td>
+      <td><span class="badge badge-teal"><span class="sdot"></span>${t?.label||g.type}</span></td>
+      <td style="font-size:12px">${escH(g.requestedBy)}</td>
+      <td style="font-size:12px;color:var(--muted)">${escH(g.vendor||"—")}</td>
+      <td style="font-size:12px;color:var(--muted)">${g.items?.length||0} items</td>
+      <td style="font-size:11.5px;color:var(--muted)">${fmtDate(g.createdAt)}</td>
+      <td>${gpStatus(g.status)}</td>
+      <td onclick="event.stopPropagation()"><div style="display:flex;gap:4px">
+        ${can("canCloseGP")&&g.status==="open"?`<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();closeGP('${g.id}')">Close</button>`:""}
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openGPDetail('${g.id}')">${I.eye}</button>
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();doPrintGP('${g.id}')">${I.print}</button>
+      </div></td>
+    </tr>`;}).join(""):`<tr><td colspan="8"><div class="empty">${I.box}<h3>No gate passes</h3></div></td></tr>`;
+
+  document.getElementById("pc").innerHTML=`
+    <div class="phdr">
+      <div><div class="ptitle">Gate Passes</div><div class="psub">${loc} · ${filtered.length} shown</div></div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        ${can("canExport")?`<div class="ddwrap"><button class="btn btn-ghost btn-sm" onclick="toggleGPDD()">${I.dl} Export</button>
+          <div class="ddmenu" id="gpDD"><div class="dditem" onclick="exportGPCSV();toggleGPDD()">Export CSV</div></div></div>`:""}
+        ${can("canCreateGP")?`<button class="btn btn-teal" onclick="openModal('newgp')">${I.plus} New Gate Pass</button>`:""}
+      </div>
+    </div>
+    <div class="fbar">
+      <div class="sbar">${I.search}<input value="${escH(state.gpSearch)}" placeholder="Search pass ID, requester…" oninput="state.gpSearch=this.value;renderGPs()"/></div>
+      <select class="fi" style="width:auto;font-size:12px;padding:6px 26px 6px 10px" onchange="state.gpTypeF=this.value;renderGPs()">${tOpts}</select>
+      <select class="fi" style="width:auto;font-size:12px;padding:6px 26px 6px 10px" onchange="state.gpStatusF=this.value;renderGPs()">${sOpts}</select>
+    </div>
+    <div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Pass ID</th><th>Type</th><th>Requested By</th><th>Vendor</th><th>Items</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div></div>`;
+}
+
+// ── GP Logs ────────────────────────────────────────────────────────────────────
+function renderGPLogs(){
+  const loc=state.office;
+  const logs=state.gpLogs.filter(l=>l.office===loc);
+  const rows=[...logs].reverse().map(l=>`<tr>
+    <td style="font-family:var(--mono);font-size:10.5px;font-weight:600">${escH(l.passId)}</td>
+    <td><span class="badge badge-${l.type==="created"?"teal":"slate"}"><span class="sdot"></span>${l.type}</span></td>
+    <td style="font-size:12px">${escH(l.by)}</td>
+    <td style="font-size:12px">${fmtTime(l.time)}<span style="color:var(--muted2);margin-left:6px;font-size:10px">${fmtDate(l.time)}</span></td>
+  </tr>`).join("")||`<tr><td colspan="4"><div class="empty">${I.log}<h3>No activity</h3></div></td></tr>`;
+  document.getElementById("pc").innerHTML=`
+    <div class="phdr"><div><div class="ptitle">GP Activity Log</div><div class="psub">${loc}</div></div>
+      ${can("canExport")?`<button class="btn btn-ghost btn-sm" onclick="exportGPCSV()">${I.dl} Export CSV</button>`:""}
+    </div>
+    <div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Pass ID</th><th>Event</th><th>By</th><th>Time</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div></div>`;
+}
+
+// ── Settings ───────────────────────────────────────────────────────────────────
+window.setSettingsTab=function(t){state.settingsTab=t;renderSettings();};
+window.setBranding=function(k,v){
+  state.branding[k]=v;
+  // Only re-render on non-text changes or when user is done typing
+  if(k!=="companyName" && k!=="logoText")renderSettings();
+};
+window.setIntegration=function(provider,k,v){state.integrations[provider][k]=v;};
+window.toggleIntegration=function(provider){
+  state.integrations[provider].enabled=!state.integrations[provider].enabled;
+  addToast(state.integrations[provider].enabled?provider+" integration enabled":provider+" integration disabled");
+  renderSettings();
+};
+window.openEditUser=function(idx){state.editingUser={...state.managedUsers[idx],idx};renderModal();};
+window.toggleUserOffice=function(idx,checked){
+  if(!state.editingUser)return;
+  const o=OFFICES[idx];
+  if(checked&&!state.editingUser.offices.includes(o))state.editingUser.offices=[...(state.editingUser.offices||[]),o];
+  if(!checked)state.editingUser.offices=(state.editingUser.offices||[]).filter(x=>x!==o);
+};
+window.saveEditUser=function(){
+  if(!state.editingUser)return;
+  const {idx,...u}=state.editingUser;
+  if(!u.name?.trim()||!u.email?.trim()){addToast("Name and email required");return;}
+  if(idx===-1){state.managedUsers.push({...u,id:uid()});addToast("User added");}
+  else{state.managedUsers[idx]={...state.managedUsers[idx],...u};addToast("User updated");}
+  closeModal();renderSettings();
+};
+window.setEditingUser=function(k,v){
+  if(state.editingUser)state.editingUser[k]=v;
+  // Don't re-render on text input, only on dropdowns
+  if(k==="role")renderModal();
+};
+window.deleteUser=function(idx){
+  if(state.managedUsers[idx]?.id===state.currentUser?.id){addToast("Cannot delete yourself");return;}
+  state.managedUsers.splice(idx,1);addToast("User removed");renderSettings();
+};
+window.addNewUser=function(){
+  state.editingUser={idx:-1,id:uid(),name:"",email:"",role:"viewer",offices:[state.office]};
+  state.modal="edituser";renderModal();
+};
+
+function renderSettings(){
+  const tab=state.settingsTab;
+  const b=state.branding;
+  const tabs=[{id:"users",label:"Users",icon:I.usermgmt},{id:"branding",label:"Branding",icon:I.palette},{id:"templates",label:"Templates",icon:I.template},{id:"integrations",label:"Integrations",icon:I.integrations}];
+  const COLORS=["#1e7d3a","#1a5fa8","#6b3fa0","#176878","#8a6a0a","#c0392b","#2d3d2d","#3d5063"];
+
+  let content="";
+  if(tab==="users"){
+    const rows=state.managedUsers.map((u,i)=>{
+      const r=ROLES[u.role];
+      return`<div class="user-row">
+        <div class="user-av">${initials(u.name)}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--text2)">${escH(u.name)}</div>
+          <div style="font-size:11px;color:var(--muted)">${escH(u.email)} · ${u.offices.length===OFFICES.length?"All offices":u.offices.length+" location"+(u.offices.length!==1?"s":"")}</div>
+        </div>
+        <span class="role-badge ${r.badge}" style="margin-right:8px">${r.label}</span>
+        <button class="btn btn-ghost btn-sm" onclick="openEditUser(${i})">${I.edit2}</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteUser(${i})">${I.trash}</button>
+      </div>`;}).join("");
+    content=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:600">${state.managedUsers.length} users</div>
+      <button class="btn btn-primary btn-sm" onclick="addNewUser()">${I.plus} Add User</button>
+    </div>
+    <div class="card"><div style="padding:4px 0">${rows}</div></div>
+    <div class="ibox ibox-amber" style="margin-top:14px">${I.alert}<span>Role-based access is enforced. Security Officers cannot register visitors or manage gate passes. Viewers have read-only access. Location Admins only see their assigned offices.</span></div>`;
+  }
+  else if(tab==="branding"){
+    const swatches=COLORS.map(c=>`<div class="color-swatch${b.primaryColor===c?" active":""}" style="background:${c}" onclick="setBranding('primaryColor','${c}')"></div>`).join("");
+    const fonts=["Plus Jakarta Sans","Inter","Roboto","Open Sans","Poppins","DM Sans"];
+    const fontOpts=fonts.map(f=>`<option value="${f}"${b.font===f?" selected":""}>${f}</option>`).join("");
+    
+    content=`<div class="ibox ibox-green" style="margin-bottom:16px">${I.palette}<span>Customize your entire site appearance. Changes apply to badges, gate passes, sidebar, login page, and all UI elements.</span></div>
+    
+    <div class="card" style="margin-bottom:14px"><div class="card-hdr"><div class="card-title">Company Branding</div></div><div class="card-body">
+      <div class="fgrid">
+        <div class="fg"><label class="flabel">Company Name</label><input class="fi" value="${escH(b.companyName)}" onblur="setBranding('companyName',this.value);renderSettings()" onchange="state.branding.companyName=this.value"/></div>
+        <div class="fg"><label class="flabel">Logo Text / Abbreviation</label><input class="fi" value="${escH(b.logoText)}" onblur="setBranding('logoText',this.value);renderSettings()" onchange="state.branding.logoText=this.value" maxlength="4"/></div>
+      </div>
+      <div class="fg">
+        <label class="flabel">Company Logo Upload</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('logoUpload').click()">${I.img} Upload Logo</button>
+          <input type="file" id="logoUpload" accept="image/*" style="display:none" onchange="(function(e){const f=e.target.files[0];if(f){const r=new FileReader();r.onload=()=>{state.branding.logoUrl=r.result;renderSettings();};r.readAsDataURL(f);}})(event)"/>
+          ${b.logoUrl?`<div style="display:flex;align-items:center;gap:6px"><img src="${b.logoUrl}" style="width:32px;height:32px;border-radius:6px;object-fit:contain;background:var(--bg3);border:1px solid var(--border)"/><button class="btn btn-danger btn-sm" onclick="state.branding.logoUrl=null;renderSettings()">${I.trash}</button></div>`:"<span style='font-size:11px;color:var(--muted)'>No logo uploaded</span>"}
+        </div>
+      </div>
+    </div></div>
+    
+    <div class="card" style="margin-bottom:14px"><div class="card-hdr"><div class="card-title">Color Scheme</div></div><div class="card-body">
+      <div class="fg"><label class="flabel" style="margin-bottom:8px">Primary Accent Color</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          ${swatches}
+          <input type="color" value="${escH(b.primaryColor)}" onchange="setBranding('primaryColor',this.value)" style="width:28px;height:28px;border:none;border-radius:6px;cursor:pointer;padding:0;background:none"/>
+        </div>
+      </div>
+      <div class="fgrid">
+        <div class="fg"><label class="flabel">Site Background Color</label>
+          <input type="color" value="${escH(b.siteBgColor)}" onchange="setBranding('siteBgColor',this.value);document.documentElement.style.setProperty('--bg',this.value)" style="width:100%;height:40px;border:1px solid var(--border);border-radius:7px;cursor:pointer;padding:4px"/>
+        </div>
+        <div class="fg"><label class="flabel">Sidebar Background</label>
+          <input type="color" value="${escH(b.sidebarColor)}" onchange="setBranding('sidebarColor',this.value);document.documentElement.style.setProperty('--bg2',this.value)" style="width:100%;height:40px;border:1px solid var(--border);border-radius:7px;cursor:pointer;padding:4px"/>
+        </div>
+      </div>
+    </div></div>
+    
+    <div class="card" style="margin-bottom:14px"><div class="card-hdr"><div class="card-title">Typography</div></div><div class="card-body">
+      <div class="fg"><label class="flabel">Primary Font Family</label>
+        <select class="fi" onchange="setBranding('font',this.value);document.documentElement.style.fontFamily=this.value+',sans-serif'">${fontOpts}</select>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:6px">Changes the font across the entire interface including badges and passes.</p>
+    </div></div>
+    
+    <div class="card"><div class="card-hdr"><div class="card-title">Live Preview</div></div><div class="card-body">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:${b.siteBgColor};border-radius:9px;border:1px solid var(--border)">
+        ${b.logoUrl?`<img src="${b.logoUrl}" style="width:32px;height:32px;object-fit:contain"/>`:`<div style="width:32px;height:32px;background:${escH(b.primaryColor)};border-radius:8px;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:800">${escH(b.logoText.slice(0,2))}</div>`}
+        <div><div style="font-weight:800;font-size:14px;color:var(--text);font-family:${b.font},sans-serif">${escH(b.companyName)}</div><div style="font-size:9px;color:var(--muted2)">GatePass</div></div>
+      </div>
+      <button class="btn btn-primary btn-sm" style="margin-top:12px;background:${b.primaryColor}" onclick="addToast('Preview applied')">Sample Button</button>
+    </div></div>`;
+  }
+  else if(tab==="templates"){
+    const vtpls=[
+      {id:"classic",label:"Classic",desc:"Clean centered layout with photo",preview:`<div style="text-align:center;padding:8px"><div style="width:28px;height:28px;border-radius:50%;background:var(--border2);margin:0 auto 5px"></div><div style="width:50px;height:5px;background:var(--border2);border-radius:3px;margin:0 auto 3px"></div><div style="width:36px;height:4px;background:var(--border);border-radius:3px;margin:0 auto"></div></div>`},
+      {id:"minimal",label:"Minimal",desc:"Text-focused, compact",preview:`<div style="padding:8px"><div style="height:4px;background:var(--border2);border-radius:2px;margin-bottom:4px;width:60%"></div><div style="height:3px;background:var(--border);border-radius:2px;width:40%"></div><div style="height:3px;background:var(--border);border-radius:2px;width:50%;margin-top:4px"></div></div>`},
+      {id:"bold",label:"Bold",desc:"Large ID number emphasis",preview:`<div style="padding:8px;text-align:center"><div style="font-size:16px;font-weight:900;color:var(--accent);margin-bottom:3px">ID</div><div style="height:3px;background:var(--border2);border-radius:2px;width:70%;margin:0 auto"></div></div>`}
+    ];
+    const gptpls=[
+      {id:"minimal",label:"Minimal",desc:"Clean list of items",preview:`<div style="padding:8px">${[1,2,3].map(()=>`<div style="height:3px;background:var(--border2);border-radius:2px;margin-bottom:3px;width:${Math.random()*30+60}%"></div>`).join("")}</div>`},
+      {id:"detailed",label:"Detailed A4",desc:"Full A4 grid with all fields",preview:`<div style="padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:3px">${[1,2,3,4].map(()=>`<div style="height:12px;background:var(--border2);border-radius:2px"></div>`).join("")}</div>`},
+      {id:"compact",label:"Compact",desc:"Condensed single column",preview:`<div style="padding:8px">${[1,2].map(()=>`<div style="height:4px;background:var(--border2);border-radius:2px;margin-bottom:4px"></div>`).join("")}<div style="height:6px;background:var(--teal-d);border-radius:2px"></div></div>`}
+    ];
+    
+    content=`<div class="card" style="margin-bottom:14px"><div class="card-hdr"><div class="card-title">Visitor Badge Templates</div><div style="margin-left:auto"><button class="btn btn-primary btn-sm" onclick="state.modal='createtemplate';state.modalData={type:'visitor'};renderModal()">${I.plus} Create Custom</button></div></div><div class="card-body">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+        ${vtpls.map(t=>`<div class="template-card${b.visitorTemplate===t.id?" active":""}" onclick="setBranding('visitorTemplate','${t.id}')">
+          <div class="template-preview" style="background:${b.visitorTemplate===t.id?"var(--accent-d)":"var(--bg3)"}">${t.preview}</div>
+          <div class="template-label">${t.label}<div style="font-size:10px;color:var(--muted);font-weight:400;margin-top:1px">${t.desc}</div></div>
+        </div>`).join("")}
+      </div>
+    </div></div>
+    <div class="card"><div class="card-hdr"><div class="card-title">Gate Pass Templates (A4 Size)</div><div style="margin-left:auto"><button class="btn btn-teal btn-sm" onclick="state.modal='createtemplate';state.modalData={type:'gatepass'};renderModal()">${I.plus} Create Custom</button></div></div><div class="card-body">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+        ${gptpls.map(t=>`<div class="template-card${b.gpTemplate===t.id?" active":""}" onclick="setBranding('gpTemplate','${t.id}')">
+          <div class="template-preview" style="background:${b.gpTemplate===t.id?"var(--teal-d)":"var(--bg3)"}">${t.preview}</div>
+          <div class="template-label">${t.label}<div style="font-size:10px;color:var(--muted);font-weight:400;margin-top:1px">${t.desc}</div></div>
+        </div>`).join("")}
+      </div>
+      <div class="ibox ibox-green" style="margin-top:12px">${I.alert}<span>Gate passes use A4 size (210mm × 297mm) for easy printing with comprehensive details.</span></div>
+    </div></div>`;
+  }
+  else if(tab==="integrations"){
+    const ms=state.integrations.microsoft,goog=state.integrations.google;
+    content=`<div class="ibox ibox-green" style="margin-bottom:16px">${I.shield}<span>Integrations allow single sign-on and cloud data storage. Enable an integration to let users log in with their company accounts. Data can be synced to SharePoint lists or Google Sheets.</span></div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="int-card">
+        <div class="int-logo" style="background:#f3f2f1"><svg width="22" height="22" viewBox="0 0 23 23" fill="none"><path fill="#f25022" d="M1 1h10v10H1z"/><path fill="#7fba00" d="M12 1h10v10H12z"/><path fill="#00a4ef" d="M1 12h10v10H1z"/><path fill="#ffb900" d="M12 12h10v10H12z"/></svg></div>
+        <div style="flex:1">
+          <div class="int-name">Microsoft 365 / Azure AD</div>
+          <div class="int-desc">Single sign-on · SharePoint data storage · Teams notifications</div>
+          ${ms.enabled?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+            <div><label class="flabel">Tenant ID</label><input class="fi" value="${escH(ms.tenant)}" placeholder="your-tenant-id" oninput="setIntegration('microsoft','tenant',this.value)"/></div>
+            <div><label class="flabel">Client ID</label><input class="fi" value="${escH(ms.clientId)}" placeholder="app-client-id" oninput="setIntegration('microsoft','clientId',this.value)"/></div>
+          </div>
+          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm" onclick="addToast('Opening Microsoft login…');window.open('https://login.microsoftonline.com/')">Test Login</button>
+            <button class="btn btn-ghost btn-sm" onclick="addToast('Configure SharePoint connector…')">SharePoint Setup</button>
+          </div>`:""}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+          <div class="toggle${ms.enabled?" on":""}" onclick="toggleIntegration('microsoft')"><div class="toggle-knob"></div></div>
+          <span style="font-size:10px;color:${ms.enabled?"var(--green)":"var(--muted)"}">${ms.enabled?"Connected":"Disabled"}</span>
+        </div>
+      </div>
+      <div class="int-card">
+        <div class="int-logo" style="background:#fafafa"><svg width="22" height="22" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg></div>
+        <div style="flex:1">
+          <div class="int-name">Google Workspace</div>
+          <div class="int-desc">Single sign-on · Google Sheets storage · Google Calendar</div>
+          ${goog.enabled?`<div style="margin-top:10px">
+            <label class="flabel">Workspace Domain</label>
+            <input class="fi" value="${escH(goog.domain)}" placeholder="yourcompany.com" oninput="setIntegration('google','domain',this.value)" style="max-width:240px"/>
+          </div>
+          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm" onclick="addToast('Opening Google OAuth…');window.open('https://accounts.google.com/')">Test Login</button>
+            <button class="btn btn-ghost btn-sm" onclick="addToast('Configure Sheets connector…')">Sheets Setup</button>
+          </div>`:""}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+          <div class="toggle${goog.enabled?" on":""}" onclick="toggleIntegration('google')"><div class="toggle-knob"></div></div>
+          <span style="font-size:10px;color:${goog.enabled?"var(--green)":"var(--muted)"}">${goog.enabled?"Connected":"Disabled"}</span>
+        </div>
+      </div>
+      <div class="int-card" style="opacity:.55">
+        <div class="int-logo" style="background:#f0f0f0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg></div>
+        <div style="flex:1"><div class="int-name">LDAP / Active Directory</div><div class="int-desc">On-premise directory integration · Coming soon</div></div>
+        <span class="badge badge-slate">Coming Soon</span>
+      </div>
+    </div>`;
+  }
+
+  document.getElementById("pc").innerHTML=`
+    <div class="phdr"><div><div class="ptitle">Settings</div><div class="psub">Manage users, branding, templates, and integrations</div></div></div>
+    <div class="settings-tabs">${tabs.map(t=>`<div class="stab${tab===t.id?" active":""}" onclick="setSettingsTab('${t.id}')">${t.label}</div>`).join("")}</div>
+    <div class="anim-fade">${content}</div>`;
+}
+
+// ── Modal renderer ─────────────────────────────────────────────────────────────
+function renderModal(){
+  let ov=document.getElementById("gpOverlay");
+  if(!ov){document.body.insertAdjacentHTML("beforeend",`<div class="overlay hidden" id="gpOverlay" onclick="if(event.target===this)closeModal()"></div>`);ov=document.getElementById("gpOverlay");}
+  const m=state.modal;
+  if(!m){ov.className="overlay hidden";return;}
+  ov.className="overlay";
+
+  if(m==="register"){
+    const f=state.regForm,e=state.regErrors;
+    ov.innerHTML=`<div class="modal modal-lg" onclick="event.stopPropagation()">
+      <div class="modal-hdr"><div><div class="modal-title">Register Visitor</div><div class="modal-sub">A unique Visitor ID is issued on check-in</div></div><button class="modal-close" onclick="closeModal()">${I.x}</button></div>
+      <div class="modal-body">${vFormHTML(f,"reg",e)}</div>
+      <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitReg()">${I.check} Issue ID & Check In</button></div>
+    </div>`;
+  }
+  else if(m==="newgp"){
+    const f=state.gpForm,e=state.gpErrors;
+    ov.innerHTML=`<div class="modal modal-lg" onclick="event.stopPropagation()">
+      <div class="modal-hdr"><div><div class="modal-title">New Gate Pass</div><div class="modal-sub">Materials, food, or contractor supplies</div></div><button class="modal-close" onclick="closeModal()">${I.x}</button></div>
+      <div class="modal-body">${gpFormHTML(f,e)}</div>
+      <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-teal" onclick="submitGP()">${I.check} Create Gate Pass</button></div>
+    </div>`;
+  }
+  else if(m==="sendlink"){
+    const link=window.location.href.split("?")[0].split("#")[0]+"?view=register&office="+encodeURIComponent(state.office)+"&tok="+uid();
+    ov.innerHTML=`<div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-hdr"><div><div class="modal-title">Share Registration Link</div><div class="modal-sub">Visitor self-registers; ID issued on submission</div></div><button class="modal-close" onclick="closeModal()">${I.x}</button></div>
+      <div class="modal-body">
+        <div class="ibox ibox-green">${I.alert}<span>Share this link. Visitor fills in their details and gets a Visitor ID immediately.</span></div>
+        <label class="flabel" style="margin-bottom:6px">Registration URL</label>
+        <div class="link-box"><code>${escH(link)}</code><button class="btn btn-ghost btn-sm" onclick="copyText('${escAttr(link)}')">${I.copy} Copy</button></div>
+      </div>
+      <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button>
+        <button class="btn btn-primary" onclick="window.open('https://wa.me/?text='+encodeURIComponent('Register your visit: ${escAttr(link)}'))">${I.wa} WhatsApp</button>
+      </div>
+    </div>`;
+  }
+  else if(m==="badge"){
+    const v=state.modalData;
+    ov.innerHTML=`<div class="modal modal-lg" onclick="event.stopPropagation()">
+      <div class="modal-hdr"><div><div class="modal-title">Visitor Badge</div><div class="modal-sub">${escH(v.visitorId)} · ${escH(v.name)}</div></div><button class="modal-close" onclick="closeModal()">${I.x}</button></div>
+      <div class="modal-body"><div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start">
+        <div style="flex-shrink:0">${bHTML(v)}</div>
+        <div style="flex:1;min-width:180px">
+          <div class="sdiv" style="padding-top:0">Badge Actions</div>
+          <div style="display:flex;flex-direction:column;gap:7px">
+            <button class="btn btn-primary" onclick="doPrintBadge('${v.id}')">${I.print} Print / Save as PDF</button>
+            <button class="btn btn-ghost" onclick="dlBadgePNG('${v.id}')">${I.img} Download PNG</button>
+            <div style="height:1px;background:var(--border);margin:3px 0"></div>
+            <div class="sdiv" style="padding-top:0;margin-bottom:6px">Send Badge Link</div>
+            <div class="link-box"><code>Badge link for ${escH(v.name)}</code><button class="btn btn-ghost btn-sm" onclick="copyText('${escAttr(window.location.href.split("?")[0]+"?badge="+v.visitorId)}')">${I.copy}</button></div>
+            <button class="btn btn-ghost" onclick="window.open('https://wa.me/?text='+encodeURIComponent('Visitor badge ID: ${escAttr(v.visitorId)} (${escAttr(v.name)})'))">${I.wa} WhatsApp</button>
+          </div>
+        </div>
+      </div></div>
+      <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>
+    </div>`;
+  }
+  else if(m==="detail"){
+    const v=state.modalData;
+    const t=VTYPES.find(x=>x.id===v.type),poc=POC_CFG[v.type];
+    const active=v.status==="checked-in"||v.status==="pending";
+    const ciToday=v.status==="checked-in";
+    const coToday=v.status==="checked-out"&&v.checkout&&sameDay(v.checkout,new Date());
+    const canCI=v.status!=="checked-in"&&!coToday&&can("canCheckin");
+    const te=TYPE_EXTRA_MAP[v.type]||[];
+    const rows=[["Email",v.email],["Phone",v.phone],
+      ...(poc?.show?[[poc.hl,v.host],[poc.pl,v.hostPhone]]:[]),
+      ...(NEEDS_PURPOSE[v.type]?[["Purpose",v.purpose]]:[]),
+      ["Office",v.office],
+      ...(v.address?[["Address",v.address]]:[]),
+      ["Check-in",fmtDT(v.checkin)],
+      ["Check-out",v.checkout?fmtDT(v.checkout):"Still inside"],
+      ...te.filter(x=>v[x.k]).map(x=>[x.l,v[x.k]]),
+    ].filter(([,val])=>val&&val!=="—");
+    const brkRows=(v.breaks||[]).map((b,i)=>`<div class="brk-row"><span style="font-weight:600">Break ${i+1}</span><span style="color:var(--muted)">Out: ${fmtTime(b.out)}</span><span style="color:var(--muted)">${b.returnTime?"Return: "+fmtTime(b.returnTime):"Still outside"}</span></div>`).join("")||"<p style='color:var(--muted);font-size:12px'>No breaks</p>";
+    ov.innerHTML=`<div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-hdr"><div><div class="modal-title">${escH(v.name)}</div><div class="modal-sub">${escH(v.company||"—")}</div></div><button class="modal-close" onclick="closeModal()">${I.x}</button></div>
+      <div class="modal-body">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          ${avH(v,44)}<div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:5px">${typeBH(v.type)}${statusBH(v.status,v.onBreak)}</div>
+            <div style="display:flex;align-items:center;gap:7px">${vidH(v)}<span style="font-size:9.5px;color:${active?"var(--green)":"var(--muted)"};font-weight:600">${active?"Valid":"Expired"}</span></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+          ${rows.map(([k,val])=>`<div style="background:var(--bg3);border-radius:7px;padding:8px 10px"><div style="font-size:9px;color:var(--muted2);text-transform:uppercase;letter-spacing:.7px;font-weight:700;margin-bottom:2px">${k}</div><div style="font-size:12px;font-weight:500;color:var(--text2);word-break:break-word">${escH(val)}</div></div>`).join("")}
+        </div>
+        <div class="sdiv" style="padding-top:0;margin-bottom:10px">Break History (${(v.breaks||[]).length})</div>
+        ${brkRows}
+      </div>
+      <div class="modal-foot">
+        ${canCI?`<button class="btn btn-success" onclick="doCheckin('${v.id}');closeModal()">${I.in} Check In</button>`:""}
+        ${ciToday&&!v.onBreak&&can("canBreak")?`<button class="btn btn-amber" onclick="doBreakOut('${v.id}');closeModal()">${I.coffee} Step Out</button>`:""}
+        ${v.onBreak&&can("canBreak")?`<button class="btn btn-success" onclick="doBreakReturn('${v.id}');closeModal()">${I.check} Return</button>`:""}
+        ${ciToday&&can("canCheckout")?`<button class="btn btn-danger" onclick="doCheckout('${v.id}');closeModal()">${I.out} Check Out</button>`:""}
+        ${t?.nb&&can("canBadge")?`<button class="btn btn-ghost" onclick="openBadge('${v.id}')">${I.badge} Badge</button>`:""}
+        <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+      </div>
+    </div>`;
+  }
+  else if(m==="gpdetail"){
+    const g=state.modalData,t=GP_TYPES.find(x=>x.id===g.type);
+    const irows=(g.items||[]).map(it=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="font-weight:500">${escH(it.name)}</span><span style="color:var(--muted)">${escH(it.qty)}${it.desc?" — "+escH(it.desc):""}</span></div>`).join("")||"<p style='color:var(--muted);font-size:12px'>No items</p>";
+    ov.innerHTML=`<div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-hdr"><div><div class="modal-title">${escH(g.gpId)}</div><div class="modal-sub">${t?.label||g.type}</div></div><button class="modal-close" onclick="closeModal()">${I.x}</button></div>
+      <div class="modal-body">
+        <div style="display:flex;gap:5px;margin-bottom:14px">${gpStatus(g.status)}<span class="badge badge-teal"><span class="sdot"></span>${t?.label||g.type}</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+          ${[["Requested By",g.requestedBy],["Phone",g.requesterPhone],["Vendor",g.vendor],["Vehicle No.",g.vehicleNo],["Expected",g.expectedDate],["Office",g.office],["Purpose",g.purpose],["Created",fmtDT(g.createdAt)],["Closed",g.closedAt?fmtDT(g.closedAt):"Open"]].filter(([,v])=>v&&v!=="—").map(([k,val])=>`<div style="background:var(--bg3);border-radius:7px;padding:8px 10px"><div style="font-size:9px;color:var(--muted2);text-transform:uppercase;letter-spacing:.7px;font-weight:700;margin-bottom:2px">${k}</div><div style="font-size:12px;font-weight:500;color:var(--text2)">${escH(val)}</div></div>`).join("")}
+        </div>
+        <div class="sdiv" style="padding-top:0;margin-bottom:10px">Items</div>${irows}
+      </div>
+      <div class="modal-foot">
+        ${can("canCloseGP")&&g.status==="open"?`<button class="btn btn-danger" onclick="closeGP('${g.id}');closeModal()">Close Pass</button>`:""}
+        <button class="btn btn-ghost" onclick="doPrintGP('${g.id}')">${I.print} Print</button>
+        <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+      </div>
+    </div>`;
+  }
+  else if(m==="edituser"){
+    const eu=state.editingUser;
+    const isNew=eu.idx===-1;
+    const offOpts=OFFICES.map((o,i)=>`<option value="${escH(o)}"${(eu.offices||[]).includes(o)?" selected":""}>${escH(o)}</option>`).join("");
+    const roleOpts=Object.entries(ROLES).map(([id,r])=>`<option value="${id}"${eu.role===id?" selected":""}>${r.label}</option>`).join("");
+    ov.innerHTML=`<div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-hdr"><div><div class="modal-title">${isNew?"Add User":"Edit User"}</div><div class="modal-sub">${isNew?"Create a new user account":"Update user details and access"}</div></div><button class="modal-close" onclick="closeModal()">${I.x}</button></div>
+      <div class="modal-body">
+        <div class="fgrid">
+          <div class="fg"><label class="flabel">Full Name <span class="req">*</span></label><input class="fi" value="${escH(eu.name)}" placeholder="e.g. Sathish Kumar" oninput="setEditingUser('name',this.value)"/></div>
+          <div class="fg"><label class="flabel">Email <span class="req">*</span></label><input class="fi" type="email" value="${escH(eu.email)}" placeholder="name@company.com" oninput="setEditingUser('email',this.value)"/></div>
+        </div>
+        <div class="fg"><label class="flabel">Role</label><select class="fi" onchange="setEditingUser('role',this.value)">${roleOpts}</select></div>
+        <div class="fg"><label class="flabel">Assigned Offices</label>
+          <div style="display:flex;flex-direction:column;gap:5px;margin-top:4px">
+            ${OFFICES.map((o,i)=>`<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer">
+              <input type="checkbox" ${(eu.offices||[]).includes(o)?"checked":""} onchange="toggleUserOffice(${i},this.checked)" style="accent-color:var(--accent)"/>
+              ${escH(o)}
+            </label>`).join("")}
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditUser()">${I.check} ${isNew?"Add User":"Save Changes"}</button></div>
+    </div>`;
+  }
+    const u=state.currentUser,r=ROLES[u.role];
+    const allowed=r.allOffices?OFFICES:u.offices;
+    const opts=OFFICES.map((o,i)=>{
+      const accessible=allowed.includes(o);
+      return`<div class="off-opt${state.office===o?" sel":""}${!accessible?" locked":""}" onclick="${accessible?"selectOffice("+i+")":"addToast('No access to this location')"}">
+        <span style="color:${!accessible?"var(--muted2)":"inherit"}">${escH(o)}</span>
+        ${state.office===o?I.check:""}${!accessible?`<span style="font-size:9.5px;color:var(--muted2);margin-left:auto">${I.lock}</span>`:""}
+      </div>`;}).join("");
+    ov.innerHTML=`<div class="modal" style="max-width:400px" onclick="event.stopPropagation()">
+      <div class="modal-hdr"><div><div class="modal-title">Select Office</div><div class="modal-sub">Showing data for selected location only</div></div><button class="modal-close" onclick="closeModal()">${I.x}</button></div>
+      <div class="modal-body" style="padding-top:12px">
+        ${!r.allOffices?`<div class="ibox ibox-amber" style="margin-bottom:12px">${I.alert}<span>Your role has access to ${allowed.length} location${allowed.length!==1?"s":""}. Locked locations require Super Admin access.</span></div>`:""}
+        ${opts}
+      </div>
+    </div>`;
+  }
+
+// ── Public page ────────────────────────────────────────────────────────────────
+function renderPub(){
+  const f=state.pubForm,e=state.pubErrors;
+  if(state.pubDone){
+    const v=state._lastPubV||{};
+    document.getElementById("app").innerHTML=`<div class="pub-wrap"><div class="pub-card" style="text-align:center">
+      <div style="width:46px;height:46px;background:var(--green-d);border-radius:50%;display:grid;place-items:center;margin:0 auto 14px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" style="width:20px;height:20px"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <h2 style="font-family:var(--ser);font-size:20px;color:var(--text);margin-bottom:7px">Registration Submitted</h2>
+      <p style="color:var(--muted);font-size:12.5px;line-height:1.6">Show this screen and your Visitor ID to security on arrival.</p>
+      <div style="margin:16px 0;background:var(--green-l);border:1.5px solid rgba(30,125,58,.25);border-radius:9px;padding:14px">
+        <div style="font-size:8.5px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:700;margin-bottom:5px">Your Visitor ID</div>
+        <div style="font-family:var(--mono);font-size:19px;font-weight:700;color:var(--green);letter-spacing:1px">${escH(v.visitorId||"—")}</div>
+        <div style="font-size:10.5px;color:var(--muted);margin-top:3px">Valid until check-out</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:9px;padding:12px 14px;font-size:12px;color:var(--text2);text-align:left;line-height:2">
+        <div style="font-weight:700">${escH(f.name)}${f.company?" · "+escH(f.company):""}</div>
+        <div style="color:var(--muted)">${escH(f.office)} · ${fmtDate(new Date())}</div>
+      </div>
+      <button onclick="closePub()" style="margin-top:14px;background:none;border:1px solid var(--border);border-radius:7px;padding:7px 14px;font-size:12px;cursor:pointer;color:var(--muted);font-family:var(--ui);display:inline-flex;align-items:center;gap:5px">${I.back} Dashboard</button>
+    </div></div>`;
+    return;
+  }
+  document.getElementById("app").innerHTML=`<div class="pub-wrap"><div class="pub-card">
+    <button class="pub-back" onclick="closePub()">${I.back} Back</button>
+    <div class="pub-logo">
+      <div class="pub-logo-icon">${I.building}</div>
+      <h1>Visitor Registration</h1>
+      <p>iCIMS — Your Visitor ID will be issued on submission</p>
+    </div>
+    ${vFormHTML(f,"pub",e)}
+    <button class="pub-btn" onclick="submitPub()" style="margin-top:16px">Submit & Get Visitor ID</button>
+  </div></div>`;
+}
+
+// ── Boot ───────────────────────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>

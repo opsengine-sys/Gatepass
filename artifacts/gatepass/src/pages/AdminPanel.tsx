@@ -11,8 +11,8 @@ import {
 } from "@workspace/api-client-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import type { Company, UserProfile, ProductKey } from "@/types";
-import { ALL_PRODUCTS, PRODUCT_LABELS } from "@/types";
+import type { Company, UserProfile, ProductKey, CompanyContact } from "@/types";
+import { ALL_PRODUCTS, PRODUCT_LABELS, CONTACT_ROLES } from "@/types";
 import { useLocation } from "wouter";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -223,7 +223,18 @@ function OverviewTab() {
     return <div className="flex justify-center py-20 text-muted-foreground text-[13px]">Loading metrics…</div>;
   }
 
-  const s = stats!;
+  if (!stats) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-10 h-10 opacity-30">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <div className="text-[13px]">Unable to load metrics. Super admin access required.</div>
+      </div>
+    );
+  }
+
+  const s = stats;
 
   const metricCards = [
     { label: "Total Companies", value: s.totalCompanies, color: "text-primary", sub: `${s.activeCompanies} active` },
@@ -566,6 +577,25 @@ function LicensesTab() {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
+                  {isEditing && (
+                    <button
+                      type="button"
+                      onClick={() => setEditProducts(
+                        editProducts.length === ALL_PRODUCTS.length ? [] : [...ALL_PRODUCTS]
+                      )}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[12px] font-semibold transition-colors",
+                        editProducts.length === ALL_PRODUCTS.length
+                          ? "bg-amber-50 border-amber-400 text-amber-700"
+                          : "border-border text-muted-foreground hover:border-amber-400/60 hover:text-amber-700"
+                      )}
+                    >
+                      {editProducts.length === ALL_PRODUCTS.length
+                        ? <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3 h-3"><polyline points="20 6 9 17 4 12"/></svg> All</>
+                        : "All"
+                      }
+                    </button>
+                  )}
                   {ALL_PRODUCTS.map((p) => {
                     const active = products.includes(p);
                     return isEditing ? (
@@ -811,10 +841,15 @@ function CompanyFormModal({
   const [plan, setPlan] = useState(initial?.plan ?? "starter");
   const [licenseStatus, setLicenseStatus] = useState<LicenseStatus>((initial?.licenseStatus as LicenseStatus) ?? "trial");
   const [isActive, setIsActive] = useState(initial?.isActive ?? true);
-  // Contact
+  // Legacy single contact (kept for backwards compat)
   const [contactName, setContactName] = useState(initial?.contactName ?? "");
   const [contactEmail, setContactEmail] = useState(initial?.contactEmail ?? "");
   const [contactPhone, setContactPhone] = useState(initial?.contactPhone ?? "");
+  // Multi-contacts
+  const parseContacts = (raw?: string | null): CompanyContact[] => {
+    try { return raw ? JSON.parse(raw) : []; } catch { return []; }
+  };
+  const [contacts, setContacts] = useState<CompanyContact[]>(parseContacts(initial?.contacts));
   // Contract
   const [contractStart, setContractStart] = useState(initial?.contractStart ? initial.contractStart.slice(0, 10) : "");
   const [contractEnd, setContractEnd] = useState(initial?.contractEnd ? initial.contractEnd.slice(0, 10) : "");
@@ -823,6 +858,13 @@ function CompanyFormModal({
   const [products, setProducts] = useState<ProductKey[]>(parseProducts(initial?.products));
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [saving, setSaving] = useState(false);
+
+  const addContact = () => setContacts(prev => [...prev, {
+    id: crypto.randomUUID(), name: "", email: "", phone: "", role: "Primary",
+  }]);
+  const removeContact = (id: string) => setContacts(prev => prev.filter(c => c.id !== id));
+  const updateContact = (id: string, field: keyof CompanyContact, value: string) =>
+    setContacts(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));
 
   const handleNameChange = (v: string) => {
     setName(v);
@@ -833,7 +875,7 @@ function CompanyFormModal({
     if (!name || !slug) { toast.error("Name and slug are required"); return; }
     setSaving(true);
     try {
-      await onSave({ name, slug, plan, licenseStatus, isActive, contactName, contactEmail, contactPhone, contractStart: contractStart || null, contractEnd: contractEnd || null, contractValue: contractValue || null, products, notes: notes || null });
+      await onSave({ name, slug, plan, licenseStatus, isActive, contactName, contactEmail, contactPhone, contractStart: contractStart || null, contractEnd: contractEnd || null, contractValue: contractValue || null, products, notes: notes || null, contacts: JSON.stringify(contacts) });
     } finally { setSaving(false); }
   };
 
@@ -891,9 +933,9 @@ function CompanyFormModal({
             </div>
           </section>
 
-          {/* Contact */}
+          {/* Primary Contact (legacy) */}
           <section>
-            <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-3">Contact Person</div>
+            <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-3">Primary Contact</div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelCls}>Name</label>
@@ -908,6 +950,85 @@ function CompanyFormModal({
                 <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} className={inputCls} placeholder="rahul@company.com" />
               </div>
             </div>
+          </section>
+
+          {/* Multi-contacts */}
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Additional Contacts</div>
+              <button
+                type="button"
+                onClick={addContact}
+                className="flex items-center gap-1 text-[11.5px] font-semibold text-primary hover:text-primary/80 transition-colors"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3.5 h-3.5">
+                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Add Contact
+              </button>
+            </div>
+            {contacts.length === 0 ? (
+              <p className="text-[12px] text-muted-foreground/60 italic">No additional contacts. Click "Add Contact" to add billing, technical, or operations contacts.</p>
+            ) : (
+              <div className="space-y-3">
+                {contacts.map((c, idx) => (
+                  <div key={c.id} className="border border-border rounded-xl p-3 bg-secondary/30 space-y-2.5 relative">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10.5px] font-bold text-muted-foreground uppercase tracking-wide">Contact {idx + 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeContact(c.id)}
+                        className="text-muted-foreground/50 hover:text-red-500 transition-colors"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+                          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10.5px] font-semibold text-muted-foreground mb-1 block">Name</label>
+                        <input
+                          value={c.name}
+                          onChange={e => updateContact(c.id, "name", e.target.value)}
+                          className={inputCls}
+                          placeholder="Contact name"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10.5px] font-semibold text-muted-foreground mb-1 block">Role</label>
+                        <select
+                          value={c.role}
+                          onChange={e => updateContact(c.id, "role", e.target.value)}
+                          className={inputCls}
+                        >
+                          {CONTACT_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10.5px] font-semibold text-muted-foreground mb-1 block">Email</label>
+                        <input
+                          type="email"
+                          value={c.email ?? ""}
+                          onChange={e => updateContact(c.id, "email", e.target.value)}
+                          className={inputCls}
+                          placeholder="email@company.com"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10.5px] font-semibold text-muted-foreground mb-1 block">Phone</label>
+                        <input
+                          value={c.phone ?? ""}
+                          onChange={e => updateContact(c.id, "phone", e.target.value)}
+                          className={inputCls}
+                          placeholder="+91 98765 43210"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           {/* Contract */}

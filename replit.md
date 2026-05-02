@@ -25,20 +25,26 @@ Full SaaS platform for Indian corporate offices. pnpm workspace monorepo using T
 - **Port**: 22484 (via `$PORT`)
 - **Stack**: React + Vite + Tailwind CSS v4 + wouter + sonner + Clerk
 - **Key Files**:
-  - `src/types.ts` — all TypeScript interfaces and constants (Company, UserProfile, Visitor, GatePass, ProductKey, etc.)
-  - `src/App.tsx` — ClerkProvider, wouter Router, MainApp, all routes
+  - `src/types.ts` — all TypeScript interfaces and constants (Company, CompanyContact, CONTACT_ROLES, UserProfile, Visitor, GatePass, ProductKey, etc.)
+  - `src/App.tsx` — ClerkProvider, wouter Router, MainApp, all routes (incl. /settings)
   - `src/contexts/AppContext.tsx` — central API state with TanStack Query
   - `src/pages/LandingPage.tsx` — full public marketing page (hero, features, how-it-works, pricing, CTA, footer)
   - `src/pages/AdminPanel.tsx` — 5-tab Super Admin dashboard (Overview, Companies, Licenses, Users, Activity)
+  - `src/pages/Settings.tsx` — 7-tab workspace settings page
   - `src/pages/OnboardingPage.tsx` — company self-setup for new admins
-  - `src/pages/Dashboard.tsx`, `Visitors.tsx`, `GatePasses.tsx`, `ActivityLog.tsx`, etc.
-  - `src/components/modals/` — RegisterVisitorModal, VisitorDetailModal, BadgeModal, NewGatePassModal, GpDetailModal, OfficePicker
+  - `src/pages/Dashboard.tsx` — VM Dashboard with "Register Visitor" button
+  - `src/pages/GpDashboard.tsx` — GP Dashboard with "New Gate Pass" button
+  - `src/components/modals/RegisterVisitorModal.tsx` — full visitor registration with camera + 9 dynamic visitor type field sets
+  - `src/components/layout/Sidebar.tsx` — nav with Settings item + gear icon; Admin only for super_admin
+  - `src/components/layout/AppLayout.tsx` — title/module map includes settings module
+
 - **Auth flow**:
-  - Unauthenticated → LandingPage
+  - Unauthenticated → LandingPage (route `/` or any protected path)
   - Signed in, no company → OnboardingPage (self-serve `POST /api/onboard`)
   - super_admin, no company → AdminPanel directly
   - super_admin, has company → main app + `/admin` route
   - admin/security/viewer → main app
+
 - **Theme**: Warm parchment (`#faf9f5`), burnt orange primary (`#c06b2c`)
 - **Fonts**: Instrument Sans (UI), Lora (serif headings), JetBrains Mono (IDs)
 
@@ -63,6 +69,7 @@ Tables: `companies`, `users`, `offices`, `visitors`, `visitor_logs`, `gate_passe
 ### `companies` — enhanced with CRM & license fields
 - Basic: `id`, `name`, `slug`, `logoUrl`, `plan` (starter/growth/enterprise), `isActive`
 - CRM: `contactName`, `contactEmail`, `contactPhone`
+- Multi-contacts: `contacts` TEXT DEFAULT '[]' — JSON array of `CompanyContact[]`
 - Contract: `contractStart`, `contractEnd`, `contractValue`
 - License: `products` (JSON string: ProductKey[]), `licenseStatus` (trial/active/expired/suspended)
 - `notes`
@@ -73,18 +80,46 @@ Tables: `companies`, `users`, `offices`, `visitors`, `visitor_logs`, `gate_passe
 
 ## Super Admin Portal (AdminPanel)
 
-5-tab dashboard accessible at `/admin` or directly for super_admin without company:
+5-tab dashboard accessible at `/admin` (super_admin only):
 
-1. **Overview** — metric cards (companies, users, visitors, active licenses), license/plan breakdowns, recently added companies, expiring contracts
-2. **Companies** — full CRM table with contact/contract/license info, Edit modal with all fields, "Enter as Admin" (impersonation via localStorage), Suspend
-3. **Licenses** — per-company product assignment (visitor_management, gate_pass, multi_office, analytics, api_access) + license status
+1. **Overview** — metric cards (companies, users, visitors, active licenses), license/plan breakdowns, recently added companies, expiring contracts. Graceful "access required" fallback if stats unavailable.
+2. **Companies** — full CRM table with contact/contract/license info, Edit modal with all fields + multi-contact editor (add/remove contacts with roles), "Enter as Admin" impersonation, Suspend
+3. **Licenses** — per-company product assignment with "All" toggle chip + individual product checkboxes + license status
 4. **Users** — all users across platform, filter by company, inline role & company editing
 5. **Activity** — timeline of recent sign-ups and company creations
 
+### CompanyFormModal — multi-contact section
+- Primary Contact (legacy single contact fields)
+- Additional Contacts: dynamic list of `CompanyContact` cards, each with name/email/phone/role (Primary, Technical, Billing, Operations, Other)
+- Stored as JSON in `companies.contacts` column
+
 ### "Enter as Admin" impersonation
-- Clicking "Enter as Admin" on a company sets `localStorage.gp_impersonate = {companyId, companyName}`
-- Navigates to `/` — AppContext should read this to scope API calls for that company
-- App should show impersonation banner when `gp_impersonate` is set
+- Clicking "Enter as Admin" sets `localStorage.gp_impersonate = {companyId, companyName}`
+- Navigates to `/` — AppContext scopes API calls for that company
+
+## Settings Page (`/settings`)
+
+7-tab workspace settings page (all users):
+1. **Profile** — name, email (read-only from Clerk), role, company
+2. **Team & Users** — invite by email, role reference table
+3. **Badge Templates** — visitor badge layout picker (Classic/Minimal/Bold) + gate pass template picker (Minimal/Detailed A4/Compact)
+4. **Visitor Types** — read-only list of configured visitor and gate pass types
+5. **Notifications** — per-event toggle switches (in-app), email config placeholder
+6. **Integrations** — Microsoft 365 / Google Workspace toggles, LDAP coming soon
+7. **Appearance** — accent color swatches + custom color picker, font family select, theme picker
+
+## RegisterVisitorModal — dynamic visitor type fields
+
+Camera: `getUserMedia` → stream assigned via `useEffect` after `setCamActive(true)` to ensure `<video>` is mounted.
+
+Dynamic extra fields per visitor type:
+- **Vendor / Contractor** → Contract Ref + Service Type
+- **Interview Candidate** → Job ID + Interview Round
+- **Delivery** → Vehicle/Courier Number
+- **Government Official** → ID Type (Aadhaar/PAN/Passport/etc.) + ID Number
+- **Leadership Visit** → Home Office + Visit Agenda
+- **Employee (Forgot ID)** → Employee ID + Department
+- **Guest** → Relationship to Host
 
 ## Public Landing Page
 
@@ -105,7 +140,7 @@ pnpm --filter @workspace/api-spec run codegen
 ```
 
 Generated hooks are in `lib/api-client-react/src/generated/api.ts`.
-New admin fields (contactName etc.) not yet in codegen — use `as never` cast until next codegen run.
+New admin fields (contactName, contacts etc.) not yet in codegen — use `as never` cast until next codegen run.
 
 ## Key Commands
 
@@ -120,3 +155,4 @@ New admin fields (contactName etc.) not yet in codegen — use `as never` cast u
 - `CLERK_SECRET_KEY` env var used for Clerk REST API calls in `auth.ts`
 - `SESSION_SECRET` available as env var
 - Both super_admin users: nagababu1403c4@gmail.com & basanagababu1998@gmail.com
+- `/settings` route accessible to all authenticated users; `/admin` is super_admin only

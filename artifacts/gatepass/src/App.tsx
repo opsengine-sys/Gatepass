@@ -33,6 +33,7 @@ import { RegisterPage } from "@/pages/RegisterPage";
 import { LandingPage } from "@/pages/LandingPage";
 import { OnboardingPage } from "@/pages/OnboardingPage";
 import { AdminPanel } from "@/pages/AdminPanel";
+import { Settings } from "@/pages/Settings";
 
 const basePath = import.meta.env.BASE_URL?.replace(/\/$/, "") || "";
 
@@ -214,7 +215,7 @@ function MainApp() {
       >
         <Switch>
           <Route path="/">
-            <Dashboard visitors={visitors} logs={logs} officeFull={officeFull} />
+            <Dashboard visitors={visitors} logs={logs} officeFull={officeFull} onRegisterVisitor={() => setRegisterOpen(true)} />
           </Route>
           <Route path="/visitors">
             <Visitors
@@ -241,6 +242,7 @@ function MainApp() {
               gpLogs={gpLogs}
               officeFull={officeFull}
               onDetail={(id) => setGPDetailId(id)}
+              onNew={() => setNewGPOpen(true)}
             />
           </Route>
           <Route path="/gate-passes">
@@ -255,11 +257,14 @@ function MainApp() {
           <Route path="/gp-activity-log">
             <GpActivityLog gpLogs={gpLogs} officeFull={officeFull} />
           </Route>
-          {(user.role === "super_admin" || user.role === "admin") && (
+          {user.role === "super_admin" && (
             <Route path="/admin">
               <AdminPanel />
             </Route>
           )}
+          <Route path="/settings">
+            <Settings />
+          </Route>
           <Route>
             <Redirect to="/" />
           </Route>

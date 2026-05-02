@@ -14,8 +14,8 @@ interface AppLayoutProps {
   onOpenOfficePicker: () => void;
 }
 
-const titleMap: Record<string, { title: string; module: "visitors" | "gatepasses" | "admin" }> = {
-  "/": { title: "Dashboard", module: "visitors" },
+const titleMap: Record<string, { title: string; module: "visitors" | "gatepasses" | "admin" | "settings" }> = {
+  "/": { title: "VM Dashboard", module: "visitors" },
   "/visitors": { title: "Visitors", module: "visitors" },
   "/activity-log": { title: "Activity Log", module: "visitors" },
   "/visitor-link": { title: "Visitor Link", module: "visitors" },
@@ -23,6 +23,7 @@ const titleMap: Record<string, { title: string; module: "visitors" | "gatepasses
   "/gate-passes": { title: "Gate Passes", module: "gatepasses" },
   "/gp-activity-log": { title: "GP Activity Log", module: "gatepasses" },
   "/admin": { title: "Admin Panel", module: "admin" },
+  "/settings": { title: "Settings", module: "settings" },
 };
 
 export function AppLayout({ children, office, officeFull, visitors, gatePasses, user, onOpenOfficePicker }: AppLayoutProps) {
@@ -62,9 +63,10 @@ export function AppLayout({ children, office, officeFull, visitors, gatePasses, 
             "text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full",
             meta.module === "gatepasses" ? "bg-teal-50 text-teal-700" :
             meta.module === "admin" ? "bg-purple-50 text-purple-700" :
+            meta.module === "settings" ? "bg-slate-100 text-slate-600" :
             "bg-orange-50 text-orange-700"
           )}>
-            {meta.module === "gatepasses" ? "Gate Passes" : meta.module === "admin" ? "Admin" : "Visitors"}
+            {meta.module === "gatepasses" ? "Gate Passes" : meta.module === "admin" ? "Admin" : meta.module === "settings" ? "Account" : "Visitors"}
           </span>
 
           <div className="font-bold text-sm flex-1 text-foreground">{meta.title}</div>

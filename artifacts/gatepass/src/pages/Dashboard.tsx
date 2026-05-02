@@ -9,9 +9,10 @@ interface Props {
   visitors: Visitor[];
   logs: VisitorLog[];
   officeFull: string;
+  onRegisterVisitor?: () => void;
 }
 
-export function Dashboard({ visitors, logs, officeFull }: Props) {
+export function Dashboard({ visitors, logs, officeFull, onRegisterVisitor }: Props) {
   const today = new Date();
 
   const active = visitors.filter(v => v.status === "Checked In");
@@ -29,9 +30,22 @@ export function Dashboard({ visitors, logs, officeFull }: Props) {
 
   return (
     <div>
-      <div className="mb-5">
-        <h1 className="font-serif text-[21px] font-medium text-foreground">Visitor Overview</h1>
-        <p className="text-[12.5px] text-muted-foreground mt-0.5">{officeFull}</p>
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="font-serif text-[21px] font-medium text-foreground">Visitor Overview</h1>
+          <p className="text-[12.5px] text-muted-foreground mt-0.5">{officeFull}</p>
+        </div>
+        {onRegisterVisitor && (
+          <button
+            onClick={onRegisterVisitor}
+            className="flex items-center gap-1.5 bg-primary text-white px-3.5 py-2 rounded-lg text-[12.5px] font-semibold hover:bg-primary/90 transition-colors flex-shrink-0"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="w-3.5 h-3.5">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Register Visitor
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">

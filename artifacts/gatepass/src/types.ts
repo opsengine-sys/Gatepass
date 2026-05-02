@@ -152,6 +152,7 @@ export interface Company {
   products?: string | null;        // JSON string: ProductKey[]
   licenseStatus?: string | null;   // LicenseStatus
   notes?: string | null;
+  contacts?: string | null;  // JSON: CompanyContact[]
   createdAt: string;
   updatedAt: string;
   // Computed stats (from API)
@@ -196,6 +197,16 @@ export const GP_TYPES: GPType[] = [
   "Samples",
   "Other",
 ];
+
+export interface CompanyContact {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  role: "Primary" | "Technical" | "Billing" | "Operations" | "Other";
+}
+
+export const CONTACT_ROLES = ["Primary", "Technical", "Billing", "Operations", "Other"] as const;
 
 export const TYPE_COLORS: Record<string, string> = {
   Vendor: "#a07a14",

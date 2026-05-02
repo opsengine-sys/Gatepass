@@ -27,6 +27,7 @@ export const companiesTable = pgTable("companies", {
   licenseStatus: text("license_status").default("trial"),
 
   notes: text("notes"),
+  contacts: text("contacts").default("[]"),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
