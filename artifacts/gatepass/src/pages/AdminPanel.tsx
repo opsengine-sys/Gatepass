@@ -1090,7 +1090,7 @@ function CompanyIntegrationsTab() {
     const next = { ...integrations, [editInteg]: editConfig };
     saveIntegrations(selectedCompanyId, next);
     try {
-      await fetch(`${basePath}/api/audit-logs`, {
+      await fetch(`/api/audit-logs`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

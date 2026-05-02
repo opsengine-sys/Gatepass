@@ -108,13 +108,14 @@ function defaultElements(kind: "badge" | "gp", size: BadgeSize): CanvasElement[]
 
 // ─── Load / save ──────────────────────────────────────────────────────────────
 
-export function loadCustomTemplates(): CustomTemplate[] {
+function loadCustomTemplates(): CustomTemplate[] {
   try { const s = localStorage.getItem(STORAGE_KEY); if (s) return JSON.parse(s); } catch { /* */ }
   return [];
 }
 function saveCustomTemplates(t: CustomTemplate[]) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(t)); } catch { /* */ }
 }
+export { loadCustomTemplates };
 
 // ─── Element renderer ─────────────────────────────────────────────────────────
 

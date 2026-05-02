@@ -2187,7 +2187,7 @@ function SettingsActivityTab() {
   const { data: activityLogs = [], isLoading: logsLoading, refetch: refetchLogs } = useQuery({
     queryKey: ["/api/audit-logs"],
     queryFn: async () => {
-      const res = await fetch(`${basePath}/api/audit-logs`, { credentials: "include" });
+      const res = await fetch(`/api/audit-logs`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch activity");
       return res.json() as Promise<AuditLogEntry[]>;
     },
