@@ -28,7 +28,7 @@ const DATA_TYPES: Array<{ value: DataType; label: string; short: string; color: 
   { value: "phone",    label: "Phone",       short: "Phone",  color: "bg-green-50 text-green-600" },
   { value: "date",     label: "Date",        short: "Date",   color: "bg-orange-50 text-orange-600" },
   { value: "time",     label: "Time",        short: "Time",   color: "bg-amber-50 text-amber-600" },
-  { value: "select",   label: "Dropdown",    short: "▾ List", color: "bg-teal-50 text-teal-600" },
+  { value: "select",   label: "Dropdown",    short: "▾ List", color: "bg-orange-50 text-orange-600" },
   { value: "checkbox", label: "Yes / No",    short: "✓/✗",   color: "bg-pink-50 text-pink-600" },
   { value: "textarea", label: "Long Text",   short: "Long",   color: "bg-indigo-50 text-indigo-600" },
   { value: "file",     label: "File Upload", short: "File",   color: "bg-red-50 text-red-600" },
@@ -503,8 +503,8 @@ function CustomizationTab() {
         <div className="p-4 space-y-2">
           {gpTypes.map(gt => (
             <div key={gt.id} className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center flex-shrink-0">
-                <div className="w-2.5 h-2.5 rounded-full bg-teal-600" />
+              <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
+                <div className="w-2.5 h-2.5 rounded-full bg-primary" />
               </div>
               <input
                 className={cn(iCls, "flex-1")}
@@ -514,7 +514,7 @@ function CustomizationTab() {
               />
               <button
                 onClick={() => saveGPT(gpTypes.map(t => t.id === gt.id ? { ...t, enabled: !t.enabled } : t))}
-                className={cn("w-8 h-5 rounded-full relative transition-colors flex-shrink-0", gt.enabled ? "bg-teal-600" : "bg-border")}
+                className={cn("w-8 h-5 rounded-full relative transition-colors flex-shrink-0", gt.enabled ? "bg-primary" : "bg-border")}
               >
                 <span className={cn("absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all", gt.enabled ? "left-[14px]" : "left-0.5")} />
               </button>
@@ -536,7 +536,7 @@ function CustomizationTab() {
               onKeyDown={e => e.key === "Enter" && addGPType()}
               placeholder="New gate pass type name…"
             />
-            <button onClick={addGPType} className="btn-primary flex-shrink-0 !bg-teal-600 hover:!bg-teal-700">Add</button>
+            <button onClick={addGPType} className="btn-primary flex-shrink-0">Add</button>
           </div>
         </div>
       </AccordionSection>
@@ -653,7 +653,7 @@ function CustomizationTab() {
             );
           })}
           {customGPFields.map(f => (
-            <div key={f.id} className="grid grid-cols-[1fr_80px_80px_36px] gap-2 items-center px-5 py-2.5 bg-teal-500/[0.02]">
+            <div key={f.id} className="grid grid-cols-[1fr_80px_80px_36px] gap-2 items-center px-5 py-2.5 bg-primary/[0.02]">
               <div className="flex items-center gap-2 min-w-0">
                 <DataTypeBadge type={f.dataType ?? "text"} />
                 <input
@@ -1065,12 +1065,12 @@ function BadgeTemplatesTab({ badgeTemplate, setBadgeTemplate, gpTemplate, setGpT
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => { setCreatorOpen("gp"); setEditingTemplate(undefined); }}
-                className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-lg border border-teal-500/40 text-teal-700 hover:bg-teal-50 transition-colors">
+                className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-lg border border-primary/40 text-primary hover:bg-primary/5 transition-colors">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 Create from Scratch
               </button>
               <button onClick={() => setGPEditor(true)}
-                className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-lg bg-teal-600 text-white hover:bg-teal-600/90 transition-colors shadow-sm">
+                className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors shadow-sm">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6M9 12h4"/></svg>
                 Customise
               </button>
@@ -1080,14 +1080,14 @@ function BadgeTemplatesTab({ badgeTemplate, setBadgeTemplate, gpTemplate, setGpT
             {GP_TEMPLATES.map(t => (
               <button key={t.id} onClick={() => { setGpTemplate(t.id); toast.success(`GP: ${t.label}`); }}
                 className={cn("border-[1.5px] rounded-xl overflow-hidden text-left transition-all group",
-                  gpTemplate === t.id ? "border-teal-500 shadow-[0_0_0_3px_rgba(20,184,166,0.12)]" : "border-border hover:border-teal-400/40")}>
-                <div className={cn("flex items-center justify-center py-3 px-2", gpTemplate === t.id ? "bg-teal-50" : "bg-secondary group-hover:bg-secondary/70")}>
+                  gpTemplate === t.id ? "border-primary shadow-[0_0_0_3px_rgba(192,107,44,0.12)]" : "border-border hover:border-primary/40")}>
+                <div className={cn("flex items-center justify-center py-3 px-2", gpTemplate === t.id ? "bg-primary/8" : "bg-secondary group-hover:bg-secondary/70")}>
                   <TemplateLivePreview kind="gp" templateId={t.id} cfg={gpCfg} />
                 </div>
                 <div className="px-3 py-2 border-t border-border">
                   <div className="text-[11.5px] font-semibold text-foreground flex items-center gap-1.5 flex-wrap">
                     {t.label}
-                    {gpTemplate === t.id && <span className="text-[9px] bg-teal-50 text-teal-700 rounded-full px-1.5 py-0.5 font-bold">Active</span>}
+                    {gpTemplate === t.id && <span className="text-[9px] bg-primary/10 text-primary rounded-full px-1.5 py-0.5 font-bold">Active</span>}
                   </div>
                 </div>
               </button>
@@ -2169,7 +2169,7 @@ const ACTION_COLORS: Record<string, string> = {
   deleted:  "bg-red-50 text-red-700 border-red-200",
   invited:  "bg-purple-50 text-purple-700 border-purple-200",
   disabled: "bg-amber-50 text-amber-700 border-amber-200",
-  enabled:  "bg-teal-50 text-teal-700 border-teal-200",
+  enabled:  "bg-primary/8 text-primary border-primary/20",
   checkin:  "bg-sky-50 text-sky-700 border-sky-200",
   checkout: "bg-slate-50 text-slate-700 border-slate-200",
 };
@@ -2311,7 +2311,7 @@ function BadgeTemplateEditorModal({ kind, template, setTemplate, cfg, setCfg, on
 }) {
   const templates = kind === "badge" ? BADGE_TEMPLATES : GP_TEMPLATES;
   const title = kind === "badge" ? "Visitor Badge Editor" : "Gate Pass Editor";
-  const accentOn = kind === "badge" ? "border-primary" : "border-teal-500";
+  const accentOn = "border-primary";
   const set = <K extends keyof TemplateConfig>(k: K, v: TemplateConfig[K]) => setCfg({ ...cfg, [k]: v });
 
   const labelCls = "text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5";
@@ -2345,12 +2345,12 @@ function BadgeTemplateEditorModal({ kind, template, setTemplate, cfg, setCfg, on
               <button key={t.id} onClick={() => setTemplate(t.id)}
                 className={cn("w-full text-left px-3 py-3 rounded-xl mb-1 transition-all border",
                   template === t.id
-                    ? cn("bg-primary/8 border-primary/30 shadow-sm", kind === "gp" && "bg-teal-50 border-teal-400/40")
+                    ? "bg-primary/8 border-primary/30 shadow-sm"
                     : "border-transparent hover:bg-secondary hover:border-border")}>
                 <div className="text-[12px] font-semibold text-foreground leading-tight">{t.label}</div>
                 <div className="text-[10px] text-muted-foreground mt-0.5 leading-snug">{t.desc}</div>
                 {template === t.id && (
-                  <div className={cn("mt-1.5 text-[9px] font-bold inline-block px-1.5 py-0.5 rounded-full", kind === "badge" ? "bg-orange-100 text-orange-700" : "bg-teal-100 text-teal-700")}>
+                  <div className="mt-1.5 text-[9px] font-bold inline-block px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
                     Active
                   </div>
                 )}

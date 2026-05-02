@@ -101,7 +101,7 @@ export function GpDashboard({ gatePasses, gpLogs, officeFull, onDetail, onNew }:
               <p className="text-[13px] text-muted-foreground">No activity yet</p>
             ) : recentLogs.map(l => (
               <div key={l.id} className="flex gap-2.5 py-2 border-b border-border last:border-0">
-                <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${l.action === "created" ? "bg-teal-600" : "bg-slate-400"}`} />
+                <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${l.action === "created" ? "bg-primary" : "bg-slate-400"}`} />
                 <div>
                   <div className="text-[12.5px] font-medium text-foreground">
                     <span className="font-mono">{l.passId}</span>{" "}
