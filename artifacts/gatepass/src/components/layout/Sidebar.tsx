@@ -1,6 +1,7 @@
 import { useLocation, Link } from "wouter";
 import { useClerk } from "@clerk/react";
 import { cn } from "@/lib/utils";
+import { useBranding } from "@/contexts/BrandingContext";
 import type { Visitor, GatePass, UserProfile } from "@/types";
 
 interface SidebarProps {
@@ -30,6 +31,7 @@ const navItems = [
 export function Sidebar({ officeFull, visitors, gatePasses, user, onOpenOfficePicker, isOpen, onClose }: SidebarProps) {
   const [location] = useLocation();
   const { signOut } = useClerk();
+  const { logoUrl, companyName, primaryColor } = useBranding();
 
   const checkedIn = visitors.filter(v => v.status === "Checked In").length;
   const openGP = gatePasses.filter(g => g.status === "Open").length;
@@ -52,15 +54,22 @@ export function Sidebar({ officeFull, visitors, gatePasses, user, onOpenOfficePi
       )}>
         <div className="px-4 py-[18px] pb-3.5 border-b border-border">
           <div className="flex items-center gap-2.5">
-            <div className="w-[30px] h-[30px] bg-primary rounded-[7px] flex items-center justify-center flex-shrink-0">
-              <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" className="w-4 h-4">
-                <rect x="3" y="4" width="14" height="10" rx="2"/>
-                <path d="M7 8h6M7 11h4"/>
-                <rect x="7" y="17" width="10" height="3" rx="1.5"/>
-              </svg>
+            <div
+              className="w-[30px] h-[30px] rounded-[7px] flex items-center justify-center flex-shrink-0 overflow-hidden"
+              style={{ backgroundColor: logoUrl ? "transparent" : primaryColor }}
+            >
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" className="w-4 h-4">
+                  <rect x="3" y="4" width="14" height="10" rx="2"/>
+                  <path d="M7 8h6M7 11h4"/>
+                  <rect x="7" y="17" width="10" height="3" rx="1.5"/>
+                </svg>
+              )}
             </div>
             <div>
-              <div className="font-bold text-sm tracking-tight text-foreground">GatePass</div>
+              <div className="font-bold text-sm tracking-tight text-foreground">{companyName || "GatePass"}</div>
               <div className="text-[9px] text-muted-foreground tracking-wider mt-0.5">Visitor & Pass Management</div>
             </div>
           </div>

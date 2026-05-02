@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { Sidebar } from "./Sidebar";
+import { useBranding } from "@/contexts/BrandingContext";
 import type { Visitor, GatePass, UserProfile } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +30,7 @@ const titleMap: Record<string, { title: string; module: "visitors" | "gatepasses
 export function AppLayout({ children, office, officeFull, visitors, gatePasses, user, onOpenOfficePicker }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [location] = useLocation();
+  const { logoUrl, companyName } = useBranding();
 
   const meta = titleMap[location] ?? { title: "GatePass", module: "visitors" as const };
   const checkedIn = visitors.filter(v => v.status === "Checked In").length;
@@ -69,7 +71,12 @@ export function AppLayout({ children, office, officeFull, visitors, gatePasses, 
             {meta.module === "gatepasses" ? "Gate Passes" : meta.module === "admin" ? "Admin" : meta.module === "settings" ? "Account" : "Visitors"}
           </span>
 
-          <div className="font-bold text-sm flex-1 text-foreground">{meta.title}</div>
+          <div className="font-bold text-sm flex-1 text-foreground flex items-center gap-2">
+            {logoUrl && (
+              <img src={logoUrl} alt={companyName} className="h-5 w-auto object-contain opacity-70" />
+            )}
+            {meta.title}
+          </div>
 
           <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground bg-secondary border border-border rounded-full px-2.5 py-1">
             <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />

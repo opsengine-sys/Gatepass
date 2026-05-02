@@ -15,6 +15,7 @@ import { Toaster } from "sonner";
 
 import { queryClient } from "@/lib/queryClient";
 import { AppProvider, useApp } from "@/contexts/AppContext";
+import { BrandingProvider } from "@/contexts/BrandingContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { OfficePicker } from "@/components/modals/OfficePicker";
 import { RegisterVisitorModal } from "@/components/modals/RegisterVisitorModal";
@@ -410,12 +411,14 @@ function ClerkProviderWithRoutes() {
 
 function App() {
   return (
-    <WouterRouter base={basePath}>
-      <QueryClientProvider client={queryClient}>
-        <ClerkProviderWithRoutes />
-      </QueryClientProvider>
-      <Toaster position="top-right" richColors />
-    </WouterRouter>
+    <BrandingProvider>
+      <WouterRouter base={basePath}>
+        <QueryClientProvider client={queryClient}>
+          <ClerkProviderWithRoutes />
+        </QueryClientProvider>
+        <Toaster position="top-right" richColors />
+      </WouterRouter>
+    </BrandingProvider>
   );
 }
 
