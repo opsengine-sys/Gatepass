@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useApp } from "@/contexts/AppContext";
+import { useUser } from "@clerk/react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { VISITOR_TYPES, TYPE_COLORS, GP_TYPES } from "@/types";
@@ -107,14 +108,68 @@ export function Settings() {
 }
 
 function ProfileTab({ user, isAdmin }: { user: ReturnType<typeof useApp>["user"]; isAdmin: boolean }) {
-  const [name, setName] = useState(user?.name ?? "");
-  const [saved, setSaved] = useState(false);
+  const { user: clerkUser } = useUser();
 
-  const handleSave = () => {
-    setSaved(true);
-    toast.success("Profile saved");
-    setTimeout(() => setSaved(false), 2000);
+  // Profile fields
+  const [name, setName] = useState(user?.name ?? "");
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  // Password fields
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [pwErrors, setPwErrors] = useState<Record<string, string>>({});
+  const [savingPw, setSavingPw] = useState(false);
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const handleSaveProfile = async () => {
+    if (!name.trim()) { toast.error("Name cannot be empty"); return; }
+    setSavingProfile(true);
+    try {
+      // Update in Clerk
+      const parts = name.trim().split(" ");
+      await clerkUser?.update({ firstName: parts[0], lastName: parts.slice(1).join(" ") || undefined });
+      // Update in our DB
+      const basePath = import.meta.env.BASE_URL?.replace(/\/$/, "") || "";
+      await fetch(`${basePath}/api/me`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim() }),
+      });
+      toast.success("Profile updated");
+    } catch {
+      toast.error("Failed to save profile");
+    } finally {
+      setSavingProfile(false);
+    }
   };
+
+  const handleChangePassword = async () => {
+    const errs: Record<string, string> = {};
+    if (!currentPw) errs.currentPw = "Current password is required";
+    if (!newPw) errs.newPw = "New password is required";
+    else if (newPw.length < 8) errs.newPw = "Must be at least 8 characters";
+    if (!confirmPw) errs.confirmPw = "Please confirm your new password";
+    else if (newPw !== confirmPw) errs.confirmPw = "Passwords do not match";
+    if (Object.keys(errs).length) { setPwErrors(errs); return; }
+    setPwErrors({});
+    setSavingPw(true);
+    try {
+      await clerkUser?.updatePassword({ currentPassword: currentPw, newPassword: newPw, signOutOfOtherSessions: false });
+      toast.success("Password changed successfully");
+      setCurrentPw(""); setNewPw(""); setConfirmPw("");
+    } catch (err: unknown) {
+      const msg = (err as { errors?: Array<{ message: string }> })?.errors?.[0]?.message ?? "Failed to change password";
+      toast.error(msg);
+      if (msg.toLowerCase().includes("current")) setPwErrors({ currentPw: msg });
+    } finally {
+      setSavingPw(false);
+    }
+  };
+
+  const passwordEnabled = clerkUser?.passwordEnabled ?? true;
 
   return (
     <div className="space-y-4">
@@ -124,8 +179,13 @@ function ProfileTab({ user, isAdmin }: { user: ReturnType<typeof useApp>["user"]
             <input className={iCls} value={name} onChange={e => setName(e.target.value)} placeholder="Your name" />
           </Field>
           <Field label="Email">
-            <input className={iCls} value={user?.email ?? ""} readOnly placeholder="your@email.com"
-              style={{ opacity: 0.7, cursor: "not-allowed" }} />
+            <div className="relative">
+              <input className={cn(iCls, "pr-10")} value={user?.email ?? ""} readOnly
+                style={{ opacity: 0.7, cursor: "not-allowed" }} />
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/50">
+                <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </div>
           </Field>
           <Field label="Role">
             <input className={iCls} value={formatRole(user?.role ?? "")} readOnly
@@ -137,22 +197,78 @@ function ProfileTab({ user, isAdmin }: { user: ReturnType<typeof useApp>["user"]
           </Field>
         </div>
         <div className="mt-4 flex justify-end">
-          <button onClick={handleSave} className="btn-primary">
-            {saved ? "Saved!" : "Save Changes"}
+          <button onClick={handleSaveProfile} disabled={savingProfile} className="btn-primary">
+            {savingProfile ? "Saving…" : "Save Changes"}
           </button>
         </div>
       </Card>
 
       <Card title="Password & Security">
-        <p className="text-[12.5px] text-muted-foreground mb-3">
-          Password and security settings are managed through Clerk. Click below to manage your login security.
-        </p>
-        <button
-          className="btn-ghost"
-          onClick={() => toast.info("Open Clerk user profile to manage security settings")}
-        >
-          Manage Security Settings
-        </button>
+        {!passwordEnabled ? (
+          <div className="flex items-start gap-3 py-1">
+            <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="1.8" className="w-4.5 h-4.5">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+            </div>
+            <div>
+              <p className="text-[13px] font-semibold text-foreground mb-0.5">SSO / Passwordless Account</p>
+              <p className="text-[12.5px] text-muted-foreground">
+                Your account uses social sign-in (Google, Microsoft, etc.) and does not have a password set.
+                Security is managed by your identity provider.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <PwField
+              label="Current Password"
+              value={currentPw}
+              onChange={setCurrentPw}
+              show={showCurrent}
+              onToggle={() => setShowCurrent(p => !p)}
+              error={pwErrors.currentPw}
+              placeholder="Enter current password"
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <PwField
+                label="New Password"
+                value={newPw}
+                onChange={setNewPw}
+                show={showNew}
+                onToggle={() => setShowNew(p => !p)}
+                error={pwErrors.newPw}
+                placeholder="Min. 8 characters"
+              />
+              <PwField
+                label="Confirm New Password"
+                value={confirmPw}
+                onChange={setConfirmPw}
+                show={showConfirm}
+                onToggle={() => setShowConfirm(p => !p)}
+                error={pwErrors.confirmPw}
+                placeholder="Repeat new password"
+              />
+            </div>
+
+            {newPw && (
+              <PasswordStrength password={newPw} />
+            )}
+
+            <div className="flex justify-end pt-1">
+              <button
+                onClick={handleChangePassword}
+                disabled={savingPw}
+                className="btn-primary"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="w-3.5 h-3.5">
+                  <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                {savingPw ? "Updating…" : "Update Password"}
+              </button>
+            </div>
+          </div>
+        )}
       </Card>
 
       {isAdmin && (
@@ -163,6 +279,86 @@ function ProfileTab({ user, isAdmin }: { user: ReturnType<typeof useApp>["user"]
           As an admin, you can manage team members and configuration settings from the Team & Users tab.
         </div>
       )}
+    </div>
+  );
+}
+
+function PwField({ label, value, onChange, show, onToggle, error, placeholder }: {
+  label: string; value: string; onChange: (v: string) => void;
+  show: boolean; onToggle: () => void; error?: string; placeholder?: string;
+}) {
+  return (
+    <div className="space-y-1">
+      <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{label}</label>
+      <div className="relative">
+        <input
+          type={show ? "text" : "password"}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+          className={cn(
+            iCls, "pr-10",
+            error && "border-red-400 focus:border-red-400 focus:ring-red-100"
+          )}
+        />
+        <button
+          type="button"
+          onClick={onToggle}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+        >
+          {show ? (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+              <line x1="1" y1="1" x2="23" y2="23"/>
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          )}
+        </button>
+      </div>
+      {error && <p className="text-[11px] text-red-500">{error}</p>}
+    </div>
+  );
+}
+
+function PasswordStrength({ password }: { password: string }) {
+  const checks = [
+    { label: "8+ characters", pass: password.length >= 8 },
+    { label: "Uppercase letter", pass: /[A-Z]/.test(password) },
+    { label: "Number", pass: /\d/.test(password) },
+    { label: "Special character", pass: /[^A-Za-z0-9]/.test(password) },
+  ];
+  const score = checks.filter(c => c.pass).length;
+  const strengthLabel = score <= 1 ? "Weak" : score === 2 ? "Fair" : score === 3 ? "Good" : "Strong";
+  const strengthColor = score <= 1 ? "bg-red-500" : score === 2 ? "bg-amber-500" : score === 3 ? "bg-blue-500" : "bg-green-500";
+  const strengthText = score <= 1 ? "text-red-600" : score === 2 ? "text-amber-600" : score === 3 ? "text-blue-600" : "text-green-600";
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <div className="flex gap-1 flex-1">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className={cn("h-1 flex-1 rounded-full transition-colors", i <= score ? strengthColor : "bg-border")} />
+          ))}
+        </div>
+        <span className={cn("text-[11px] font-semibold", strengthText)}>{strengthLabel}</span>
+      </div>
+      <div className="flex flex-wrap gap-x-3 gap-y-1">
+        {checks.map(c => (
+          <span key={c.label} className={cn("text-[11px] flex items-center gap-1", c.pass ? "text-green-600" : "text-muted-foreground/60")}>
+            {c.pass ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3 h-3"><polyline points="20 6 9 17 4 12"/></svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3"><circle cx="12" cy="12" r="10"/></svg>
+            )}
+            {c.label}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
