@@ -109,6 +109,30 @@ export interface Office {
   updatedAt: string;
 }
 
+export type LicenseStatus = "trial" | "active" | "expired" | "suspended";
+export type ProductKey =
+  | "visitor_management"
+  | "gate_pass"
+  | "multi_office"
+  | "analytics"
+  | "api_access";
+
+export const PRODUCT_LABELS: Record<ProductKey, string> = {
+  visitor_management: "Visitor Management",
+  gate_pass: "Gate Pass",
+  multi_office: "Multi-Office",
+  analytics: "Analytics & Reports",
+  api_access: "API Access",
+};
+
+export const ALL_PRODUCTS: ProductKey[] = [
+  "visitor_management",
+  "gate_pass",
+  "multi_office",
+  "analytics",
+  "api_access",
+];
+
 export interface Company {
   id: string;
   name: string;
@@ -116,8 +140,24 @@ export interface Company {
   logoUrl?: string | null;
   plan: "starter" | "growth" | "enterprise";
   isActive: boolean;
+  // CRM
+  contactName?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  // Contract
+  contractStart?: string | null;
+  contractEnd?: string | null;
+  contractValue?: string | null;
+  // License
+  products?: string | null;        // JSON string: ProductKey[]
+  licenseStatus?: string | null;   // LicenseStatus
+  notes?: string | null;
   createdAt: string;
   updatedAt: string;
+  // Computed stats (from API)
+  userCount?: number;
+  officeCount?: number;
+  visitorCount?: number;
 }
 
 export interface UserProfile {

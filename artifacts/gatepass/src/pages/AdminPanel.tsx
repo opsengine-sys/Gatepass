@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useState, type ReactNode } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useClerk } from "@clerk/react";
 import {
   useAdminListCompanies,
@@ -11,124 +11,115 @@ import {
 } from "@workspace/api-client-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import type { Company, UserProfile } from "@/types";
+import type { Company, UserProfile, ProductKey } from "@/types";
+import { ALL_PRODUCTS, PRODUCT_LABELS } from "@/types";
+import { useLocation } from "wouter";
 
-type Tab = "companies" | "users";
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+async function fetchAdmin<T>(path: string): Promise<T> {
+  const res = await fetch(path, { credentials: "include" });
+  if (!res.ok) throw new Error(`${path} failed`);
+  return res.json() as Promise<T>;
+}
+
+function fmtDate(d: string | null | undefined) {
+  if (!d) return "—";
+  return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function fmtMoney(v: string | null | undefined) {
+  if (!v) return "—";
+  const n = parseFloat(v.replace(/[^0-9.]/g, ""));
+  if (isNaN(n)) return v;
+  return "₹" + n.toLocaleString("en-IN");
+}
+
+function parseProducts(raw: string | null | undefined): ProductKey[] {
+  try { return JSON.parse(raw ?? "[]") as ProductKey[]; } catch { return []; }
+}
+
+type LicenseStatus = "trial" | "active" | "expired" | "suspended";
+
+const LICENSE_STATUS_COLORS: Record<string, string> = {
+  trial: "bg-blue-50 text-blue-700",
+  active: "bg-green-50 text-green-700",
+  expired: "bg-red-50 text-red-700",
+  suspended: "bg-amber-50 text-amber-700",
+};
+
+const PLAN_COLORS: Record<string, string> = {
+  starter: "bg-orange-50 text-orange-700",
+  growth: "bg-blue-50 text-blue-700",
+  enterprise: "bg-purple-50 text-purple-700",
+};
+
+// ── nav items ─────────────────────────────────────────────────────────────────
+
+type Tab = "overview" | "companies" | "licenses" | "users" | "activity";
+
+const NAV: { id: Tab; label: string; icon: ReactNode }[] = [
+  {
+    id: "overview",
+    label: "Overview",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+      </svg>
+    ),
+  },
+  {
+    id: "companies",
+    label: "Companies",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+        <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+      </svg>
+    ),
+  },
+  {
+    id: "licenses",
+    label: "Licenses",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+    ),
+  },
+  {
+    id: "users",
+    label: "Users",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+    ),
+  },
+  {
+    id: "activity",
+    label: "Activity",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+      </svg>
+    ),
+  },
+];
+
+// ── main component ────────────────────────────────────────────────────────────
 
 export function AdminPanel({ superAdminNoCompany = false }: { superAdminNoCompany?: boolean }) {
-  const qc = useQueryClient();
   const { signOut } = useClerk();
-  const [tab, setTab] = useState<Tab>("companies");
-  const [companyFilter, setCompanyFilter] = useState("");
+  const [, setLocation] = useLocation();
+  const [tab, setTab] = useState<Tab>("overview");
 
-  const { data: companies = [], isLoading: companiesLoading } = useAdminListCompanies();
-  const { data: users = [], isLoading: usersLoading } = useAdminListUsers(
-    {},
-    { query: { enabled: tab === "users" } } as never,
-  );
-
-  const [newCompanyOpen, setNewCompanyOpen] = useState(false);
-  const [editCompany, setEditCompany] = useState<Company | null>(null);
-
-  const panel = (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="font-serif text-[21px] font-medium text-foreground">Super Admin Panel</h1>
-          <p className="text-[12.5px] text-muted-foreground mt-0.5">Manage all companies and users</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {tab === "companies" && (
-            <button onClick={() => setNewCompanyOpen(true)} className="btn-primary">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3.5 h-3.5">
-                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-              New Company
-            </button>
-          )}
-          {superAdminNoCompany && (
-            <button onClick={() => signOut()} className="btn-ghost text-[12.5px]">Sign out</button>
-          )}
-        </div>
-      </div>
-
-      <div className="flex gap-1 mb-5 border-b border-border">
-        {(["companies", "users"] as Tab[]).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={cn(
-              "px-4 py-2.5 text-[13px] font-semibold border-b-2 -mb-px transition-colors capitalize",
-              tab === t
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-
-      {tab === "companies" && (
-        <CompaniesTab
-          companies={companies as Company[]}
-          loading={companiesLoading}
-          filter={companyFilter}
-          onFilter={setCompanyFilter}
-          onEdit={setEditCompany}
-          onDelete={async (id) => {
-            await adminDeleteCompany(id);
-            qc.invalidateQueries({ queryKey: ["/api/admin/companies"] });
-            toast.success("Company deactivated");
-          }}
-          onRefresh={() => qc.invalidateQueries({ queryKey: ["/api/admin/companies"] })}
-        />
-      )}
-
-      {tab === "users" && (
-        <UsersTab
-          users={users as UserProfile[]}
-          companies={companies as Company[]}
-          loading={usersLoading}
-          onSave={async (userId, updates) => {
-            await adminUpdateUser(userId, updates);
-            qc.invalidateQueries({ queryKey: ["/api/admin/users"] });
-            toast.success("User updated");
-          }}
-        />
-      )}
-
-      {newCompanyOpen && (
-        <NewCompanyModal
-          onClose={() => setNewCompanyOpen(false)}
-          onSave={async (data) => {
-            await adminCreateCompany(data as never);
-            qc.invalidateQueries({ queryKey: ["/api/admin/companies"] });
-            toast.success("Company created");
-            setNewCompanyOpen(false);
-          }}
-        />
-      )}
-
-      {editCompany && (
-        <EditCompanyModal
-          company={editCompany}
-          onClose={() => setEditCompany(null)}
-          onSave={async (data) => {
-            await adminUpdateCompany(editCompany.id, data);
-            qc.invalidateQueries({ queryKey: ["/api/admin/companies"] });
-            toast.success("Company updated");
-            setEditCompany(null);
-          }}
-        />
-      )}
-    </div>
-  );
-
-  if (superAdminNoCompany) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="border-b border-border bg-card px-6 py-3 flex items-center gap-2.5">
+  const sidebar = (
+    <aside className="w-56 bg-card border-r border-border flex-shrink-0 flex flex-col">
+      <div className="px-4 py-5">
+        <div className="flex items-center gap-2 mb-1">
           <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
             <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" className="w-3.5 h-3.5">
               <rect x="3" y="4" width="14" height="10" rx="2"/>
@@ -136,61 +127,283 @@ export function AdminPanel({ superAdminNoCompany = false }: { superAdminNoCompan
               <rect x="7" y="17" width="10" height="3" rx="1.5"/>
             </svg>
           </div>
-          <span className="font-serif font-semibold text-[15px] text-foreground">GatePass</span>
-          <span className="ml-2 text-[11px] font-semibold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">Super Admin</span>
+          <span className="font-serif font-semibold text-[14px] text-foreground">GatePass</span>
         </div>
-        <div className="max-w-6xl mx-auto px-6 py-8">{panel}</div>
+        <span className="text-[11px] font-semibold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+          Super Admin
+        </span>
       </div>
-    );
-  }
 
-  return panel;
-}
+      <nav className="flex-1 px-2">
+        {NAV.map((n) => (
+          <button
+            key={n.id}
+            onClick={() => setTab(n.id)}
+            className={cn(
+              "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] font-medium mb-0.5 transition-colors",
+              tab === n.id
+                ? "bg-primary text-white"
+                : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+            )}
+          >
+            {n.icon}
+            {n.label}
+          </button>
+        ))}
+      </nav>
 
-function CompaniesTab({
-  companies, loading, filter, onFilter, onEdit, onDelete, onRefresh,
-}: {
-  companies: Company[];
-  loading: boolean;
-  filter: string;
-  onFilter: (v: string) => void;
-  onEdit: (c: Company) => void;
-  onDelete: (id: string) => void;
-  onRefresh: () => void;
-}) {
-  const filtered = companies.filter(
-    (c) =>
-      c.name.toLowerCase().includes(filter.toLowerCase()) ||
-      c.slug.toLowerCase().includes(filter.toLowerCase()),
+      <div className="px-4 py-4 border-t border-border">
+        {!superAdminNoCompany && (
+          <button
+            onClick={() => setLocation("/")}
+            className="w-full text-left text-[12px] text-muted-foreground hover:text-foreground flex items-center gap-2 mb-2 px-1 transition-colors"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+              <path d="M19 12H5M12 5l-7 7 7 7"/>
+            </svg>
+            Back to App
+          </button>
+        )}
+        <button
+          onClick={() => signOut()}
+          className="w-full text-left text-[12px] text-muted-foreground hover:text-red-600 flex items-center gap-2 px-1 transition-colors"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+          </svg>
+          Sign out
+        </button>
+      </div>
+    </aside>
   );
 
   return (
-    <div>
-      <div className="flex items-center gap-3 mb-4">
-        <div className="relative flex-1 max-w-xs">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-          </svg>
-          <input
-            value={filter}
-            onChange={(e) => onFilter(e.target.value)}
-            placeholder="Search companies…"
-            className="w-full pl-8 pr-3 py-2 text-[13px] bg-card border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30"
-          />
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Top bar */}
+      <header className="h-12 bg-card border-b border-border flex items-center px-4 gap-3 flex-shrink-0">
+        <span className="text-[12px] text-muted-foreground">Super Admin Console</span>
+        <span className="text-muted-foreground/40 text-xs">·</span>
+        <span className="text-[12px] font-semibold text-foreground capitalize">{tab}</span>
+      </header>
+
+      <div className="flex flex-1 overflow-hidden">
+        {sidebar}
+        <main className="flex-1 overflow-y-auto p-8">
+          {tab === "overview" && <OverviewTab />}
+          {tab === "companies" && <CompaniesTab />}
+          {tab === "licenses" && <LicensesTab />}
+          {tab === "users" && <UsersTab />}
+          {tab === "activity" && <ActivityTab />}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+// ── Overview ──────────────────────────────────────────────────────────────────
+
+interface Stats {
+  totalCompanies: number;
+  activeCompanies: number;
+  totalUsers: number;
+  totalVisitors: number;
+  licenseBreakdown: Array<{ status: string; cnt: number }>;
+  planBreakdown: Array<{ plan: string; cnt: number }>;
+  recentCompanies: Company[];
+  expiring: Company[];
+}
+
+function OverviewTab() {
+  const { data: stats, isLoading } = useQuery<Stats>({
+    queryKey: ["/api/admin/stats"],
+    queryFn: () => fetchAdmin<Stats>("/api/admin/stats"),
+  });
+
+  if (isLoading) {
+    return <div className="flex justify-center py-20 text-muted-foreground text-[13px]">Loading metrics…</div>;
+  }
+
+  const s = stats!;
+
+  const metricCards = [
+    { label: "Total Companies", value: s.totalCompanies, color: "text-primary", sub: `${s.activeCompanies} active` },
+    { label: "Total Users", value: s.totalUsers, color: "text-blue-600", sub: "across all companies" },
+    { label: "Total Visitors", value: s.totalVisitors, color: "text-teal-600", sub: "all time" },
+    { label: "Active Licenses", value: s.licenseBreakdown.find(l => l.status === "active")?.cnt ?? 0, color: "text-green-600", sub: "live subscriptions" },
+  ];
+
+  return (
+    <div className="space-y-8 max-w-5xl">
+      <div>
+        <h1 className="font-serif text-[22px] font-semibold text-foreground mb-1">Overview</h1>
+        <p className="text-[13px] text-muted-foreground">Platform-wide metrics and activity at a glance</p>
+      </div>
+
+      {/* Metric cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {metricCards.map((m) => (
+          <div key={m.label} className="bg-card border border-border rounded-xl p-5">
+            <div className={cn("text-[30px] font-bold font-serif", m.color)}>{m.value}</div>
+            <div className="text-[13px] font-semibold text-foreground mt-1">{m.label}</div>
+            <div className="text-[11.5px] text-muted-foreground mt-0.5">{m.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* License status breakdown */}
+        <div className="bg-card border border-border rounded-xl p-5">
+          <h3 className="font-semibold text-[14px] text-foreground mb-4">License Status</h3>
+          <div className="space-y-2.5">
+            {["active", "trial", "expired", "suspended"].map((status) => {
+              const cnt = s.licenseBreakdown.find(l => l.status === status)?.cnt ?? 0;
+              const total = s.totalCompanies || 1;
+              const pct = Math.round((cnt / total) * 100);
+              return (
+                <div key={status}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full capitalize", LICENSE_STATUS_COLORS[status] ?? "bg-secondary text-muted-foreground")}>{status}</span>
+                    <span className="text-[12px] font-semibold text-foreground">{cnt}</span>
+                  </div>
+                  <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                    <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Plan breakdown */}
+        <div className="bg-card border border-border rounded-xl p-5">
+          <h3 className="font-semibold text-[14px] text-foreground mb-4">Plan Distribution</h3>
+          <div className="space-y-2.5">
+            {["starter", "growth", "enterprise"].map((plan) => {
+              const cnt = s.planBreakdown.find(p => p.plan === plan)?.cnt ?? 0;
+              const total = s.totalCompanies || 1;
+              const pct = Math.round((cnt / total) * 100);
+              return (
+                <div key={plan}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full capitalize", PLAN_COLORS[plan] ?? "")}>{plan}</span>
+                    <span className="text-[12px] font-semibold text-foreground">{cnt}</span>
+                  </div>
+                  <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                    <div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {loading ? (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Recently added */}
+        <div className="bg-card border border-border rounded-xl p-5">
+          <h3 className="font-semibold text-[14px] text-foreground mb-4">Recently Added Companies</h3>
+          {s.recentCompanies.length === 0 ? (
+            <p className="text-[13px] text-muted-foreground">No companies yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {s.recentCompanies.map((c) => (
+                <div key={c.id} className="flex items-center justify-between">
+                  <div>
+                    <div className="text-[13px] font-medium text-foreground">{c.name}</div>
+                    <div className="text-[11.5px] text-muted-foreground">{fmtDate(c.createdAt)}</div>
+                  </div>
+                  <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full", PLAN_COLORS[c.plan] ?? "")}>{c.plan}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Expiring contracts */}
+        <div className="bg-card border border-border rounded-xl p-5">
+          <h3 className="font-semibold text-[14px] text-foreground mb-4">Contracts Expiring Soon</h3>
+          {s.expiring.length === 0 ? (
+            <p className="text-[13px] text-muted-foreground">No contracts expiring in the next 60 days.</p>
+          ) : (
+            <div className="space-y-3">
+              {s.expiring.map((c) => (
+                <div key={c.id} className="flex items-center justify-between">
+                  <div>
+                    <div className="text-[13px] font-medium text-foreground">{c.name}</div>
+                    <div className="text-[11.5px] text-muted-foreground">{c.contactEmail ?? "No contact"}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[12px] font-semibold text-red-600">{fmtDate(c.contractEnd)}</div>
+                    <div className="text-[11px] text-muted-foreground">{fmtMoney(c.contractValue)}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Companies ─────────────────────────────────────────────────────────────────
+
+function CompaniesTab() {
+  const qc = useQueryClient();
+  const [filter, setFilter] = useState("");
+  const [editCompany, setEditCompany] = useState<Company | null>(null);
+  const [newOpen, setNewOpen] = useState(false);
+  const [impersonateCompany, setImpersonateCompany] = useState<Company | null>(null);
+
+  const { data: companies = [], isLoading } = useAdminListCompanies();
+
+  const filtered = (companies as Company[]).filter((c) =>
+    [c.name, c.slug, c.contactEmail, c.contactName].some((v) =>
+      v?.toLowerCase().includes(filter.toLowerCase()),
+    ),
+  );
+
+  const handleImpersonate = (c: Company) => {
+    localStorage.setItem("gp_impersonate", JSON.stringify({ companyId: c.id, companyName: c.name }));
+    window.location.href = "/";
+  };
+
+  return (
+    <div className="max-w-full">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="font-serif text-[22px] font-semibold text-foreground mb-0.5">Companies</h1>
+          <p className="text-[13px] text-muted-foreground">Manage company accounts, contracts & contacts</p>
+        </div>
+        <button onClick={() => setNewOpen(true)} className="btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3.5 h-3.5">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Add Company
+        </button>
+      </div>
+
+      <div className="mb-4 max-w-xs">
+        <div className="relative">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Search companies…" className="w-full pl-8 pr-3 py-2 text-[13px] bg-card border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30" />
+        </div>
+      </div>
+
+      {isLoading ? (
         <div className="flex justify-center py-10 text-muted-foreground text-[13px]">Loading…</div>
       ) : (
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <table className="w-full text-[13px]">
+        <div className="bg-card border border-border rounded-xl overflow-x-auto">
+          <table className="w-full text-[12.5px] min-w-[900px]">
             <thead>
               <tr className="border-b border-border bg-secondary/30">
                 <th className="text-left px-4 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Company</th>
-                <th className="text-left px-4 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Slug</th>
-                <th className="text-left px-4 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Plan</th>
-                <th className="text-left px-4 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Users</th>
+                <th className="text-left px-4 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Contact</th>
+                <th className="text-left px-4 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Plan / License</th>
+                <th className="text-left px-4 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Contract</th>
+                <th className="text-left px-4 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Users / Offices</th>
                 <th className="text-left px-4 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
                 <th className="px-4 py-3" />
               </tr>
@@ -198,27 +411,41 @@ function CompaniesTab({
             <tbody>
               {filtered.map((c) => (
                 <tr key={c.id} className="border-b border-border last:border-0 hover:bg-secondary/20 transition-colors">
-                  <td className="px-4 py-3 font-medium text-foreground">{c.name}</td>
-                  <td className="px-4 py-3 font-mono text-muted-foreground text-[12px]">{c.slug}</td>
                   <td className="px-4 py-3">
-                    <span className={cn(
-                      "text-[11px] font-semibold px-2 py-0.5 rounded-full",
-                      c.plan === "enterprise" ? "bg-purple-50 text-purple-700" :
-                      c.plan === "growth" ? "bg-blue-50 text-blue-700" :
-                      "bg-orange-50 text-orange-700"
-                    )}>{c.plan}</span>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">{(c as any).userCount ?? "—"}</td>
-                  <td className="px-4 py-3">
-                    <span className={cn(
-                      "text-[11px] font-semibold px-2 py-0.5 rounded-full",
-                      c.isActive ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
-                    )}>{c.isActive ? "Active" : "Inactive"}</span>
+                    <div className="font-semibold text-foreground">{c.name}</div>
+                    <div className="text-[11px] text-muted-foreground font-mono">{c.slug}</div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-2 justify-end">
-                      <button onClick={() => onEdit(c)} className="text-[12px] font-medium text-primary hover:underline">Edit</button>
-                      <button onClick={() => onDelete(c.id)} className="text-[12px] font-medium text-red-600 hover:underline">Deactivate</button>
+                    <div className="text-foreground">{c.contactName ?? <span className="text-muted-foreground/50">—</span>}</div>
+                    <div className="text-[11px] text-muted-foreground">{c.contactEmail ?? ""}</div>
+                    <div className="text-[11px] text-muted-foreground">{c.contactPhone ?? ""}</div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={cn("text-[10.5px] font-semibold px-2 py-0.5 rounded-full capitalize block w-fit mb-1", PLAN_COLORS[c.plan] ?? "")}>{c.plan}</span>
+                    <span className={cn("text-[10.5px] font-semibold px-2 py-0.5 rounded-full capitalize block w-fit", LICENSE_STATUS_COLORS[c.licenseStatus ?? "trial"] ?? "bg-secondary text-muted-foreground")}>{c.licenseStatus ?? "trial"}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="text-[11px] text-muted-foreground">{fmtDate(c.contractStart)} → {fmtDate(c.contractEnd)}</div>
+                    <div className="font-semibold text-foreground">{fmtMoney(c.contractValue)}</div>
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    <div>{(c as any).userCount ?? 0} users</div>
+                    <div>{(c as any).officeCount ?? 0} offices</div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={cn("text-[10.5px] font-semibold px-2 py-0.5 rounded-full", c.isActive ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700")}>
+                      {c.isActive ? "Active" : "Inactive"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2 justify-end flex-wrap">
+                      <button onClick={() => handleImpersonate(c)} className="text-[11.5px] font-semibold text-teal-600 hover:underline whitespace-nowrap">Enter as Admin</button>
+                      <button onClick={() => setEditCompany(c)} className="text-[11.5px] font-medium text-primary hover:underline">Edit</button>
+                      <button onClick={async () => {
+                        await adminDeleteCompany(c.id);
+                        qc.invalidateQueries({ queryKey: ["/api/admin/companies"] });
+                        toast.success("Company deactivated");
+                      }} className="text-[11.5px] font-medium text-red-600 hover:underline">Suspend</button>
                     </div>
                   </td>
                 </tr>
@@ -226,7 +453,153 @@ function CompaniesTab({
             </tbody>
           </table>
           {filtered.length === 0 && (
-            <div className="py-10 text-center text-[13px] text-muted-foreground">No companies found</div>
+            <div className="py-12 text-center text-[13px] text-muted-foreground">No companies found</div>
+          )}
+        </div>
+      )}
+
+      {newOpen && (
+        <CompanyFormModal
+          title="Add Company"
+          onClose={() => setNewOpen(false)}
+          onSave={async (data) => {
+            await adminCreateCompany(data as never);
+            qc.invalidateQueries({ queryKey: ["/api/admin/companies"] });
+            qc.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+            toast.success("Company created");
+            setNewOpen(false);
+          }}
+        />
+      )}
+
+      {editCompany && (
+        <CompanyFormModal
+          title="Edit Company"
+          initial={editCompany}
+          onClose={() => setEditCompany(null)}
+          onSave={async (data) => {
+            await adminUpdateCompany(editCompany.id, data as never);
+            qc.invalidateQueries({ queryKey: ["/api/admin/companies"] });
+            qc.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+            toast.success("Company updated");
+            setEditCompany(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Licenses ──────────────────────────────────────────────────────────────────
+
+function LicensesTab() {
+  const qc = useQueryClient();
+  const { data: companies = [], isLoading } = useAdminListCompanies();
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editProducts, setEditProducts] = useState<ProductKey[]>([]);
+  const [editStatus, setEditStatus] = useState<LicenseStatus>("trial");
+  const [saving, setSaving] = useState(false);
+
+  const startEdit = (c: Company) => {
+    setEditId(c.id);
+    setEditProducts(parseProducts(c.products));
+    setEditStatus((c.licenseStatus as LicenseStatus) ?? "trial");
+  };
+
+  const saveEdit = async (c: Company) => {
+    setSaving(true);
+    try {
+      await adminUpdateCompany(c.id, { products: editProducts, licenseStatus: editStatus } as never);
+      qc.invalidateQueries({ queryKey: ["/api/admin/companies"] });
+      toast.success("License updated");
+      setEditId(null);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="max-w-4xl">
+      <div className="mb-6">
+        <h1 className="font-serif text-[22px] font-semibold text-foreground mb-0.5">Licenses & Products</h1>
+        <p className="text-[13px] text-muted-foreground">Manage which products each company has access to</p>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-10 text-muted-foreground text-[13px]">Loading…</div>
+      ) : (
+        <div className="space-y-3">
+          {(companies as Company[]).map((c) => {
+            const isEditing = editId === c.id;
+            const products = isEditing ? editProducts : parseProducts(c.products);
+            const status = isEditing ? editStatus : ((c.licenseStatus as LicenseStatus) ?? "trial");
+
+            return (
+              <div key={c.id} className="bg-card border border-border rounded-xl p-5">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <div className="font-semibold text-foreground text-[14px]">{c.name}</div>
+                    <div className="text-[11.5px] text-muted-foreground">{c.contactEmail ?? c.slug}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isEditing ? (
+                      <>
+                        <select
+                          value={editStatus}
+                          onChange={(e) => setEditStatus(e.target.value as LicenseStatus)}
+                          className="text-[12px] border border-border rounded px-2 py-1 bg-background focus:outline-none focus:ring-1 focus:ring-primary/30"
+                        >
+                          {(["trial", "active", "expired", "suspended"] as LicenseStatus[]).map((s) => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                        <button onClick={() => saveEdit(c)} disabled={saving} className="btn-primary text-[12px] py-1">Save</button>
+                        <button onClick={() => setEditId(null)} className="text-[12px] text-muted-foreground hover:underline">Cancel</button>
+                      </>
+                    ) : (
+                      <>
+                        <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full capitalize", LICENSE_STATUS_COLORS[status])}>{status}</span>
+                        <button onClick={() => startEdit(c)} className="text-[12px] text-primary font-medium hover:underline">Edit</button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {ALL_PRODUCTS.map((p) => {
+                    const active = products.includes(p);
+                    return isEditing ? (
+                      <label key={p} className={cn(
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[12px] cursor-pointer transition-colors",
+                        active ? "bg-primary/10 border-primary/40 text-primary" : "border-border text-muted-foreground hover:border-primary/30",
+                      )}>
+                        <input
+                          type="checkbox"
+                          checked={active}
+                          onChange={() => setEditProducts(prev =>
+                            active ? prev.filter(x => x !== p) : [...prev, p]
+                          )}
+                          className="sr-only"
+                        />
+                        {active && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3 h-3"><polyline points="20 6 9 17 4 12"/></svg>}
+                        {PRODUCT_LABELS[p]}
+                      </label>
+                    ) : (
+                      <span key={p} className={cn(
+                        "px-3 py-1.5 rounded-lg border text-[12px]",
+                        active ? "bg-primary/10 border-primary/30 text-primary font-medium" : "border-border text-muted-foreground/50 line-through",
+                      )}>
+                        {PRODUCT_LABELS[p]}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+
+          {(companies as Company[]).length === 0 && (
+            <div className="py-12 text-center text-[13px] text-muted-foreground">No companies yet. Add one in the Companies tab.</div>
           )}
         </div>
       )}
@@ -234,17 +607,22 @@ function CompaniesTab({
   );
 }
 
-function UsersTab({
-  users, companies, loading, onSave,
-}: {
-  users: UserProfile[];
-  companies: Company[];
-  loading: boolean;
-  onSave: (userId: string, updates: Record<string, unknown>) => Promise<void>;
-}) {
+// ── Users ─────────────────────────────────────────────────────────────────────
+
+function UsersTab() {
+  const qc = useQueryClient();
+  const [companyFilter, setCompanyFilter] = useState("");
   const [editUserId, setEditUserId] = useState<string | null>(null);
   const [editRole, setEditRole] = useState("");
   const [editCompanyId, setEditCompanyId] = useState("");
+
+  const { data: users = [], isLoading: usersLoading } = useAdminListUsers({} as never, {} as never);
+  const { data: companies = [] } = useAdminListCompanies();
+
+  const filtered = (users as UserProfile[]).filter((u) => {
+    if (!companyFilter) return true;
+    return u.company?.id === companyFilter;
+  });
 
   const startEdit = (u: UserProfile) => {
     setEditUserId(u.id);
@@ -254,17 +632,34 @@ function UsersTab({
 
   const saveEdit = async () => {
     if (!editUserId) return;
-    await onSave(editUserId, { role: editRole, companyId: editCompanyId || null });
+    await adminUpdateUser(editUserId, { role: editRole, companyId: editCompanyId || null } as never);
+    qc.invalidateQueries({ queryKey: ["/api/admin/users"] });
+    toast.success("User updated");
     setEditUserId(null);
   };
 
   return (
-    <div>
-      {loading ? (
+    <div className="max-w-5xl">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="font-serif text-[22px] font-semibold text-foreground mb-0.5">Users</h1>
+          <p className="text-[13px] text-muted-foreground">All users across all companies</p>
+        </div>
+        <select
+          value={companyFilter}
+          onChange={(e) => setCompanyFilter(e.target.value)}
+          className="text-[12.5px] border border-border rounded-lg px-3 py-2 bg-card focus:outline-none focus:ring-1 focus:ring-primary/30"
+        >
+          <option value="">All Companies</option>
+          {(companies as Company[]).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+      </div>
+
+      {usersLoading ? (
         <div className="flex justify-center py-10 text-muted-foreground text-[13px]">Loading…</div>
       ) : (
         <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <table className="w-full text-[13px]">
+          <table className="w-full text-[12.5px]">
             <thead>
               <tr className="border-b border-border bg-secondary/30">
                 <th className="text-left px-4 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">User</th>
@@ -276,37 +671,49 @@ function UsersTab({
               </tr>
             </thead>
             <tbody>
-              {users.map((u) => (
+              {filtered.map((u) => (
                 <tr key={u.id} className="border-b border-border last:border-0 hover:bg-secondary/20 transition-colors">
                   <td className="px-4 py-3 font-medium text-foreground">{u.name}</td>
-                  <td className="px-4 py-3 text-muted-foreground font-mono text-[12px]">{u.email}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{u.company?.name ?? <span className="text-red-500 text-[11.5px]">Unassigned</span>}</td>
+                  <td className="px-4 py-3 text-muted-foreground font-mono text-[11.5px]">{u.email}</td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {editUserId === u.id ? (
+                      <select
+                        value={editCompanyId}
+                        onChange={(e) => setEditCompanyId(e.target.value)}
+                        className="text-[12px] border border-border rounded px-1.5 py-0.5 bg-background focus:outline-none w-36"
+                      >
+                        <option value="">Unassigned</option>
+                        {(companies as Company[]).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                    ) : (
+                      u.company?.name ?? <span className="text-orange-500 text-[11px] font-medium">Unassigned</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     {editUserId === u.id ? (
                       <select
                         value={editRole}
                         onChange={(e) => setEditRole(e.target.value)}
-                        className="text-[12px] bg-background border border-border rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                        className="text-[12px] border border-border rounded px-1.5 py-0.5 bg-background focus:outline-none"
                       >
                         {["super_admin", "admin", "security", "viewer"].map((r) => (
-                          <option key={r} value={r}>{r}</option>
+                          <option key={r} value={r}>{r.replace("_", " ")}</option>
                         ))}
                       </select>
                     ) : (
                       <span className={cn(
-                        "text-[11px] font-semibold px-2 py-0.5 rounded-full",
+                        "text-[10.5px] font-semibold px-2 py-0.5 rounded-full",
                         u.role === "super_admin" ? "bg-purple-50 text-purple-700" :
                         u.role === "admin" ? "bg-orange-50 text-orange-700" :
                         u.role === "security" ? "bg-teal-50 text-teal-700" :
-                        "bg-secondary text-muted-foreground"
+                        "bg-secondary text-muted-foreground",
                       )}>{u.role.replace("_", " ")}</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={cn(
-                      "text-[11px] font-semibold px-2 py-0.5 rounded-full",
-                      u.isActive ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
-                    )}>{u.isActive ? "Active" : "Inactive"}</span>
+                    <span className={cn("text-[10.5px] font-semibold px-2 py-0.5 rounded-full", u.isActive ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700")}>
+                      {u.isActive ? "Active" : "Inactive"}
+                    </span>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 justify-end">
@@ -324,8 +731,8 @@ function UsersTab({
               ))}
             </tbody>
           </table>
-          {users.length === 0 && (
-            <div className="py-10 text-center text-[13px] text-muted-foreground">No users found</div>
+          {filtered.length === 0 && (
+            <div className="py-12 text-center text-[13px] text-muted-foreground">No users found</div>
           )}
         </div>
       )}
@@ -333,90 +740,231 @@ function UsersTab({
   );
 }
 
-function NewCompanyModal({ onClose, onSave }: { onClose: () => void; onSave: (data: { name: string; slug: string; plan: string }) => Promise<void> }) {
-  const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
-  const [plan, setPlan] = useState("starter");
-  const [saving, setSaving] = useState(false);
+// ── Activity ──────────────────────────────────────────────────────────────────
 
-  const handleNameChange = (v: string) => {
-    setName(v);
-    setSlug(v.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""));
-  };
+interface ActivityEvent {
+  type: "user_signup" | "company_created";
+  id: string;
+  label: string;
+  detail: string;
+  ts: string | Date;
+}
 
-  const save = async () => {
-    if (!name || !slug) return;
-    setSaving(true);
-    try { await onSave({ name, slug, plan }); } finally { setSaving(false); }
+function ActivityTab() {
+  const { data: events = [], isLoading } = useQuery<ActivityEvent[]>({
+    queryKey: ["/api/admin/activity"],
+    queryFn: () => fetchAdmin<ActivityEvent[]>("/api/admin/activity"),
+  });
+
+  const typeIcons: Record<string, string> = {
+    user_signup: "👤",
+    company_created: "🏢",
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-xl">
-        <h3 className="font-serif font-semibold text-[16px] text-foreground mb-4">New Company</h3>
-        <div className="space-y-3">
-          <div>
-            <label className="text-[12px] font-semibold text-foreground mb-1 block">Company Name</label>
-            <input value={name} onChange={(e) => handleNameChange(e.target.value)} className="w-full px-3 py-2 text-[13px] bg-background border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30" placeholder="Acme Corp" />
-          </div>
-          <div>
-            <label className="text-[12px] font-semibold text-foreground mb-1 block">Slug</label>
-            <input value={slug} onChange={(e) => setSlug(e.target.value)} className="w-full px-3 py-2 text-[13px] bg-background border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 font-mono" placeholder="acme-corp" />
-          </div>
-          <div>
-            <label className="text-[12px] font-semibold text-foreground mb-1 block">Plan</label>
-            <select value={plan} onChange={(e) => setPlan(e.target.value)} className="w-full px-3 py-2 text-[13px] bg-background border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30">
-              <option value="starter">Starter</option>
-              <option value="growth">Growth</option>
-              <option value="enterprise">Enterprise</option>
-            </select>
-          </div>
-        </div>
-        <div className="flex gap-2 mt-5">
-          <button onClick={onClose} className="btn-ghost flex-1 justify-center">Cancel</button>
-          <button onClick={save} disabled={saving || !name} className="btn-primary flex-1 justify-center">{saving ? "Saving…" : "Create"}</button>
-        </div>
+    <div className="max-w-2xl">
+      <div className="mb-6">
+        <h1 className="font-serif text-[22px] font-semibold text-foreground mb-0.5">Activity</h1>
+        <p className="text-[13px] text-muted-foreground">Recent platform events — sign-ups and company additions</p>
       </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-10 text-muted-foreground text-[13px]">Loading…</div>
+      ) : (
+        <div className="relative border-l-2 border-border ml-4 space-y-1">
+          {events.map((e) => (
+            <div key={`${e.type}-${e.id}`} className="relative pl-6 pb-4">
+              <div className="absolute -left-[11px] top-1 w-5 h-5 bg-card border-2 border-border rounded-full flex items-center justify-center text-[10px]">
+                {typeIcons[e.type] ?? "•"}
+              </div>
+              <div className="bg-card border border-border rounded-xl px-4 py-3">
+                <div className="text-[13px] font-medium text-foreground">{e.label}</div>
+                <div className="text-[11.5px] text-muted-foreground mt-0.5">{e.detail}</div>
+                <div className="text-[11px] text-muted-foreground/60 mt-1">{fmtDate(typeof e.ts === "string" ? e.ts : e.ts.toISOString())}</div>
+              </div>
+            </div>
+          ))}
+          {events.length === 0 && (
+            <div className="pl-6 py-8 text-[13px] text-muted-foreground">No activity yet.</div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-function EditCompanyModal({ company, onClose, onSave }: { company: Company; onClose: () => void; onSave: (data: Record<string, unknown>) => Promise<void> }) {
-  const [name, setName] = useState(company.name);
-  const [plan, setPlan] = useState(company.plan);
-  const [isActive, setIsActive] = useState(company.isActive);
+// ── Company Form Modal ────────────────────────────────────────────────────────
+
+function CompanyFormModal({
+  title,
+  initial,
+  onClose,
+  onSave,
+}: {
+  title: string;
+  initial?: Company;
+  onClose: () => void;
+  onSave: (data: Record<string, unknown>) => Promise<void>;
+}) {
+  const [name, setName] = useState(initial?.name ?? "");
+  const [slug, setSlug] = useState(initial?.slug ?? "");
+  const [plan, setPlan] = useState(initial?.plan ?? "starter");
+  const [licenseStatus, setLicenseStatus] = useState<LicenseStatus>((initial?.licenseStatus as LicenseStatus) ?? "trial");
+  const [isActive, setIsActive] = useState(initial?.isActive ?? true);
+  // Contact
+  const [contactName, setContactName] = useState(initial?.contactName ?? "");
+  const [contactEmail, setContactEmail] = useState(initial?.contactEmail ?? "");
+  const [contactPhone, setContactPhone] = useState(initial?.contactPhone ?? "");
+  // Contract
+  const [contractStart, setContractStart] = useState(initial?.contractStart ? initial.contractStart.slice(0, 10) : "");
+  const [contractEnd, setContractEnd] = useState(initial?.contractEnd ? initial.contractEnd.slice(0, 10) : "");
+  const [contractValue, setContractValue] = useState(initial?.contractValue ?? "");
+  // Products
+  const [products, setProducts] = useState<ProductKey[]>(parseProducts(initial?.products));
+  const [notes, setNotes] = useState(initial?.notes ?? "");
   const [saving, setSaving] = useState(false);
 
-  const save = async () => {
-    setSaving(true);
-    try { await onSave({ name, plan, isActive }); } finally { setSaving(false); }
+  const handleNameChange = (v: string) => {
+    setName(v);
+    if (!initial) setSlug(v.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60));
   };
 
+  const save = async () => {
+    if (!name || !slug) { toast.error("Name and slug are required"); return; }
+    setSaving(true);
+    try {
+      await onSave({ name, slug, plan, licenseStatus, isActive, contactName, contactEmail, contactPhone, contractStart: contractStart || null, contractEnd: contractEnd || null, contractValue: contractValue || null, products, notes: notes || null });
+    } finally { setSaving(false); }
+  };
+
+  const toggleProduct = (p: ProductKey) => {
+    setProducts(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]);
+  };
+
+  const labelCls = "text-[11.5px] font-semibold text-foreground mb-1 block";
+  const inputCls = "w-full px-3 py-2 text-[12.5px] bg-background border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30";
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-xl">
-        <h3 className="font-serif font-semibold text-[16px] text-foreground mb-4">Edit Company</h3>
-        <div className="space-y-3">
-          <div>
-            <label className="text-[12px] font-semibold text-foreground mb-1 block">Company Name</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} className="w-full px-3 py-2 text-[13px] bg-background border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30" />
-          </div>
-          <div>
-            <label className="text-[12px] font-semibold text-foreground mb-1 block">Plan</label>
-            <select value={plan} onChange={(e) => setPlan(e.target.value as Company["plan"])} className="w-full px-3 py-2 text-[13px] bg-background border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30">
-              <option value="starter">Starter</option>
-              <option value="growth">Growth</option>
-              <option value="enterprise">Enterprise</option>
-            </select>
-          </div>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="w-4 h-4 rounded border-border" />
-            <span className="text-[13px] text-foreground">Active</span>
-          </label>
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-start justify-center p-4 overflow-y-auto" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="bg-card border border-border rounded-2xl w-full max-w-xl shadow-2xl my-8">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <h3 className="font-serif font-semibold text-[16px] text-foreground">{title}</h3>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
-        <div className="flex gap-2 mt-5">
-          <button onClick={onClose} className="btn-ghost flex-1 justify-center">Cancel</button>
-          <button onClick={save} disabled={saving} className="btn-primary flex-1 justify-center">{saving ? "Saving…" : "Save"}</button>
+
+        <div className="px-6 py-5 space-y-5 overflow-y-auto max-h-[75vh]">
+          {/* Basic */}
+          <section>
+            <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-3">Basic Info</div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className={labelCls}>Company Name *</label>
+                <input value={name} onChange={(e) => handleNameChange(e.target.value)} className={inputCls} placeholder="Acme Industries" />
+              </div>
+              <div>
+                <label className={labelCls}>Slug *</label>
+                <input value={slug} onChange={(e) => setSlug(e.target.value)} className={cn(inputCls, "font-mono")} placeholder="acme-industries" />
+              </div>
+              <div>
+                <label className={labelCls}>Plan</label>
+                <select value={plan} onChange={(e) => setPlan(e.target.value as never)} className={inputCls}>
+                  <option value="starter">Starter</option>
+                  <option value="growth">Growth</option>
+                  <option value="enterprise">Enterprise</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>License Status</label>
+                <select value={licenseStatus} onChange={(e) => setLicenseStatus(e.target.value as LicenseStatus)} className={inputCls}>
+                  <option value="trial">Trial</option>
+                  <option value="active">Active</option>
+                  <option value="expired">Expired</option>
+                  <option value="suspended">Suspended</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2 pt-5">
+                <input type="checkbox" id="isActive" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="w-4 h-4 rounded border-border" />
+                <label htmlFor="isActive" className="text-[12.5px] text-foreground cursor-pointer">Active</label>
+              </div>
+            </div>
+          </section>
+
+          {/* Contact */}
+          <section>
+            <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-3">Contact Person</div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Name</label>
+                <input value={contactName} onChange={(e) => setContactName(e.target.value)} className={inputCls} placeholder="Rahul Sharma" />
+              </div>
+              <div>
+                <label className={labelCls}>Phone</label>
+                <input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} className={inputCls} placeholder="+91 98765 43210" />
+              </div>
+              <div className="col-span-2">
+                <label className={labelCls}>Email</label>
+                <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} className={inputCls} placeholder="rahul@company.com" />
+              </div>
+            </div>
+          </section>
+
+          {/* Contract */}
+          <section>
+            <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-3">Contract</div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className={labelCls}>Start Date</label>
+                <input type="date" value={contractStart} onChange={(e) => setContractStart(e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>End Date</label>
+                <input type="date" value={contractEnd} onChange={(e) => setContractEnd(e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Value (₹)</label>
+                <input value={contractValue} onChange={(e) => setContractValue(e.target.value)} className={inputCls} placeholder="1,20,000" />
+              </div>
+            </div>
+          </section>
+
+          {/* Products */}
+          <section>
+            <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-3">Products Opted</div>
+            <div className="flex flex-wrap gap-2">
+              {ALL_PRODUCTS.map((p) => {
+                const on = products.includes(p);
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => toggleProduct(p)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[12px] font-medium transition-colors",
+                      on ? "bg-primary/10 border-primary/40 text-primary" : "border-border text-muted-foreground hover:border-primary/30 hover:text-foreground",
+                    )}
+                  >
+                    {on && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3 h-3"><polyline points="20 6 9 17 4 12"/></svg>}
+                    {PRODUCT_LABELS[p]}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Notes */}
+          <section>
+            <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-3">Internal Notes</div>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className={cn(inputCls, "resize-none")} placeholder="Any notes about this account, special requirements, escalations…" />
+          </section>
+        </div>
+
+        <div className="px-6 py-4 border-t border-border flex gap-2 justify-end">
+          <button onClick={onClose} className="btn-ghost">Cancel</button>
+          <button onClick={save} disabled={saving || !name} className="btn-primary">
+            {saving ? "Saving…" : initial ? "Save Changes" : "Create Company"}
+          </button>
         </div>
       </div>
     </div>

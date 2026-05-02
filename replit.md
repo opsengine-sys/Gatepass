@@ -1,8 +1,8 @@
-# Workspace
+# GatePass — Visitor & Gate Pass Management SaaS
 
 ## Overview
 
-pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
+Full SaaS platform for Indian corporate offices. pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
 
 ## Stack
 
@@ -12,41 +12,111 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **TypeScript version**: 5.9
 - **API framework**: Express 5
 - **Database**: PostgreSQL + Drizzle ORM
+- **Auth**: Clerk (email/OTP, super_admin & admin roles)
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
-- **API codegen**: Orval (from OpenAPI spec)
-- **Build**: esbuild (CJS bundle)
+- **API codegen**: Orval (from OpenAPI spec in `lib/api-spec`)
+- **Frontend state**: TanStack Query v5 (no localStorage)
+- **Build**: esbuild (API server), Vite (frontend)
 
 ## Artifacts
 
-### GatePass — Visitor & Gate Pass Management (`artifacts/gatepass`)
+### GatePass Web App (`artifacts/gatepass`)
 - **Route**: `/` (preview path root)
-- **Port**: 22484
-- **Stack**: React + Vite + Tailwind CSS v4 + wouter (routing) + sonner (toasts)
-- **Storage**: 100% localStorage — no backend API calls
+- **Port**: 22484 (via `$PORT`)
+- **Stack**: React + Vite + Tailwind CSS v4 + wouter + sonner + Clerk
 - **Key Files**:
-  - `src/types.ts` — all TypeScript interfaces and constants
-  - `src/hooks/useAppState.ts` — centralized state with localStorage persistence + seed data
-  - `src/App.tsx` — router with all 8 routes
-  - `src/pages/` — Dashboard, Visitors, ActivityLog, VisitorLink, GpDashboard, GatePasses, GpActivityLog, RegisterPage
+  - `src/types.ts` — all TypeScript interfaces and constants (Company, UserProfile, Visitor, GatePass, ProductKey, etc.)
+  - `src/App.tsx` — ClerkProvider, wouter Router, MainApp, all routes
+  - `src/contexts/AppContext.tsx` — central API state with TanStack Query
+  - `src/pages/LandingPage.tsx` — full public marketing page (hero, features, how-it-works, pricing, CTA, footer)
+  - `src/pages/AdminPanel.tsx` — 5-tab Super Admin dashboard (Overview, Companies, Licenses, Users, Activity)
+  - `src/pages/OnboardingPage.tsx` — company self-setup for new admins
+  - `src/pages/Dashboard.tsx`, `Visitors.tsx`, `GatePasses.tsx`, `ActivityLog.tsx`, etc.
   - `src/components/modals/` — RegisterVisitorModal, VisitorDetailModal, BadgeModal, NewGatePassModal, GpDetailModal, OfficePicker
-- **Features**:
-  - Visitor check-in/check-out/break management with unique Visitor IDs
-  - Gate pass creation, tracking, and closure
-  - Printable visitor badges and gate pass documents
-  - Public visitor pre-registration page (`/register`)
-  - Multi-office support (6 Indian corporate offices)
-  - CSV export for visitors and gate passes
-  - Activity logs for both visitor and gate pass events
-- **Theme**: Warm parchment (`#f5f4f1`), burnt orange (`#c06b2c`) for visitors, teal (`#1a6e7a`) for gate passes
-- **Fonts**: Instrument Sans (UI), Lora (headings), JetBrains Mono (IDs)
-- **CSS Note**: Button utility classes defined in `@layer components {}` in `index.css`
+- **Auth flow**:
+  - Unauthenticated → LandingPage
+  - Signed in, no company → OnboardingPage (self-serve `POST /api/onboard`)
+  - super_admin, no company → AdminPanel directly
+  - super_admin, has company → main app + `/admin` route
+  - admin/security/viewer → main app
+- **Theme**: Warm parchment (`#faf9f5`), burnt orange primary (`#c06b2c`)
+- **Fonts**: Instrument Sans (UI), Lora (serif headings), JetBrains Mono (IDs)
+
+### API Server (`artifacts/api-server`)
+- **Route**: `/api`
+- **Port**: 8080 (via `$PORT`)
+- **Key routes**:
+  - `GET /api/me` — fetch/upsert current user from Clerk JWT
+  - `POST /api/onboard` — self-serve company creation
+  - `GET/POST/PATCH/DELETE /api/admin/companies` — company CRUD (super_admin only)
+  - `GET /api/admin/stats` — platform-wide metrics
+  - `GET /api/admin/activity` — recent events feed
+  - `GET/PATCH /api/admin/users` — user management across all companies
+  - `GET/POST /api/visitors`, `GET/POST /api/gate-passes` — scoped to user's company+office
+- **Middlewares**: `requireAuth` (Clerk JWT verification), `requireSuperAdmin`
+- **Auth note**: Uses direct Clerk REST API (`https://api.clerk.com/v1/users/{id}`) to fetch real emails/names
+
+## Database Schema (`lib/db`)
+
+Tables: `companies`, `users`, `offices`, `visitors`, `visitor_logs`, `gate_passes`, `gp_logs`
+
+### `companies` — enhanced with CRM & license fields
+- Basic: `id`, `name`, `slug`, `logoUrl`, `plan` (starter/growth/enterprise), `isActive`
+- CRM: `contactName`, `contactEmail`, `contactPhone`
+- Contract: `contractStart`, `contractEnd`, `contractValue`
+- License: `products` (JSON string: ProductKey[]), `licenseStatus` (trial/active/expired/suspended)
+- `notes`
+
+### `users`
+- `clerkId`, `companyId`, `officeId`, `name`, `email`
+- `role`: super_admin | admin | security | viewer
+
+## Super Admin Portal (AdminPanel)
+
+5-tab dashboard accessible at `/admin` or directly for super_admin without company:
+
+1. **Overview** — metric cards (companies, users, visitors, active licenses), license/plan breakdowns, recently added companies, expiring contracts
+2. **Companies** — full CRM table with contact/contract/license info, Edit modal with all fields, "Enter as Admin" (impersonation via localStorage), Suspend
+3. **Licenses** — per-company product assignment (visitor_management, gate_pass, multi_office, analytics, api_access) + license status
+4. **Users** — all users across platform, filter by company, inline role & company editing
+5. **Activity** — timeline of recent sign-ups and company creations
+
+### "Enter as Admin" impersonation
+- Clicking "Enter as Admin" on a company sets `localStorage.gp_impersonate = {companyId, companyName}`
+- Navigates to `/` — AppContext should read this to scope API calls for that company
+- App should show impersonation banner when `gp_impersonate` is set
+
+## Public Landing Page
+
+Full marketing page with sections:
+- Sticky header with nav links (Features, How it Works, Pricing)
+- Hero with stats (10k+ visitors, 50+ companies, 99.9% SLA)
+- Feature cards (6 features with Core/Growth badges)
+- How it works (3 steps)
+- Pricing (Starter ₹2,999/mo, Growth ₹7,999/mo, Enterprise custom)
+- CTA banner
+- Footer with links
+
+## API Codegen
+
+Regenerate after OpenAPI spec changes:
+```
+pnpm --filter @workspace/api-spec run codegen
+```
+
+Generated hooks are in `lib/api-client-react/src/generated/api.ts`.
+New admin fields (contactName etc.) not yet in codegen — use `as never` cast until next codegen run.
 
 ## Key Commands
 
 - `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- `pnpm --filter @workspace/api-server run dev` — run API server locally
+- `pnpm run typecheck:libs` — rebuild composite lib types (run after schema changes)
+- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks from OpenAPI spec
+- `pnpm --filter @workspace/db run push` — push Drizzle schema to DB (dev only)
 
-See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+## Notes
+
+- The API server has pre-existing Drizzle TS2769 type errors in all route files (`.set(updates).where(eq(...))` pattern). esbuild bypasses these at runtime — server works correctly.
+- `CLERK_SECRET_KEY` env var used for Clerk REST API calls in `auth.ts`
+- `SESSION_SECRET` available as env var
+- Both super_admin users: nagababu1403c4@gmail.com & basanagababu1998@gmail.com
