@@ -43,6 +43,42 @@ async function getUserWithRelations(userId: string) {
   return { ...user, company, office };
 }
 
+/** Fetch real name + email from Clerk REST API using the secret key */
+async function fetchClerkUserData(clerkId: string): Promise<{ name: string; email: string } | null> {
+  const secretKey = process.env.CLERK_SECRET_KEY;
+  if (!secretKey) return null;
+
+  try {
+    const res = await fetch(`https://api.clerk.com/v1/users/${clerkId}`, {
+      headers: { Authorization: `Bearer ${secretKey}` },
+    });
+    if (!res.ok) return null;
+
+    const data = await res.json() as {
+      first_name?: string | null;
+      last_name?: string | null;
+      email_addresses?: Array<{ id: string; email_address: string }>;
+      primary_email_address_id?: string | null;
+    };
+
+    const firstName = data.first_name ?? "";
+    const lastName = data.last_name ?? "";
+    const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
+
+    const primaryEmail = data.email_addresses?.find(
+      (e) => e.id === data.primary_email_address_id,
+    );
+    const email = primaryEmail?.email_address ?? null;
+
+    // Build a display name: full name, or email local-part, or null
+    const name = fullName || (email ? email.split("@")[0] : null);
+
+    return { name: name ?? "User", email: email ?? "" };
+  } catch {
+    return null;
+  }
+}
+
 // GET /api/me — get or auto-create user on first sign-in
 router.get("/me", async (req: AuthenticatedRequest, res) => {
   const auth = getAuth(req);
@@ -60,30 +96,24 @@ router.get("/me", async (req: AuthenticatedRequest, res) => {
     .limit(1);
 
   if (existing) {
-    // If name/email are still placeholders, refresh from Clerk
+    // Refresh name/email from Clerk if still showing placeholders
     const needsRefresh =
-      existing.name === "New User" || existing.email.endsWith("@unknown.com");
+      existing.name === "New User" ||
+      existing.name === "User" ||
+      existing.email.endsWith("@unknown.com") ||
+      existing.email === "";
 
     if (needsRefresh) {
-      try {
-        const { clerkClient } = await import("@clerk/express");
-        const clerkUser = await clerkClient().users.getUser(clerkId);
-        const firstName = clerkUser.firstName ?? "";
-        const lastName = clerkUser.lastName ?? "";
-        const freshName = [firstName, lastName].filter(Boolean).join(" ") || "New User";
-        const primaryEmail = clerkUser.emailAddresses.find(
-          (e) => e.id === clerkUser.primaryEmailAddressId,
-        );
-        const freshEmail = primaryEmail?.emailAddress ?? existing.email;
-
+      const clerkData = await fetchClerkUserData(clerkId);
+      if (clerkData) {
+        const freshName = clerkData.name || existing.name;
+        const freshEmail = clerkData.email || existing.email;
         if (freshName !== existing.name || freshEmail !== existing.email) {
           await db
             .update(usersTable)
             .set({ name: freshName, email: freshEmail, updatedAt: new Date() })
             .where(eq(usersTable.id, existing.id));
         }
-      } catch {
-        // ignore — use existing data
       }
     }
 
@@ -92,32 +122,14 @@ router.get("/me", async (req: AuthenticatedRequest, res) => {
     return;
   }
 
-  // Auto-create user record on first sign-in — fetch real data from Clerk
-  let name = "New User";
-  let email = `${clerkId}@unknown.com`;
-
-  try {
-    const { clerkClient } = await import("@clerk/express");
-    const clerkUser = await clerkClient().users.getUser(clerkId);
-    const firstName = clerkUser.firstName ?? "";
-    const lastName = clerkUser.lastName ?? "";
-    name = [firstName, lastName].filter(Boolean).join(" ") || "New User";
-    const primaryEmail = clerkUser.emailAddresses.find(
-      (e) => e.id === clerkUser.primaryEmailAddressId,
-    );
-    email = primaryEmail?.emailAddress ?? email;
-  } catch {
-    // fall back to placeholder values
-  }
+  // Auto-create user record on first sign-in
+  const clerkData = await fetchClerkUserData(clerkId);
+  const name = clerkData?.name ?? "User";
+  const email = clerkData?.email ?? `${clerkId}@unknown.com`;
 
   const [newUser] = await db
     .insert(usersTable)
-    .values({
-      clerkId,
-      name,
-      email,
-      role: "viewer",
-    })
+    .values({ clerkId, name, email, role: "viewer" })
     .returning();
 
   res.json({ ...newUser, company: null, office: null });

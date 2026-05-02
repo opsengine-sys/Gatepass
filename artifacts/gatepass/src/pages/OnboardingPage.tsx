@@ -76,7 +76,7 @@ export function OnboardingPage({ user }: Props) {
             </div>
 
             <h2 className="font-serif text-xl font-semibold text-foreground mb-2 text-center">
-              Welcome, {user?.name?.split(" ")[0] ?? "there"}!
+              Welcome{user?.name && user.name !== "New User" && user.name !== "User" ? `, ${user.name.split(" ")[0]}` : ""}!
             </h2>
             <p className="text-[13.5px] text-muted-foreground mb-6 leading-relaxed text-center">
               Your account is ready. Set up your company to start managing visitors, or wait for an admin to invite you.
