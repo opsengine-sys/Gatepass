@@ -29,8 +29,8 @@ Full SaaS platform for Indian corporate offices. pnpm workspace monorepo using T
   - `src/App.tsx` — ClerkProvider, wouter Router, MainApp, all routes (incl. /settings)
   - `src/contexts/AppContext.tsx` — central API state with TanStack Query
   - `src/pages/LandingPage.tsx` — full public marketing page (hero, features, how-it-works, pricing, CTA, footer)
-  - `src/pages/AdminPanel.tsx` — 5-tab Super Admin dashboard (Overview, Companies, Licenses, Users, Activity)
-  - `src/pages/Settings.tsx` — 7-tab workspace settings page
+  - `src/pages/AdminPanel.tsx` — 7-tab Super Admin dashboard (Overview, Companies, Licenses, Users, Platform Admins, Activity, Integrations)
+  - `src/pages/Settings.tsx` — 9-tab workspace settings page (profile/customization/badge-templates/team/locations/notifications/integrations/appearance/activity)
   - `src/pages/OnboardingPage.tsx` — company self-setup for new admins
   - `src/pages/Dashboard.tsx` — VM Dashboard with "Register Visitor" button
   - `src/pages/GpDashboard.tsx` — GP Dashboard with "New Gate Pass" button
@@ -45,8 +45,8 @@ Full SaaS platform for Indian corporate offices. pnpm workspace monorepo using T
   - super_admin, has company → main app + `/admin` route
   - admin/security/viewer → main app
 
-- **Theme**: Warm parchment (`#faf9f5`), burnt orange primary (`#c06b2c`)
-- **Fonts**: Instrument Sans (UI), Lora (serif headings), JetBrains Mono (IDs)
+- **Theme**: Neutral white (`hsl(0 0% 98.5%)`), cool gray borders, burnt orange primary (`#c06b2c`)
+- **Fonts**: Inter (UI), Plus Jakarta Sans (headings), JetBrains Mono (IDs)
 
 ### API Server (`artifacts/api-server`)
 - **Route**: `/api`
@@ -64,7 +64,7 @@ Full SaaS platform for Indian corporate offices. pnpm workspace monorepo using T
 
 ## Database Schema (`lib/db`)
 
-Tables: `companies`, `users`, `offices`, `visitors`, `visitor_logs`, `gate_passes`, `gp_logs`
+Tables: `companies`, `users`, `offices`, `visitors`, `visitor_logs`, `gate_passes`, `gp_logs`, `audit_logs`
 
 ### `companies` — enhanced with CRM & license fields
 - Basic: `id`, `name`, `slug`, `logoUrl`, `plan` (starter/growth/enterprise), `isActive`
@@ -80,14 +80,15 @@ Tables: `companies`, `users`, `offices`, `visitors`, `visitor_logs`, `gate_passe
 
 ## Super Admin Portal (AdminPanel)
 
-6-tab dashboard accessible at `/admin` (super_admin only):
+7-tab dashboard accessible at `/admin` (super_admin only):
 
 1. **Overview** — metric cards (companies, users, visitors, active licenses), license/plan breakdowns, recently added companies, expiring contracts. Graceful "access required" fallback if stats unavailable.
 2. **Companies** — full CRM table with contact/contract/license info, Edit modal with all fields + multi-contact editor (add/remove contacts with roles), "Enter as Admin" impersonation, Suspend
-3. **Licenses** — per-company product assignment + license status + seat allocation. Summary bar (total/active/trial/seats). Per-company seat usage bar (green→amber→red at 70/90%), inline maxSeats editing, contract dates with expiry warnings. CompanyFormModal has Max Seats number input.
+3. **Licenses** — per-company product assignment + license status + seat allocation. Summary bar (total/active/trial/seats). Per-company seat usage bar (green→amber→red at 70/90%), inline maxSeats editing, contract dates with expiry warnings. Inactive products hidden (no strikethrough); empty state "No products assigned — click Edit" shown.
 4. **Users** — all users across platform, filter by company, inline role & company editing
 5. **Platform Admins** — lists all super_admin users from `/api/admin/users`, invite-by-email modal, security callout ("never elevate company users"), DB assignment instructions
 6. **Activity** — timeline of recent sign-ups and company creations
+7. **Integrations** — per-company integration config (left: company list, right: SSO Google/Microsoft, Slack, Teams, SMTP, Webhooks). Each integration has a toggle + inline config panel with appropriate fields. Changes audit-logged to `/api/audit-logs`.
 
 ### CompanyFormModal — multi-contact section
 - Primary Contact (legacy single contact fields)
@@ -100,18 +101,20 @@ Tables: `companies`, `users`, `offices`, `visitors`, `visitor_logs`, `gate_passe
 
 ## Settings Page (`/settings`)
 
-8-tab workspace settings page (all users):
+9-tab workspace settings page (all users):
 1. **Profile** — name, email (read-only from Clerk), role, company
-2. **Customization** — visitor & GP types, form field configuration:
+2. **Customization** — visitor & GP types, form field configuration (modernized AccordionSection with icon box + smooth chevron, cleaner hover states):
    - Built-in field rows: inline editable label (stored in `gp_vfield_labels_v1` / `gp_gpfield_labels_v1`), TEXT data type badge
    - Custom field rows: coloured `DataTypeBadge` (10 types: text/number/date/email/phone/boolean/select/file/url/textarea), editable label, enable/require toggles, delete
    - Add field row: type selector dropdown + label input + Add button
 3. **Locations** — office management (live API), edit office details, active/inactive toggle
-4. **Badge Templates** — 6 visitor badge templates + 5 gate pass templates, each with full live previews rendered as miniature HTML layouts. Collapsible "Customise" panel per section: primary colour picker, background tint, font size (S/M/L), show/hide photo, logo, QR code. Config persisted to `gp_badge_cfg_v1` / `gp_gp_cfg_v1`.
+4. **Badge Templates** — 4-up grid of templates with "Open Editor" button launching `BadgeTemplateEditorModal`:
+   - **Full-screen editor**: left sidebar (template list with active badge), center (2.4× scaled live preview with label/desc), right panel (primary color + accent color pickers with hex input, font size S/M/L, show photo/logo/QR toggles, 6 quick color presets). Config persisted to `gp_badge_cfg_v1` / `gp_gp_cfg_v1`.
 5. **Team & Users** — invite by email, role reference table
 6. **Notifications** — per-event toggle switches (in-app), email config placeholder
 7. **Integrations** — Microsoft 365 / Google Workspace toggles, LDAP coming soon
 8. **Appearance** — accent color swatches + custom color picker, font family select, theme picker
+9. **Activity** — audit log timeline with entity filter dropdown, relative timestamps ("5m ago"), color-coded action badges (created/updated/deleted/invited/enabled/disabled/checkin/checkout), entity emoji icons, actor name+email, JSON details grid. Auto-refreshes every 30s. Refresh button. Reads from `GET /api/audit-logs`.
 
 ### localStorage keys
 - `gp_branding_v1` — branding (logo, color, font)
@@ -163,10 +166,21 @@ New admin fields (contactName, contacts etc.) not yet in codegen — use `as nev
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks from OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push Drizzle schema to DB (dev only)
 
+## Audit Log API (`/api/audit-logs`)
+
+- `GET /api/audit-logs` — company admins see their own company's logs; super_admin sees all (or filters by `?companyId=`)
+- `POST /api/audit-logs` — create a log entry (`action`, `entity`, `entityId`, `entityLabel`, `details` JSON)
+- `DELETE /api/audit-logs` — super_admin only, optionally scoped by `?companyId=`
+- Schema: `audit_logs` table with `companyId`, `userId`, `actorName`, `actorEmail`, `action`, `entity`, `entityId`, `entityLabel`, `details`, `createdAt`
+
+## Express 5 Params Typing
+
+Express 5 types `req.params` values as `string | string[]`. All route files use `req.params["paramName"] as string` pattern instead of destructuring, to satisfy Drizzle ORM's `eq()` which requires `string | SQLWrapper`.
+
 ## Notes
 
-- The API server has pre-existing Drizzle TS2769 type errors in all route files (`.set(updates).where(eq(...))` pattern). esbuild bypasses these at runtime — server works correctly.
 - `CLERK_SECRET_KEY` env var used for Clerk REST API calls in `auth.ts`
 - `SESSION_SECRET` available as env var
 - Both super_admin users: nagababu1403c4@gmail.com & basanagababu1998@gmail.com
 - `/settings` route accessible to all authenticated users; `/admin` is super_admin only
+- All 4 workspace packages typecheck cleanly (zero TS errors)

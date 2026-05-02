@@ -5,7 +5,7 @@ import { useBranding } from "@/contexts/BrandingContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { VISITOR_TYPES, TYPE_COLORS, GP_TYPES } from "@/types";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import {
   useListOffices, useCreateOffice, useUpdateOffice, useDeleteOffice,
   useListUsers, useUpdateUser,
@@ -13,7 +13,7 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type SettingsTab = "profile" | "customization" | "badge-templates" | "team" | "locations" | "notifications" | "integrations" | "appearance";
+type SettingsTab = "profile" | "customization" | "badge-templates" | "team" | "locations" | "notifications" | "integrations" | "appearance" | "activity";
 type IntegSub = "sso" | "messaging" | "webhooks" | "api-keys";
 type MsgChannel = "email" | "whatsapp" | "sms";
 type DataType = "text" | "number" | "email" | "phone" | "date" | "time" | "select" | "checkbox" | "textarea" | "file";
@@ -44,6 +44,7 @@ const TABS: { id: SettingsTab; label: string; adminOnly?: boolean }[] = [
   { id: "notifications", label: "Notifications" },
   { id: "integrations", label: "Integrations", adminOnly: true },
   { id: "appearance", label: "Appearance" },
+  { id: "activity", label: "Activity" },
 ];
 
 const BADGE_TEMPLATES = [
@@ -163,6 +164,7 @@ export function Settings() {
       {tab === "notifications" && <NotificationsTab notifications={notifications} onToggle={toggleNotif} />}
       {tab === "integrations" && <IntegrationsTab />}
       {tab === "appearance" && <AppearanceTab />}
+      {tab === "activity" && <SettingsActivityTab />}
     </div>
   );
 }
@@ -355,24 +357,29 @@ function AccordionSection({ title, badge, children, defaultOpen = false, accent 
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden">
+    <div className="border border-border rounded-xl overflow-hidden bg-card shadow-sm">
       <button
         onClick={() => setOpen(p => !p)}
-        className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-secondary/40 transition-colors text-left"
+        className="w-full flex items-center gap-3 px-5 py-4 hover:bg-secondary/30 transition-colors text-left group"
       >
-        {accent && <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: accent }} />}
-        <span className="font-bold text-[13px] text-foreground flex-1">{title}</span>
+        <div className={cn(
+          "w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors",
+          open ? "bg-primary/10" : "bg-secondary group-hover:bg-secondary/60",
+        )}>
+          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: accent ?? "hsl(var(--primary))" }} />
+        </div>
+        <span className="font-semibold text-[13px] text-foreground flex-1 tracking-tight">{title}</span>
         {badge && (
-          <span className="text-[10.5px] font-semibold bg-secondary border border-border px-2 py-0.5 rounded-full text-muted-foreground mr-2">
+          <span className="text-[11px] font-semibold bg-primary/8 text-primary px-2.5 py-0.5 rounded-full mr-1 border border-primary/15">
             {badge}
           </span>
         )}
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-          className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform", open && "rotate-180")}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"
+          className={cn("w-4 h-4 text-muted-foreground/40 transition-transform duration-200", open && "rotate-180")}>
           <polyline points="6 9 12 15 18 9" />
         </svg>
       </button>
-      {open && <div className="border-t border-border">{children}</div>}
+      {open && <div className="border-t border-border/60">{children}</div>}
     </div>
   );
 }
@@ -960,96 +967,98 @@ function BadgeTemplatesTab({ badgeTemplate, setBadgeTemplate, gpTemplate, setGpT
 }) {
   const [badgeCfg, setBadgeCfg] = useState<TemplateConfig>(loadBadgeCfg);
   const [gpCfg, setGPCfg] = useState<TemplateConfig>(loadGPCfg);
-  const [badgeCustom, setBadgeCustom] = useState(false);
-  const [gpCustom, setGPCustom] = useState(false);
+  const [badgeEditor, setBadgeEditor] = useState(false);
+  const [gpEditor, setGPEditor] = useState(false);
 
   const saveBadgeCfg = (c: TemplateConfig) => { setBadgeCfg(c); localStorage.setItem("gp_badge_cfg_v1", JSON.stringify(c)); };
   const saveGPCfg   = (c: TemplateConfig) => { setGPCfg(c);    localStorage.setItem("gp_gp_cfg_v1",    JSON.stringify(c)); };
 
   return (
-    <div className="space-y-5">
-      {/* ── Visitor Badge ── */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
-        <div className="px-5 py-3 border-b border-border flex items-center justify-between">
-          <h3 className="font-bold text-[13px] text-foreground">Visitor Badge Templates</h3>
-          <button onClick={() => setBadgeCustom(p => !p)}
-            className={cn("flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-lg border transition-colors",
-              badgeCustom ? "bg-primary/10 border-primary/30 text-primary" : "border-border text-muted-foreground hover:border-primary/30")}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-            {badgeCustom ? "Hide Customise" : "Customise"}
-          </button>
-        </div>
-        <div className="grid grid-cols-3 gap-3 p-5">
-          {BADGE_TEMPLATES.map(t => (
-            <button key={t.id} onClick={() => { setBadgeTemplate(t.id); toast.success(`Badge template: ${t.label}`); }}
-              className={cn("border-[1.5px] rounded-xl overflow-hidden text-left transition-all",
-                badgeTemplate === t.id ? "border-primary shadow-[0_0_0_3px_rgba(192,107,44,0.15)]" : "border-border hover:border-primary/40")}>
-              <div className={cn("flex items-center justify-center py-3 px-2", badgeTemplate === t.id ? "bg-orange-50" : "bg-secondary")}>
-                <TemplateLivePreview kind="badge" templateId={t.id} cfg={badgeCfg} />
-              </div>
-              <div className="px-3 py-2 border-t border-border">
-                <div className="text-[12px] font-semibold text-foreground flex items-center gap-1.5">
-                  {t.label}
-                  {badgeTemplate === t.id && <span className="text-[9.5px] bg-orange-100 text-orange-700 rounded-full px-1.5 py-0.5 font-bold">Active</span>}
-                </div>
-                <div className="text-[10.5px] text-muted-foreground mt-0.5">{t.desc}</div>
-              </div>
-            </button>
-          ))}
-        </div>
-        {badgeCustom && (
-          <div className="border-t border-border bg-secondary/30">
-            <div className="px-5 pt-3 pb-0">
-              <p className="text-[11.5px] text-muted-foreground">Customise how your visitor badges look — colours, photo, QR, and logo. Changes apply to all templates.</p>
-            </div>
-            <TemplateCustomizer kind="badge" cfg={badgeCfg} onChange={saveBadgeCfg} />
-          </div>
-        )}
-      </div>
+    <>
+      {/* Full-screen editors (portalled above everything) */}
+      {badgeEditor && (
+        <BadgeTemplateEditorModal
+          kind="badge"
+          template={badgeTemplate} setTemplate={t => { setBadgeTemplate(t); toast.success(`Badge template: ${BADGE_TEMPLATES.find(x => x.id === t)?.label}`); }}
+          cfg={badgeCfg} setCfg={saveBadgeCfg}
+          onClose={() => setBadgeEditor(false)}
+        />
+      )}
+      {gpEditor && (
+        <BadgeTemplateEditorModal
+          kind="gp"
+          template={gpTemplate} setTemplate={t => { setGpTemplate(t); toast.success(`GP template: ${GP_TEMPLATES.find(x => x.id === t)?.label}`); }}
+          cfg={gpCfg} setCfg={saveGPCfg}
+          onClose={() => setGPEditor(false)}
+        />
+      )}
 
-      {/* ── Gate Pass ── */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
-        <div className="px-5 py-3 border-b border-border flex items-center justify-between">
-          <h3 className="font-bold text-[13px] text-foreground">Gate Pass Templates</h3>
-          <button onClick={() => setGPCustom(p => !p)}
-            className={cn("flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-lg border transition-colors",
-              gpCustom ? "bg-teal-50 border-teal-300 text-teal-700" : "border-border text-muted-foreground hover:border-teal-400/40")}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-            {gpCustom ? "Hide Customise" : "Customise"}
-          </button>
-        </div>
-        <div className="grid grid-cols-3 gap-3 p-5">
-          {GP_TEMPLATES.map(t => (
-            <button key={t.id} onClick={() => { setGpTemplate(t.id); toast.success(`GP template: ${t.label}`); }}
-              className={cn("border-[1.5px] rounded-xl overflow-hidden text-left transition-all",
-                gpTemplate === t.id ? "border-teal-500 shadow-[0_0_0_3px_rgba(20,184,166,0.12)]" : "border-border hover:border-teal-400/40")}>
-              <div className={cn("flex items-center justify-center py-3 px-2", gpTemplate === t.id ? "bg-teal-50" : "bg-secondary")}>
-                <TemplateLivePreview kind="gp" templateId={t.id} cfg={gpCfg} />
-              </div>
-              <div className="px-3 py-2 border-t border-border">
-                <div className="text-[12px] font-semibold text-foreground flex items-center gap-1.5">
-                  {t.label}
-                  {gpTemplate === t.id && <span className="text-[9.5px] bg-teal-50 text-teal-700 rounded-full px-1.5 py-0.5 font-bold">Active</span>}
-                </div>
-                <div className="text-[10.5px] text-muted-foreground mt-0.5">{t.desc}</div>
-              </div>
-            </button>
-          ))}
-        </div>
-        {gpCustom && (
-          <div className="border-t border-border bg-secondary/30">
-            <div className="px-5 pt-3 pb-0">
-              <p className="text-[11.5px] text-muted-foreground">Customise gate pass appearance — colours, logo, and QR code. A4 size (210 × 297 mm), print-ready.</p>
+      <div className="space-y-5">
+        {/* ── Visitor Badge ── */}
+        <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+          <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-[13px] text-foreground">Visitor Badge Templates</h3>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Choose how printed visitor badges look</p>
             </div>
-            <TemplateCustomizer kind="gp" cfg={gpCfg} onChange={saveGPCfg} />
+            <button onClick={() => setBadgeEditor(true)}
+              className="flex items-center gap-2 text-[12px] font-medium px-3.5 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors shadow-sm">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6M9 12h4"/></svg>
+              Open Editor
+            </button>
           </div>
-        )}
-        <div className="mx-5 mb-4 mt-1 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-[11.5px] text-blue-700 flex items-center gap-2">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5 flex-shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          Gate passes print at A4 size (210 × 297 mm) with full detail fields.
+          <div className="grid grid-cols-4 gap-3 p-5">
+            {BADGE_TEMPLATES.map(t => (
+              <button key={t.id} onClick={() => { setBadgeTemplate(t.id); toast.success(`Badge: ${t.label}`); }}
+                className={cn("border-[1.5px] rounded-xl overflow-hidden text-left transition-all group",
+                  badgeTemplate === t.id ? "border-primary shadow-[0_0_0_3px_rgba(192,107,44,0.15)]" : "border-border hover:border-primary/40")}>
+                <div className={cn("flex items-center justify-center py-3 px-2 relative", badgeTemplate === t.id ? "bg-orange-50" : "bg-secondary group-hover:bg-secondary/70")}>
+                  <TemplateLivePreview kind="badge" templateId={t.id} cfg={badgeCfg} />
+                </div>
+                <div className="px-3 py-2 border-t border-border">
+                  <div className="text-[11.5px] font-semibold text-foreground flex items-center gap-1.5 flex-wrap">
+                    {t.label}
+                    {badgeTemplate === t.id && <span className="text-[9px] bg-orange-100 text-orange-700 rounded-full px-1.5 py-0.5 font-bold">Active</span>}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Gate Pass ── */}
+        <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+          <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-[13px] text-foreground">Gate Pass Templates</h3>
+              <p className="text-[11px] text-muted-foreground mt-0.5">A4 size (210 × 297 mm) print-ready passes</p>
+            </div>
+            <button onClick={() => setGPEditor(true)}
+              className="flex items-center gap-2 text-[12px] font-medium px-3.5 py-2 rounded-lg bg-teal-600 text-white hover:bg-teal-600/90 transition-colors shadow-sm">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6M9 12h4"/></svg>
+              Open Editor
+            </button>
+          </div>
+          <div className="grid grid-cols-4 gap-3 p-5">
+            {GP_TEMPLATES.map(t => (
+              <button key={t.id} onClick={() => { setGpTemplate(t.id); toast.success(`GP: ${t.label}`); }}
+                className={cn("border-[1.5px] rounded-xl overflow-hidden text-left transition-all group",
+                  gpTemplate === t.id ? "border-teal-500 shadow-[0_0_0_3px_rgba(20,184,166,0.12)]" : "border-border hover:border-teal-400/40")}>
+                <div className={cn("flex items-center justify-center py-3 px-2", gpTemplate === t.id ? "bg-teal-50" : "bg-secondary group-hover:bg-secondary/70")}>
+                  <TemplateLivePreview kind="gp" templateId={t.id} cfg={gpCfg} />
+                </div>
+                <div className="px-3 py-2 border-t border-border">
+                  <div className="text-[11.5px] font-semibold text-foreground flex items-center gap-1.5 flex-wrap">
+                    {t.label}
+                    {gpTemplate === t.id && <span className="text-[9px] bg-teal-50 text-teal-700 rounded-full px-1.5 py-0.5 font-bold">Active</span>}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -2058,4 +2067,315 @@ function formatRole(role: string) {
   return { super_admin: "Super Admin", admin: "Admin", security: "Security Officer", viewer: "Viewer" }[role] ?? role;
 }
 
-const iCls = "w-full bg-secondary border border-border rounded-lg px-3 py-2 text-[13.5px] text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all";
+const iCls = "w-full bg-background border border-input rounded-lg px-3 py-2 text-[13.5px] text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all";
+
+// ─── Settings Activity Tab ────────────────────────────────────────────────────
+
+interface AuditLogEntry {
+  id: string;
+  companyId: string | null;
+  userId: string | null;
+  actorName: string | null;
+  actorEmail: string | null;
+  action: string;
+  entity: string;
+  entityId: string | null;
+  entityLabel: string | null;
+  details: string | null;
+  createdAt: string;
+}
+
+const ACTION_COLORS: Record<string, string> = {
+  created:  "bg-green-50 text-green-700 border-green-200",
+  updated:  "bg-blue-50 text-blue-700 border-blue-200",
+  deleted:  "bg-red-50 text-red-700 border-red-200",
+  invited:  "bg-purple-50 text-purple-700 border-purple-200",
+  disabled: "bg-amber-50 text-amber-700 border-amber-200",
+  enabled:  "bg-teal-50 text-teal-700 border-teal-200",
+  checkin:  "bg-sky-50 text-sky-700 border-sky-200",
+  checkout: "bg-slate-50 text-slate-700 border-slate-200",
+};
+
+const ENTITY_ICONS: Record<string, string> = {
+  office: "🏢", user: "👤", visitor: "🧑", gate_pass: "🪪",
+  settings: "⚙️", integration: "🔗", template: "🖨️", team: "👥",
+};
+
+function SettingsActivityTab() {
+  const { user } = useApp();
+  const [entityFilter, setEntityFilter] = useState("all");
+  const basePath = import.meta.env.BASE_URL?.replace(/\/$/, "") || "";
+
+  const { data: activityLogs = [], isLoading: logsLoading, refetch: refetchLogs } = useQuery({
+    queryKey: ["/api/audit-logs"],
+    queryFn: async () => {
+      const res = await fetch(`${basePath}/api/audit-logs`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch activity");
+      return res.json() as Promise<AuditLogEntry[]>;
+    },
+    enabled: !!user,
+    refetchInterval: 30000,
+  });
+
+  const entities: string[] = Array.from(new Set(activityLogs.map((l: AuditLogEntry) => l.entity))).sort();
+  const filtered: AuditLogEntry[] = entityFilter === "all" ? activityLogs : activityLogs.filter((l: AuditLogEntry) => l.entity === entityFilter);
+
+  function fmtTs(ts: string) {
+    const d = new Date(ts);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHrs = Math.floor(diffMins / 60);
+    if (diffHrs < 24) return `${diffHrs}h ago`;
+    return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  }
+
+  return (
+    <div className="max-w-2xl">
+      <div className="flex items-start justify-between mb-5">
+        <div>
+          <h2 className="font-semibold text-[15px] text-foreground">Activity Log</h2>
+          <p className="text-[12.5px] text-muted-foreground mt-0.5">All changes made in your workspace</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {entities.length > 0 && (
+            <select value={entityFilter} onChange={e => setEntityFilter(e.target.value)}
+              className="text-[12px] border border-border rounded-lg px-3 py-1.5 bg-card focus:outline-none focus:ring-1 focus:ring-primary/30 capitalize">
+              <option value="all">All types</option>
+              {entities.map(e => <option key={e} value={e}>{e}</option>)}
+            </select>
+          )}
+          <button onClick={() => { void refetchLogs(); }}
+            className="btn-ghost flex items-center gap-1.5 text-[12px]">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="w-3.5 h-3.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.02"/></svg>
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      {logsLoading ? (
+        <div className="flex flex-col items-center justify-center py-12 gap-2">
+          <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <div className="text-[12.5px] text-muted-foreground">Loading activity…</div>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="border border-dashed border-border rounded-xl py-14 flex flex-col items-center text-center">
+          <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center mb-3">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-5 h-5 text-muted-foreground"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <div className="text-[13px] font-medium text-foreground mb-1">No activity yet</div>
+          <div className="text-[11.5px] text-muted-foreground max-w-xs">Changes to offices, users, settings, and integrations will be recorded here automatically.</div>
+        </div>
+      ) : (
+        <div className="relative">
+          <div className="absolute left-3.5 top-4 bottom-4 w-px bg-border" />
+          {filtered.map((log: AuditLogEntry) => (
+            <div key={log.id} className="relative pl-10 mb-2">
+              <div className="absolute left-1.5 top-3.5 w-4 h-4 rounded-full bg-card border-2 border-border flex items-center justify-center text-[8px]">
+                {ENTITY_ICONS[log.entity] ?? "·"}
+              </div>
+              <div className="bg-card border border-border rounded-xl px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+                    <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize flex-shrink-0",
+                      ACTION_COLORS[log.action] ?? "bg-secondary text-foreground border-border")}>
+                      {log.action}
+                    </span>
+                    <span className="text-[12.5px] font-medium text-foreground truncate">
+                      {log.entityLabel || log.entity}
+                    </span>
+                  </div>
+                  <span className="text-[10.5px] text-muted-foreground/60 whitespace-nowrap flex-shrink-0 mt-0.5" title={new Date(log.createdAt).toLocaleString()}>
+                    {fmtTs(log.createdAt)}
+                  </span>
+                </div>
+                {log.actorName && (
+                  <div className="mt-1 text-[11px] text-muted-foreground">
+                    by <span className="font-medium text-foreground">{log.actorName}</span>
+                    {log.actorEmail && <span className="ml-1 text-muted-foreground/60">({log.actorEmail})</span>}
+                  </div>
+                )}
+                {log.details && (() => {
+                  try {
+                    const d = JSON.parse(log.details);
+                    const entries = Object.entries(d).filter(([, v]) => v !== null && v !== undefined && v !== "");
+                    if (!entries.length) return null;
+                    return (
+                      <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-0.5">
+                        {entries.slice(0, 6).map(([k, v]) => (
+                          <div key={k} className="text-[10.5px] text-muted-foreground">
+                            <span className="font-medium text-foreground/60">{k}:</span>{" "}
+                            <span className="font-mono">{String(v)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  } catch { return null; }
+                })()}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Badge Template Editor Modal ──────────────────────────────────────────────
+
+function BadgeTemplateEditorModal({ kind, template, setTemplate, cfg, setCfg, onClose }: {
+  kind: "badge" | "gp";
+  template: string; setTemplate: (t: string) => void;
+  cfg: TemplateConfig; setCfg: (c: TemplateConfig) => void;
+  onClose: () => void;
+}) {
+  const templates = kind === "badge" ? BADGE_TEMPLATES : GP_TEMPLATES;
+  const title = kind === "badge" ? "Visitor Badge Editor" : "Gate Pass Editor";
+  const accentOn = kind === "badge" ? "border-primary" : "border-teal-500";
+  const set = <K extends keyof TemplateConfig>(k: K, v: TemplateConfig[K]) => setCfg({ ...cfg, [k]: v });
+
+  const labelCls = "text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5";
+  const inputCls = "flex-1 bg-background border border-border rounded-lg px-2 py-1.5 text-[12px] font-mono uppercase outline-none focus:border-primary transition-colors";
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex">
+      <div className="flex flex-col flex-1 bg-background">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-3.5 border-b border-border bg-card flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" className="w-3.5 h-3.5"><rect x="3" y="4" width="14" height="10" rx="2"/><rect x="7" y="17" width="10" height="3" rx="1.5"/></svg>
+            </div>
+            <div>
+              <h2 className="font-semibold text-[14px] text-foreground">{title}</h2>
+              <p className="text-[11px] text-muted-foreground">Pick a template and customize its appearance</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="btn-ghost flex items-center gap-1.5 text-[12px]">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="w-3.5 h-3.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Done
+          </button>
+        </div>
+
+        <div className="flex flex-1 overflow-hidden">
+          {/* Left: template list */}
+          <div className="w-52 border-r border-border bg-card/60 overflow-y-auto flex-shrink-0 p-3">
+            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-1 mb-2">Templates</div>
+            {templates.map(t => (
+              <button key={t.id} onClick={() => setTemplate(t.id)}
+                className={cn("w-full text-left px-3 py-3 rounded-xl mb-1 transition-all border",
+                  template === t.id
+                    ? cn("bg-primary/8 border-primary/30 shadow-sm", kind === "gp" && "bg-teal-50 border-teal-400/40")
+                    : "border-transparent hover:bg-secondary hover:border-border")}>
+                <div className="text-[12px] font-semibold text-foreground leading-tight">{t.label}</div>
+                <div className="text-[10px] text-muted-foreground mt-0.5 leading-snug">{t.desc}</div>
+                {template === t.id && (
+                  <div className={cn("mt-1.5 text-[9px] font-bold inline-block px-1.5 py-0.5 rounded-full", kind === "badge" ? "bg-orange-100 text-orange-700" : "bg-teal-100 text-teal-700")}>
+                    Active
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Center: large preview */}
+          <div className="flex-1 bg-secondary/40 flex flex-col items-center justify-center overflow-hidden">
+            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-6">Live Preview</div>
+            <div className="bg-card rounded-2xl border border-border shadow-xl p-10 flex flex-col items-center gap-3">
+              <div style={{ transform: "scale(2.4)", transformOrigin: "center" }}>
+                <TemplateLivePreview kind={kind} templateId={template} cfg={cfg} />
+              </div>
+              <div className="mt-20 text-center">
+                <div className="text-[13px] font-semibold text-foreground">
+                  {templates.find(t => t.id === template)?.label}
+                </div>
+                <div className="text-[11.5px] text-muted-foreground mt-0.5 max-w-xs">
+                  {templates.find(t => t.id === template)?.desc}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: customizer */}
+          <div className="w-72 border-l border-border bg-card/60 overflow-y-auto flex-shrink-0 p-5">
+            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-4">Customize</div>
+
+            <div className="space-y-5">
+              <div>
+                <label className={labelCls}>Primary Colour</label>
+                <div className="flex items-center gap-2">
+                  <input type="color" value={cfg.primaryColor} onChange={e => set("primaryColor", e.target.value)}
+                    className="w-10 h-10 rounded-xl cursor-pointer border border-border p-0.5 bg-transparent flex-shrink-0" />
+                  <input value={cfg.primaryColor} onChange={e => set("primaryColor", e.target.value)}
+                    className={inputCls} maxLength={7} />
+                </div>
+              </div>
+
+              <div>
+                <label className={labelCls}>Background Tint</label>
+                <div className="flex items-center gap-2">
+                  <input type="color" value={cfg.accentColor} onChange={e => set("accentColor", e.target.value)}
+                    className="w-10 h-10 rounded-xl cursor-pointer border border-border p-0.5 bg-transparent flex-shrink-0" />
+                  <input value={cfg.accentColor} onChange={e => set("accentColor", e.target.value)}
+                    className={inputCls} maxLength={7} />
+                </div>
+              </div>
+
+              <div>
+                <label className={labelCls}>Font Size</label>
+                <div className="flex gap-2">
+                  {(["sm","md","lg"] as const).map(s => (
+                    <button key={s} onClick={() => set("fontSize", s)}
+                      className={cn("flex-1 py-2 rounded-lg text-[12px] font-semibold border transition-colors",
+                        cfg.fontSize === s ? "bg-primary text-white border-primary" : "border-border text-muted-foreground hover:border-primary/40")}>
+                      {s === "sm" ? "Small" : s === "md" ? "Medium" : "Large"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="border-t border-border pt-4">
+                <label className={labelCls}>Display Options</label>
+                <div className="space-y-3">
+                  {kind === "badge" && (
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <div className={cn("w-9 h-5 rounded-full relative transition-colors flex-shrink-0", cfg.showPhoto ? "bg-primary" : "bg-border")}>
+                        <span className={cn("absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all", cfg.showPhoto ? "left-[18px]" : "left-0.5")} />
+                      </div>
+                      <span className="text-[12.5px] text-foreground group-hover:text-foreground/80">Show visitor photo</span>
+                    </label>
+                  )}
+                  <label className="flex items-center gap-3 cursor-pointer group" onClick={() => set("showLogo", !cfg.showLogo)}>
+                    <div className={cn("w-9 h-5 rounded-full relative transition-colors flex-shrink-0", cfg.showLogo ? "bg-primary" : "bg-border")}>
+                      <span className={cn("absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all", cfg.showLogo ? "left-[18px]" : "left-0.5")} />
+                    </div>
+                    <span className="text-[12.5px] text-foreground group-hover:text-foreground/80">Show company logo</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer group" onClick={() => set("showQR", !cfg.showQR)}>
+                    <div className={cn("w-9 h-5 rounded-full relative transition-colors flex-shrink-0", cfg.showQR ? "bg-primary" : "bg-border")}>
+                      <span className={cn("absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all", cfg.showQR ? "left-[18px]" : "left-0.5")} />
+                    </div>
+                    <span className="text-[12.5px] text-foreground group-hover:text-foreground/80">Show QR code</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="border-t border-border pt-4">
+                <label className={labelCls}>Quick Presets</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {["#c06b2c","#0d9488","#1a5fa8","#6b3fa0","#176878","#374151"].map(col => (
+                    <button key={col} onClick={() => set("primaryColor", col)}
+                      className={cn("h-7 rounded-lg border-2 transition-all hover:scale-105", cfg.primaryColor === col ? "border-foreground" : "border-transparent")}
+                      style={{ backgroundColor: col }} title={col} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -56,7 +56,7 @@ const PLAN_COLORS: Record<string, string> = {
 
 // ── nav items ─────────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "companies" | "licenses" | "users" | "platform-admins" | "activity";
+type Tab = "overview" | "companies" | "licenses" | "users" | "platform-admins" | "activity" | "integrations";
 
 const NAV: { id: Tab; label: string; icon: ReactNode }[] = [
   {
@@ -114,6 +114,16 @@ const NAV: { id: Tab; label: string; icon: ReactNode }[] = [
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
         <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+      </svg>
+    ),
+  },
+  {
+    id: "integrations",
+    label: "Integrations",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+        <circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/>
+        <path d="M13 6h3a2 2 0 0 1 2 2v7M11 18H8a2 2 0 0 1-2-2V9"/>
       </svg>
     ),
   },
@@ -209,6 +219,7 @@ export function AdminPanel({ superAdminNoCompany = false }: { superAdminNoCompan
           {tab === "users" && <UsersTab />}
           {tab === "platform-admins" && <PlatformAdminsTab />}
           {tab === "activity" && <ActivityTab />}
+          {tab === "integrations" && <CompanyIntegrationsTab />}
         </main>
       </div>
     </div>
@@ -689,13 +700,18 @@ function LicensesTab() {
                         {active && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3 h-3"><polyline points="20 6 9 17 4 12"/></svg>}
                         {PRODUCT_LABELS[p]}
                       </label>
-                    ) : (
-                      <span key={p} className={cn("px-3 py-1.5 rounded-lg border text-[12px]",
-                        active ? "bg-primary/10 border-primary/30 text-primary font-medium" : "border-border text-muted-foreground/50 line-through")}>
+                    ) : active ? (
+                      <span key={p} className="px-3 py-1.5 rounded-lg border text-[12px] bg-primary/10 border-primary/30 text-primary font-medium">
                         {PRODUCT_LABELS[p]}
                       </span>
-                    );
+                    ) : null;
                   })}
+                  {!isEditing && products.length === 0 && (
+                    <span className="text-[12px] text-muted-foreground/60 italic flex items-center gap-1.5">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                      No products assigned — click Edit to configure
+                    </span>
+                  )}
                 </div>
               </div>
             );
@@ -1015,6 +1031,227 @@ function ActivityTab() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Company Integrations ──────────────────────────────────────────────────────
+
+const INTEGRATION_TYPES = [
+  { id: "sso_google", label: "Google Workspace SSO", icon: "G", color: "bg-red-50 text-red-600 border-red-200" },
+  { id: "sso_microsoft", label: "Microsoft 365 SSO", icon: "M", color: "bg-blue-50 text-blue-600 border-blue-200" },
+  { id: "slack", label: "Slack Notifications", icon: "S", color: "bg-purple-50 text-purple-600 border-purple-200" },
+  { id: "teams", label: "Microsoft Teams", icon: "T", color: "bg-blue-50 text-blue-700 border-blue-200" },
+  { id: "email_smtp", label: "Custom SMTP Email", icon: "@", color: "bg-teal-50 text-teal-600 border-teal-200" },
+  { id: "webhook", label: "Webhooks", icon: "⚡", color: "bg-amber-50 text-amber-600 border-amber-200" },
+];
+
+type IntegConfig = { enabled: boolean; clientId?: string; tenantId?: string; webhookUrl?: string; smtpHost?: string; smtpPort?: string; smtpUser?: string; notes?: string };
+type CompanyIntegrations = Record<string, IntegConfig>;
+
+function CompanyIntegrationsTab() {
+  const { data: allCompanies = [], isLoading } = useAdminListCompanies();
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  const [integrations, setIntegrations] = useState<CompanyIntegrations>({});
+  const [editInteg, setEditInteg] = useState<string | null>(null);
+  const [editConfig, setEditConfig] = useState<IntegConfig>({ enabled: false });
+  const [saving, setSaving] = useState(false);
+  const basePath = import.meta.env.BASE_URL?.replace(/\/$/, "") || "";
+
+  const companies = allCompanies as Company[];
+  const selected = companies.find(c => c.id === selectedCompanyId);
+
+  const storageKey = (cid: string) => `gp_admin_integrations_${cid}`;
+
+  const loadIntegrations = (cid: string) => {
+    try { const s = localStorage.getItem(storageKey(cid)); if (s) return JSON.parse(s) as CompanyIntegrations; } catch { /* */ }
+    return {};
+  };
+
+  const saveIntegrations = (cid: string, data: CompanyIntegrations) => {
+    localStorage.setItem(storageKey(cid), JSON.stringify(data));
+    setIntegrations(data);
+  };
+
+  const selectCompany = (cid: string) => {
+    setSelectedCompanyId(cid);
+    setIntegrations(loadIntegrations(cid));
+    setEditInteg(null);
+  };
+
+  const startEdit = (integId: string) => {
+    setEditInteg(integId);
+    setEditConfig(integrations[integId] ?? { enabled: false });
+  };
+
+  const saveEdit = async () => {
+    if (!selectedCompanyId || !editInteg) return;
+    setSaving(true);
+    const next = { ...integrations, [editInteg]: editConfig };
+    saveIntegrations(selectedCompanyId, next);
+    try {
+      await fetch(`${basePath}/api/audit-logs`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "updated", entity: "integration",
+          entityId: editInteg,
+          entityLabel: `${selected?.name} → ${INTEGRATION_TYPES.find(t => t.id === editInteg)?.label}`,
+          details: { enabled: editConfig.enabled },
+        }),
+      });
+    } catch { /* log failure is non-fatal */ }
+    setSaving(false);
+    setEditInteg(null);
+    toast.success("Integration settings saved");
+  };
+
+  const toggleInteg = (integId: string) => {
+    if (!selectedCompanyId) return;
+    const current = integrations[integId] ?? { enabled: false };
+    const next = { ...integrations, [integId]: { ...current, enabled: !current.enabled } };
+    saveIntegrations(selectedCompanyId, next);
+  };
+
+  const inputCls = "w-full px-3 py-2 text-[12.5px] bg-background border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30";
+
+  return (
+    <div className="max-w-5xl">
+      <div className="mb-6">
+        <h1 className="font-serif text-[22px] font-semibold text-foreground mb-0.5">Company Integrations</h1>
+        <p className="text-[13px] text-muted-foreground">Configure SSO, notifications, and API integrations per company</p>
+      </div>
+
+      <div className="flex gap-5">
+        {/* Company selector */}
+        <div className="w-56 flex-shrink-0">
+          <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 px-1">Companies</div>
+          {isLoading ? (
+            <div className="text-[12px] text-muted-foreground text-center py-4">Loading…</div>
+          ) : companies.length === 0 ? (
+            <div className="text-[12px] text-muted-foreground text-center py-4">No companies yet</div>
+          ) : (
+            <div className="space-y-0.5">
+              {companies.map(c => (
+                <button key={c.id} onClick={() => selectCompany(c.id)}
+                  className={cn("w-full text-left px-3 py-2.5 rounded-lg text-[12.5px] font-medium transition-colors",
+                    selectedCompanyId === c.id ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary hover:text-foreground")}>
+                  <div className="truncate">{c.name}</div>
+                  <div className={cn("text-[10px] mt-0.5 truncate", selectedCompanyId === c.id ? "text-white/70" : "text-muted-foreground/60")}>{c.slug}</div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Integration config */}
+        <div className="flex-1">
+          {!selected ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-border rounded-xl">
+              <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center mb-3">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-5 h-5 text-muted-foreground"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7M11 18H8a2 2 0 0 1-2-2V9"/></svg>
+              </div>
+              <div className="text-[13px] font-medium text-foreground mb-1">Select a company</div>
+              <div className="text-[11.5px] text-muted-foreground">Choose a company from the left to configure its integrations</div>
+            </div>
+          ) : (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <div className="font-semibold text-[14px] text-foreground">{selected.name}</div>
+                  <div className="text-[11.5px] text-muted-foreground">Integration settings</div>
+                </div>
+                <span className={cn("text-[10.5px] font-semibold px-2.5 py-1 rounded-full capitalize", LICENSE_STATUS_COLORS[selected.licenseStatus ?? "trial"] ?? "bg-secondary text-muted-foreground")}>
+                  {selected.licenseStatus ?? "trial"}
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {INTEGRATION_TYPES.map(integ => {
+                  const cfg = integrations[integ.id] ?? { enabled: false };
+                  const isEditing = editInteg === integ.id;
+                  return (
+                    <div key={integ.id} className="bg-card border border-border rounded-xl overflow-hidden">
+                      <div className="flex items-center gap-3 px-4 py-3.5">
+                        <div className={cn("w-8 h-8 rounded-lg border flex items-center justify-center font-bold text-[12px] flex-shrink-0", integ.color)}>
+                          {integ.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[13px] font-semibold text-foreground">{integ.label}</div>
+                          <div className={cn("text-[10.5px] font-medium mt-0.5", cfg.enabled ? "text-green-600" : "text-muted-foreground")}>
+                            {cfg.enabled ? "Enabled" : "Not configured"}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <button onClick={() => toggleInteg(integ.id)}
+                            className={cn("w-9 h-5 rounded-full relative transition-colors", cfg.enabled ? "bg-green-500" : "bg-border")}>
+                            <span className={cn("absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all", cfg.enabled ? "left-[18px]" : "left-0.5")} />
+                          </button>
+                          <button onClick={() => isEditing ? setEditInteg(null) : startEdit(integ.id)}
+                            className="text-[11.5px] text-primary border border-primary/30 rounded-lg px-2.5 py-1 hover:bg-primary/5 transition-colors font-medium">
+                            {isEditing ? "Close" : "Configure"}
+                          </button>
+                        </div>
+                      </div>
+
+                      {isEditing && (
+                        <div className="border-t border-border bg-secondary/20 px-4 py-4">
+                          {(integ.id === "sso_google" || integ.id === "sso_microsoft") && (
+                            <div className="grid grid-cols-2 gap-3 mb-3">
+                              <div>
+                                <label className="block text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Client ID</label>
+                                <input className={inputCls} value={editConfig.clientId ?? ""} onChange={e => setEditConfig(p => ({ ...p, clientId: e.target.value }))} placeholder="OAuth 2.0 Client ID" />
+                              </div>
+                              {integ.id === "sso_microsoft" && (
+                                <div>
+                                  <label className="block text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Tenant ID</label>
+                                  <input className={inputCls} value={editConfig.tenantId ?? ""} onChange={e => setEditConfig(p => ({ ...p, tenantId: e.target.value }))} placeholder="Azure Tenant ID" />
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {(integ.id === "slack" || integ.id === "teams" || integ.id === "webhook") && (
+                            <div className="mb-3">
+                              <label className="block text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                                {integ.id === "webhook" ? "Webhook URL" : "Incoming Webhook URL"}
+                              </label>
+                              <input className={inputCls} value={editConfig.webhookUrl ?? ""} onChange={e => setEditConfig(p => ({ ...p, webhookUrl: e.target.value }))} placeholder="https://" />
+                            </div>
+                          )}
+                          {integ.id === "email_smtp" && (
+                            <div className="grid grid-cols-2 gap-3 mb-3">
+                              <div className="col-span-2">
+                                <label className="block text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">SMTP Host</label>
+                                <input className={inputCls} value={editConfig.smtpHost ?? ""} onChange={e => setEditConfig(p => ({ ...p, smtpHost: e.target.value }))} placeholder="smtp.example.com" />
+                              </div>
+                              <div>
+                                <label className="block text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Port</label>
+                                <input className={inputCls} value={editConfig.smtpPort ?? ""} onChange={e => setEditConfig(p => ({ ...p, smtpPort: e.target.value }))} placeholder="587" />
+                              </div>
+                              <div>
+                                <label className="block text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Username</label>
+                                <input className={inputCls} value={editConfig.smtpUser ?? ""} onChange={e => setEditConfig(p => ({ ...p, smtpUser: e.target.value }))} placeholder="noreply@company.com" />
+                              </div>
+                            </div>
+                          )}
+                          <div className="mb-3">
+                            <label className="block text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Internal Notes</label>
+                            <input className={inputCls} value={editConfig.notes ?? ""} onChange={e => setEditConfig(p => ({ ...p, notes: e.target.value }))} placeholder="Any notes about this integration setup…" />
+                          </div>
+                          <div className="flex gap-2 justify-end">
+                            <button onClick={() => setEditInteg(null)} className="btn-ghost text-[12px] py-1.5">Cancel</button>
+                            <button onClick={saveEdit} disabled={saving} className="btn-primary text-[12px] py-1.5">{saving ? "Saving…" : "Save Configuration"}</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

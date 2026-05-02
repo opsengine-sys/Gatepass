@@ -10,6 +10,7 @@ import gpLogsRouter from "./gpLogs";
 import adminRouter from "./admin";
 import publicRouter from "./publicRoutes";
 import onboardRouter from "./onboard";
+import auditLogsRouter from "./auditLogs";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use("/gate-passes", gatePassesRouter);
 router.use("/gp-logs", gpLogsRouter);
 router.use("/admin", adminRouter);
 router.use("/public", publicRouter);
+router.use("/audit-logs", auditLogsRouter);
 
 export default router;

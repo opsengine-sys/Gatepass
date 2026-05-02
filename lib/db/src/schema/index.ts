@@ -3,3 +3,4 @@ export * from "./offices";
 export * from "./users";
 export * from "./visitors";
 export * from "./gatepasses";
+export * from "./auditLogs";

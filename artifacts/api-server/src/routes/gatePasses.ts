@@ -137,8 +137,8 @@ router.post(
   "/:gpId/close",
   requireAuth,
   async (req: AuthenticatedRequest, res) => {
-    const { gpId } = req.params;
-    const companyId = req.appUser!.companyId!;
+    const gpId = req.params["gpId"] as string;
+    const companyId = req.appUser!.companyId as string;
 
     const [pass] = await db
       .select()

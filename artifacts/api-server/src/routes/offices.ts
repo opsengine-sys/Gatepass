@@ -64,7 +64,7 @@ router.patch(
   requireAuth,
   requireRole("admin", "super_admin"),
   async (req: AuthenticatedRequest, res) => {
-    const { officeId } = req.params;
+    const officeId = req.params["officeId"] as string;
     const companyId = req.appUser!.companyId;
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
@@ -98,7 +98,7 @@ router.delete(
   requireAuth,
   requireRole("admin", "super_admin"),
   async (req: AuthenticatedRequest, res) => {
-    const { officeId } = req.params;
+    const officeId = req.params["officeId"] as string;
     const companyId = req.appUser!.companyId;
 
     const conditions = [eq(officesTable.id, officeId)];

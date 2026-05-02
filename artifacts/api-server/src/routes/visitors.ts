@@ -161,8 +161,8 @@ router.post(
   "/:visitorId/checkin",
   requireAuth,
   async (req: AuthenticatedRequest, res) => {
-    const { visitorId } = req.params;
-    const companyId = req.appUser!.companyId!;
+    const visitorId = req.params["visitorId"] as string;
+    const companyId = req.appUser!.companyId as string;
 
     const [visitor] = await db
       .select()
@@ -209,8 +209,8 @@ router.post(
   "/:visitorId/checkout",
   requireAuth,
   async (req: AuthenticatedRequest, res) => {
-    const { visitorId } = req.params;
-    const companyId = req.appUser!.companyId!;
+    const visitorId = req.params["visitorId"] as string;
+    const companyId = req.appUser!.companyId as string;
 
     const [visitor] = await db
       .select()
@@ -257,8 +257,8 @@ router.post(
   "/:visitorId/break",
   requireAuth,
   async (req: AuthenticatedRequest, res) => {
-    const { visitorId } = req.params;
-    const companyId = req.appUser!.companyId!;
+    const visitorId = req.params["visitorId"] as string;
+    const companyId = req.appUser!.companyId as string;
 
     const [visitor] = await db
       .select()
@@ -301,8 +301,8 @@ router.post(
   "/:visitorId/return",
   requireAuth,
   async (req: AuthenticatedRequest, res) => {
-    const { visitorId } = req.params;
-    const companyId = req.appUser!.companyId!;
+    const visitorId = req.params["visitorId"] as string;
+    const companyId = req.appUser!.companyId as string;
 
     const [visitor] = await db
       .select()

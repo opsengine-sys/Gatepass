@@ -159,7 +159,7 @@ router.patch(
   requireAuth,
   requireSuperAdmin,
   async (req: AuthenticatedRequest, res) => {
-    const { companyId } = req.params;
+    const companyId = req.params["companyId"] as string;
     const {
       name, plan, isActive, logoUrl,
       contactName, contactEmail, contactPhone,
@@ -204,7 +204,7 @@ router.delete(
   requireAuth,
   requireSuperAdmin,
   async (req: AuthenticatedRequest, res) => {
-    const { companyId } = req.params;
+    const companyId = req.params["companyId"] as string;
     await db
       .update(companiesTable)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -256,7 +256,7 @@ router.patch(
   requireAuth,
   requireSuperAdmin,
   async (req: AuthenticatedRequest, res) => {
-    const { userId } = req.params;
+    const userId = req.params["userId"] as string;
     const { role, companyId, officeId, isActive } = req.body;
 
     // Prevent promoting any user to super_admin via the API.

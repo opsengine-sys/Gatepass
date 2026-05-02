@@ -63,7 +63,7 @@ router.patch(
   requireAuth,
   requireRole("admin", "super_admin"),
   async (req: AuthenticatedRequest, res) => {
-    const { userId } = req.params;
+    const userId = req.params["userId"] as string;
     const { role, officeId, isActive } = req.body;
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
@@ -77,7 +77,7 @@ router.patch(
       .where(
         and(
           eq(usersTable.id, userId),
-          eq(usersTable.companyId, req.appUser!.companyId!),
+          eq(usersTable.companyId, req.appUser!.companyId as string),
         ),
       )
       .returning();
@@ -98,7 +98,7 @@ router.delete(
   requireAuth,
   requireRole("admin", "super_admin"),
   async (req: AuthenticatedRequest, res) => {
-    const { userId } = req.params;
+    const userId = req.params["userId"] as string;
 
     await db
       .update(usersTable)
@@ -106,7 +106,7 @@ router.delete(
       .where(
         and(
           eq(usersTable.id, userId),
-          eq(usersTable.companyId, req.appUser!.companyId!),
+          eq(usersTable.companyId, req.appUser!.companyId as string),
         ),
       );
 
