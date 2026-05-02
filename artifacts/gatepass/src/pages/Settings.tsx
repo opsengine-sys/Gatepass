@@ -646,7 +646,7 @@ function CustomizationTab() {
                     title="Rename this field label"
                   />
                 </div>
-                <div className="flex justify-center"><Toggle checked={cfg.enabled} onChange={() => toggleGPField(f.id, "enabled")} color="teal" /></div>
+                <div className="flex justify-center"><Toggle checked={cfg.enabled} onChange={() => toggleGPField(f.id, "enabled")} /></div>
                 <div className="flex justify-center"><Toggle checked={cfg.required && cfg.enabled} onChange={() => cfg.enabled && toggleGPField(f.id, "required")} color="amber" disabled={!cfg.enabled} /></div>
                 <div />
               </div>
@@ -664,7 +664,7 @@ function CustomizationTab() {
                 />
               </div>
               <div className="flex justify-center">
-                <Toggle checked={f.enabled} onChange={() => saveCGPF(customGPFields.map(x => x.id === f.id ? { ...x, enabled: !x.enabled } : x))} color="teal" />
+                <Toggle checked={f.enabled} onChange={() => saveCGPF(customGPFields.map(x => x.id === f.id ? { ...x, enabled: !x.enabled } : x))} />
               </div>
               <div className="flex justify-center">
                 <Toggle checked={f.required && f.enabled} onChange={() => f.enabled && saveCGPF(customGPFields.map(x => x.id === f.id ? { ...x, required: !x.required } : x))} color="amber" disabled={!f.enabled} />
@@ -710,7 +710,7 @@ interface TemplateConfig {
 }
 
 const defaultBadgeCfg: TemplateConfig = { primaryColor: "#c06b2c", accentColor: "#f9f5f0", showLogo: true, showPhoto: true, showQR: true, fontSize: "md" };
-const defaultGPCfg: TemplateConfig    = { primaryColor: "#0d9488", accentColor: "#f0fdfa", showLogo: true, showPhoto: false, showQR: false, fontSize: "md" };
+const defaultGPCfg: TemplateConfig    = { primaryColor: "#c06b2c", accentColor: "#f9f5f0", showLogo: true, showPhoto: false, showQR: false, fontSize: "md" };
 
 function loadBadgeCfg(): TemplateConfig {
   try { const s = localStorage.getItem("gp_badge_cfg_v1"); if (s) return { ...defaultBadgeCfg, ...JSON.parse(s) }; } catch { /* */ }
@@ -2036,10 +2036,10 @@ function AppearanceTab() {
       <Card title="Theme">
         <p className="text-[12.5px] text-muted-foreground mb-3">Interface color scheme.</p>
         <div className="flex gap-3">
-          {[{ id: "light", label: "Light", icon: "☀️" }, { id: "dark", label: "Dark", icon: "🌙" }, { id: "system", label: "System", icon: "💻" }].map(t => (
-            <button key={t.id} onClick={() => t.id !== "light" && toast.info("Dark mode coming soon")}
+          {([{ id: "light", label: "Light", icon: "☀️" }, { id: "dark", label: "Dark", icon: "🌙" }, { id: "system", label: "System", icon: "💻" }] as const).map(t => (
+            <button key={t.id} onClick={() => { branding.update({ theme: t.id }); toast.success(`Theme set to ${t.label}`); }}
               className={cn("flex-1 py-3 border rounded-xl text-[12.5px] font-medium transition-all",
-                t.id === "light" ? "border-primary bg-orange-50 text-primary" : "border-border text-muted-foreground hover:border-border/80")}>
+                branding.theme === t.id ? "border-primary bg-orange-50 text-primary" : "border-border text-muted-foreground hover:border-primary/30")}>
               <div className="text-lg mb-1">{t.icon}</div>
               {t.label}
             </button>
@@ -2053,9 +2053,9 @@ function AppearanceTab() {
 // ─── Shared Components ────────────────────────────────────────────────────────
 
 function Toggle({ checked, onChange, color = "primary", disabled = false }: {
-  checked: boolean; onChange: () => void; color?: "primary" | "teal" | "amber"; disabled?: boolean;
+  checked: boolean; onChange: () => void; color?: "primary" | "amber"; disabled?: boolean;
 }) {
-  const bgMap = { primary: "bg-primary", teal: "bg-teal-600", amber: "bg-amber-500" };
+  const bgMap = { primary: "bg-primary", amber: "bg-amber-500" };
   return (
     <button onClick={onChange} disabled={disabled}
       className={cn("w-9 h-5 rounded-full relative transition-colors", checked ? bgMap[color] : "bg-border", disabled && "opacity-40 cursor-not-allowed")}>

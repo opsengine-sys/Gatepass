@@ -200,6 +200,10 @@ function MainApp() {
     );
   }
 
+  if (user?.role === "super_admin" && !user?.companyId) {
+    return <AdminPanel superAdminNoCompany />;
+  }
+
   if (!user?.companyId) {
     return <OnboardingPage user={user} />;
   }

@@ -5,6 +5,7 @@ export interface BrandingSettings {
   primaryColor: string;
   font: string;
   companyName: string;
+  theme: "light" | "dark" | "system";
 }
 
 const DEFAULT: BrandingSettings = {
@@ -12,6 +13,7 @@ const DEFAULT: BrandingSettings = {
   primaryColor: "#c06b2c",
   font: "Plus Jakarta Sans",
   companyName: "GatePass",
+  theme: "light",
 };
 
 const STORAGE_KEY = "gp_branding_v1";
@@ -74,6 +76,27 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
     ensureFont(branding.font);
     root.style.setProperty("--app-font-sans", `'${branding.font}', sans-serif`);
   }, [branding.primaryColor, branding.font]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const applyDark = (dark: boolean) => {
+      if (dark) root.classList.add("dark");
+      else root.classList.remove("dark");
+    };
+    if (branding.theme === "dark") {
+      applyDark(true);
+      return;
+    } else if (branding.theme === "light") {
+      applyDark(false);
+      return;
+    } else {
+      const mq = window.matchMedia("(prefers-color-scheme: dark)");
+      applyDark(mq.matches);
+      const handler = (e: MediaQueryListEvent) => applyDark(e.matches);
+      mq.addEventListener("change", handler);
+      return () => mq.removeEventListener("change", handler);
+    }
+  }, [branding.theme]);
 
   const update = (patch: Partial<BrandingSettings>) => {
     setBranding(prev => {

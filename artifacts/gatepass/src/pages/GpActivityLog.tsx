@@ -9,7 +9,7 @@ interface Props {
 }
 
 const logStyles: Record<string, { bg: string; text: string }> = {
-  created: { bg: "bg-teal-50", text: "text-teal-700" },
+  created: { bg: "bg-orange-50", text: "text-orange-700" },
   closed: { bg: "bg-slate-100", text: "text-slate-600" },
   updated: { bg: "bg-blue-50", text: "text-blue-700" },
 };
@@ -47,7 +47,7 @@ export function GpActivityLog({ gpLogs, officeFull }: Props) {
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
           <input
-            className="w-full bg-secondary border border-border rounded-lg pl-9 pr-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/10"
+            className="w-full bg-secondary border border-border rounded-lg pl-9 pr-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
             placeholder="Search by pass ID…"
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -87,7 +87,7 @@ export function GpActivityLog({ gpLogs, officeFull }: Props) {
                   <tr key={l.id} className="border-b border-border last:border-0 hover:bg-secondary/40">
                     <td className="px-4 py-2.5 text-muted-foreground font-mono text-[11px] whitespace-nowrap">{fmtDateTime(l.ts)}</td>
                     <td className="px-4 py-2.5">
-                      <span className="font-mono text-[11.5px] font-bold text-teal-700">{l.passId}</span>
+                      <span className="font-mono text-[11.5px] font-bold text-primary">{l.passId}</span>
                     </td>
                     <td className="px-4 py-2.5">
                       <span className={cn("text-[10.5px] font-bold px-2 py-0.5 rounded-full capitalize", s.bg, s.text)}>

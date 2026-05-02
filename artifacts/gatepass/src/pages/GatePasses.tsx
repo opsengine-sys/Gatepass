@@ -37,7 +37,7 @@ export function GatePasses({ gatePasses, officeFull, onNew, onDetail, onCloseGP 
           <h1 className="font-semibold text-[21px] tracking-tight text-foreground">Gate Passes</h1>
           <p className="text-[12.5px] text-muted-foreground mt-0.5">{officeFull}</p>
         </div>
-        <button onClick={onNew} className="btn-teal">
+        <button onClick={onNew} className="btn-primary">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3.5 h-3.5">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
@@ -57,7 +57,7 @@ export function GatePasses({ gatePasses, officeFull, onNew, onDetail, onCloseGP 
             className={cn(
               "text-[11.5px] font-semibold px-3.5 py-1.5 rounded-full border-[1.5px] transition-all",
               filter === s.id
-                ? "bg-teal-50 border-teal-500 text-teal-700"
+                ? "bg-orange-50 border-primary text-orange-700"
                 : "border-border text-muted-foreground hover:border-border/70 hover:bg-secondary"
             )}
           >
@@ -72,7 +72,7 @@ export function GatePasses({ gatePasses, officeFull, onNew, onDetail, onCloseGP 
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
           <input
-            className="w-full bg-secondary border border-border rounded-lg pl-9 pr-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/10"
+            className="w-full bg-secondary border border-border rounded-lg pl-9 pr-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
             placeholder="Search by ID, purpose, vendor…"
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -118,7 +118,7 @@ export function GatePasses({ gatePasses, officeFull, onNew, onDetail, onCloseGP 
                   onClick={() => onDetail(g.id)}
                 >
                   <td className="px-4 py-2.5">
-                    <span className="font-mono text-[11.5px] font-bold text-teal-700">{g.passId}</span>
+                    <span className="font-mono text-[11.5px] font-bold text-primary">{g.passId}</span>
                   </td>
                   <td className="px-4 py-2.5 font-medium text-foreground max-w-[180px] truncate">{g.purpose}</td>
                   <td className="px-4 py-2.5 hidden sm:table-cell">

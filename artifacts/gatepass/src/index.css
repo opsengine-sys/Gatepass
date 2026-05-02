@@ -348,7 +348,7 @@
     @apply inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-semibold cursor-pointer transition-all bg-secondary border border-border text-muted-foreground hover:bg-secondary/70;
   }
   .btn-teal {
-    @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12.5px] font-semibold cursor-pointer transition-all bg-teal-600 text-white hover:bg-teal-700 active:bg-teal-800;
+    @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12.5px] font-semibold cursor-pointer transition-all bg-primary text-white hover:brightness-105 active:brightness-95;
   }
   .btn-success {
     @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12.5px] font-semibold cursor-pointer transition-all bg-green-600 text-white hover:bg-green-700;

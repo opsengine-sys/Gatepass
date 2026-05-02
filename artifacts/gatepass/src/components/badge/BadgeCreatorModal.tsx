@@ -88,7 +88,7 @@ function defaultElements(kind: "badge" | "gp", size: BadgeSize): CanvasElement[]
     ];
   }
   return [
-    { id: "1", kind: "rect",      x: 0,   y: 0,   w: 100, h: 10, bgColor: "#0d9488", zIndex: 0 },
+    { id: "1", kind: "rect",      x: 0,   y: 0,   w: 100, h: 10, bgColor: "#c06b2c", zIndex: 0 },
     { id: "2", kind: "logo",      x: 2,   y: 1,   w: 8,   h: 8,  zIndex: 1 },
     { id: "3", kind: "text",      x: 14,  y: 2,   w: 50,  h: 6,  label: "GATE PASS", fontSize: 11, fontWeight: "bold", color: "#ffffff", zIndex: 1 },
     { id: "4", kind: "visitorId", x: 70,  y: 2,   w: 28,  h: 6,  fontSize: 10, color: "#ffffff", zIndex: 1 },
@@ -118,31 +118,24 @@ function saveCustomTemplates(t: CustomTemplate[]) {
 
 // ─── Element renderer ─────────────────────────────────────────────────────────
 
-function ElementPreview({ el, selected, canvasW, canvasH }: {
-  el: CanvasElement; selected: boolean; canvasW: number; canvasH: number;
+function ElementPreview({ el, canvasW }: {
+  el: CanvasElement; canvasW: number;
 }) {
-  const style: React.CSSProperties = {
-    position: "absolute",
-    left: `${el.x}%`,
-    top: `${el.y}%`,
-    width: `${el.w}%`,
-    height: `${el.h}%`,
-    zIndex: el.zIndex ?? 1,
+  const base: React.CSSProperties = {
+    width: "100%",
+    height: "100%",
     boxSizing: "border-box",
-    outline: selected ? "2px solid #3b82f6" : undefined,
-    outlineOffset: selected ? "1px" : undefined,
+    overflow: "hidden",
   };
 
   const fontSize = el.fontSize ? Math.max(6, (el.fontSize / 100) * canvasW * 0.7) : 11;
 
   if (el.kind === "rect" || el.kind === "divider") {
-    return (
-      <div style={{ ...style, backgroundColor: el.bgColor ?? "#e5e7eb", borderRadius: el.borderRadius ?? 0, opacity: el.opacity ?? 1 }} />
-    );
+    return <div style={{ ...base, backgroundColor: el.bgColor ?? "#e5e7eb", borderRadius: el.borderRadius ?? 0, opacity: el.opacity ?? 1 }} />;
   }
   if (el.kind === "photo") {
     return (
-      <div style={{ ...style, backgroundColor: "#d1d5db", borderRadius: `${el.borderRadius ?? 4}px`, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ ...base, backgroundColor: "#d1d5db", borderRadius: `${el.borderRadius ?? 4}px`, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <svg viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5" style={{ width: "40%", height: "40%" }}>
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
         </svg>
@@ -151,7 +144,7 @@ function ElementPreview({ el, selected, canvasW, canvasH }: {
   }
   if (el.kind === "logo") {
     return (
-      <div style={{ ...style, backgroundColor: "#f3f4f6", borderRadius: `${el.borderRadius ?? 4}px`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ ...base, backgroundColor: "#f3f4f6", borderRadius: `${el.borderRadius ?? 4}px`, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <svg viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5" style={{ width: "60%", height: "60%" }}>
           <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
         </svg>
@@ -160,7 +153,7 @@ function ElementPreview({ el, selected, canvasW, canvasH }: {
   }
   if (el.kind === "qr") {
     return (
-      <div style={{ ...style, backgroundColor: "#fff", border: "1px solid #e5e7eb", borderRadius: "3px", display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "2px", padding: "4px" }}>
+      <div style={{ ...base, backgroundColor: "#fff", border: "1px solid #e5e7eb", borderRadius: "3px", display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "2px", padding: "4px" }}>
         {[...Array(25)].map((_, i) => (
           <div key={i} style={{ backgroundColor: [0,1,5,6,7,10,14,18,19,20,23,24].includes(i) ? "#1f2937" : "#fff", borderRadius: "1px" }} />
         ))}
@@ -169,7 +162,7 @@ function ElementPreview({ el, selected, canvasW, canvasH }: {
   }
   if (el.kind === "barcode") {
     return (
-      <div style={{ ...style, display: "flex", alignItems: "flex-end", gap: "1px", overflow: "hidden" }}>
+      <div style={{ ...base, display: "flex", alignItems: "flex-end", gap: "1px" }}>
         {[...Array(28)].map((_, i) => (
           <div key={i} style={{ flex: 1, height: `${55 + (i % 3) * 25}%`, backgroundColor: "#1f2937", borderRadius: "0.5px" }} />
         ))}
@@ -195,7 +188,7 @@ function ElementPreview({ el, selected, canvasW, canvasH }: {
 
   return (
     <div style={{
-      ...style,
+      ...base,
       backgroundColor: hasBg ? el.bgColor : "transparent",
       borderRadius: hasBg ? `${el.borderRadius ?? 4}px` : 0,
       display: "flex",
@@ -203,7 +196,6 @@ function ElementPreview({ el, selected, canvasW, canvasH }: {
       justifyContent: el.align === "center" ? "center" : el.align === "right" ? "flex-end" : "flex-start",
       paddingLeft: el.align !== "center" && el.align !== "right" ? "4px" : 0,
       paddingRight: el.align === "right" ? "4px" : 0,
-      overflow: "hidden",
     }}>
       <span style={{
         fontSize,
@@ -369,6 +361,49 @@ export function BadgeCreatorModal({ kind, onClose, onSave, editTemplate }: Badge
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(100);
+  const dragRef = useRef<null | { type: "move"; id: string; startX: number; startY: number; origX: number; origY: number } | { type: "resize"; id: string; handle: string; startX: number; startY: number; origEl: CanvasElement }>(null);
+
+  const startDrag = useCallback((e: React.PointerEvent, id: string, el: CanvasElement) => {
+    e.stopPropagation();
+    setSelected(id);
+    const rect = canvasRef.current!.getBoundingClientRect();
+    dragRef.current = { type: "move", id, startX: e.clientX, startY: e.clientY, origX: el.x, origY: el.y };
+    const onMove = (ev: PointerEvent) => {
+      const ds = dragRef.current;
+      if (!ds || ds.type !== "move") return;
+      const dx = ((ev.clientX - ds.startX) / rect.width) * 100;
+      const dy = ((ev.clientY - ds.startY) / rect.height) * 100;
+      setElements(prev => prev.map(item => item.id === ds.id
+        ? { ...item, x: Math.max(0, Math.min(100 - item.w, ds.origX + dx)), y: Math.max(0, Math.min(100 - item.h, ds.origY + dy)) }
+        : item));
+    };
+    const onUp = () => { dragRef.current = null; window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }, []);
+
+  const startResize = useCallback((e: React.PointerEvent, id: string, el: CanvasElement, handle: string) => {
+    e.stopPropagation();
+    const rect = canvasRef.current!.getBoundingClientRect();
+    const orig = { ...el };
+    dragRef.current = { type: "resize", id, handle, startX: e.clientX, startY: e.clientY, origEl: orig };
+    const onMove = (ev: PointerEvent) => {
+      const ds = dragRef.current;
+      if (!ds || ds.type !== "resize") return;
+      const dx = ((ev.clientX - ds.startX) / rect.width) * 100;
+      const dy = ((ev.clientY - ds.startY) / rect.height) * 100;
+      const { origEl: o, handle: h } = ds;
+      let x = o.x, y = o.y, w = o.w, ht = o.h;
+      if (h.includes("e")) w = Math.max(4, o.w + dx);
+      if (h.includes("s")) ht = Math.max(2, o.h + dy);
+      if (h.includes("w")) { x = Math.min(o.x + o.w - 4, o.x + dx); w = Math.max(4, o.w - dx); }
+      if (h.includes("n")) { y = Math.min(o.y + o.h - 2, o.y + dy); ht = Math.max(2, o.h - dy); }
+      setElements(prev => prev.map(item => item.id === ds.id ? { ...item, x, y, w, h: ht } : item));
+    };
+    const onUp = () => { dragRef.current = null; window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }, []);
 
   const sizeInfo = BADGE_SIZES.find(s => s.id === selectedSize)!;
 
@@ -610,23 +645,75 @@ export function BadgeCreatorModal({ kind, onClose, onSave, editTemplate }: Badge
                 {/* The canvas */}
                 <div
                   ref={canvasRef}
-                  className="relative shadow-2xl"
+                  className="relative shadow-2xl select-none"
                   style={{
                     width: canvasPx.w,
                     height: canvasPx.h,
                     backgroundColor: bgColor,
                     cursor: "default",
+                    touchAction: "none",
                   }}
-                  onClick={e => { if (e.target === canvasRef.current) setSelected(null); }}
+                  onPointerDown={e => { if (e.target === canvasRef.current) setSelected(null); }}
                 >
-                  {sortedElements.map(el => (
-                    <div key={el.id}
-                      className="absolute cursor-pointer"
-                      style={{ left: `${el.x}%`, top: `${el.y}%`, width: `${el.w}%`, height: `${el.h}%`, zIndex: el.zIndex ?? 1 }}
-                      onClick={e => { e.stopPropagation(); setSelected(el.id); }}>
-                      <ElementPreview el={el} selected={selected === el.id} canvasW={canvasPx.w} canvasH={canvasPx.h} />
-                    </div>
-                  ))}
+                  {sortedElements.map(el => {
+                    const isSel = selected === el.id;
+                    return (
+                      <div
+                        key={el.id}
+                        style={{
+                          position: "absolute",
+                          left: `${el.x}%`,
+                          top: `${el.y}%`,
+                          width: `${el.w}%`,
+                          height: `${el.h}%`,
+                          zIndex: el.zIndex ?? 1,
+                          cursor: "move",
+                          outline: isSel
+                            ? "2px solid #3b82f6"
+                            : "1px dashed rgba(100,100,100,0.25)",
+                          outlineOffset: isSel ? "1px" : "0px",
+                          boxSizing: "border-box",
+                        }}
+                        onPointerDown={e => startDrag(e, el.id, el)}
+                      >
+                        <ElementPreview el={el} canvasW={canvasPx.w} />
+
+                        {isSel && (
+                          <>
+                            {([
+                              { dir: "nw", l: "0%",  t: "0%"   },
+                              { dir: "n",  l: "50%", t: "0%"   },
+                              { dir: "ne", l: "100%",t: "0%"   },
+                              { dir: "e",  l: "100%",t: "50%"  },
+                              { dir: "se", l: "100%",t: "100%" },
+                              { dir: "s",  l: "50%", t: "100%" },
+                              { dir: "sw", l: "0%",  t: "100%" },
+                              { dir: "w",  l: "0%",  t: "50%"  },
+                            ] as const).map(({ dir, l, t }) => (
+                              <div
+                                key={dir}
+                                style={{
+                                  position: "absolute",
+                                  left: l,
+                                  top: t,
+                                  transform: "translate(-50%,-50%)",
+                                  width: 9,
+                                  height: 9,
+                                  backgroundColor: "#3b82f6",
+                                  border: "2px solid white",
+                                  borderRadius: 2,
+                                  cursor: `${dir}-resize`,
+                                  zIndex: 999,
+                                  boxShadow: "0 1px 3px rgba(0,0,0,.3)",
+                                }}
+                                onPointerDown={e => startResize(e, el.id, el, dir)}
+                              />
+                            ))}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
 
                   {elements.length === 0 && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
@@ -637,7 +724,7 @@ export function BadgeCreatorModal({ kind, onClose, onSave, editTemplate }: Badge
                 </div>
 
                 <div className="mt-3 text-center text-[10px] text-muted-foreground">
-                  Click an element to select it · Edit properties in the right panel
+                  Drag to move · Drag blue handles to resize · Click to select
                 </div>
               </div>
             </div>

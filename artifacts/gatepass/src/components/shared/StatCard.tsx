@@ -11,7 +11,7 @@ const colorMap: Record<StatCardProps["color"], { bg: string; text: string }> = {
   amber: { bg: "bg-amber-50", text: "text-amber-700" },
   blue: { bg: "bg-blue-50", text: "text-blue-700" },
   purple: { bg: "bg-purple-50", text: "text-purple-700" },
-  teal: { bg: "bg-teal-50", text: "text-teal-700" },
+  teal: { bg: "bg-orange-50", text: "text-orange-700" },
   slate: { bg: "bg-slate-100", text: "text-slate-600" },
 };
 

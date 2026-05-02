@@ -56,7 +56,7 @@ export function StatusBadge({ status, className }: { status: string } & BadgePro
 export function GPTypeBadge({ type, className }: { type: string } & BadgeProps) {
   return (
     <span className={cn(
-      "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold bg-teal-50 text-teal-800 border border-teal-200",
+      "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold bg-orange-50 text-orange-800 border border-orange-200",
       className,
     )}>
       <span className="w-1.5 h-1.5 rounded-full bg-current inline-block" />

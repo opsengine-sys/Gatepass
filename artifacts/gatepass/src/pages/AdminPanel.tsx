@@ -265,7 +265,7 @@ function OverviewTab() {
   const metricCards = [
     { label: "Total Companies", value: s.totalCompanies, color: "text-primary", sub: `${s.activeCompanies} active` },
     { label: "Total Users", value: s.totalUsers, color: "text-blue-600", sub: "across all companies" },
-    { label: "Total Visitors", value: s.totalVisitors, color: "text-teal-600", sub: "all time" },
+    { label: "Total Visitors", value: s.totalVisitors, color: "text-orange-600", sub: "all time" },
     { label: "Active Licenses", value: s.licenseBreakdown.find(l => l.status === "active")?.cnt ?? 0, color: "text-green-600", sub: "live subscriptions" },
   ];
 
@@ -476,7 +476,7 @@ function CompaniesTab() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 justify-end flex-wrap">
-                      <button onClick={() => handleImpersonate(c)} className="text-[11.5px] font-semibold text-teal-600 hover:underline whitespace-nowrap">Enter as Admin</button>
+                      <button onClick={() => handleImpersonate(c)} className="text-[11.5px] font-semibold text-primary hover:underline whitespace-nowrap">Enter as Admin</button>
                       <button onClick={() => setEditCompany(c)} className="text-[11.5px] font-medium text-primary hover:underline">Edit</button>
                       <button onClick={async () => {
                         await adminDeleteCompany(c.id);
@@ -824,7 +824,7 @@ function UsersTab() {
                         "text-[10.5px] font-semibold px-2 py-0.5 rounded-full",
                         u.role === "super_admin" ? "bg-purple-50 text-purple-700" :
                         u.role === "admin" ? "bg-orange-50 text-orange-700" :
-                        u.role === "security" ? "bg-teal-50 text-teal-700" :
+                        u.role === "security" ? "bg-slate-100 text-slate-600" :
                         "bg-secondary text-muted-foreground",
                       )}>{u.role.replace("_", " ")}</span>
                     )}
@@ -1042,7 +1042,7 @@ const INTEGRATION_TYPES = [
   { id: "sso_microsoft", label: "Microsoft 365 SSO", icon: "M", color: "bg-blue-50 text-blue-600 border-blue-200" },
   { id: "slack", label: "Slack Notifications", icon: "S", color: "bg-purple-50 text-purple-600 border-purple-200" },
   { id: "teams", label: "Microsoft Teams", icon: "T", color: "bg-blue-50 text-blue-700 border-blue-200" },
-  { id: "email_smtp", label: "Custom SMTP Email", icon: "@", color: "bg-teal-50 text-teal-600 border-teal-200" },
+  { id: "email_smtp", label: "Custom SMTP Email", icon: "@", color: "bg-orange-50 text-orange-600 border-orange-200" },
   { id: "webhook", label: "Webhooks", icon: "⚡", color: "bg-amber-50 text-amber-600 border-amber-200" },
 ];
 

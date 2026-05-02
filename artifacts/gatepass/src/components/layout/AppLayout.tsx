@@ -63,7 +63,7 @@ export function AppLayout({ children, office, officeFull, visitors, gatePasses, 
 
           <span className={cn(
             "text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full",
-            meta.module === "gatepasses" ? "bg-teal-50 text-teal-700" :
+            meta.module === "gatepasses" ? "bg-orange-50 text-orange-700" :
             meta.module === "admin" ? "bg-purple-50 text-purple-700" :
             meta.module === "settings" ? "bg-slate-100 text-slate-600" :
             "bg-orange-50 text-orange-700"

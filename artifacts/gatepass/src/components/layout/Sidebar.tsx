@@ -93,7 +93,7 @@ export function Sidebar({ officeFull, visitors, gatePasses, user, onOpenOfficePi
                 <div className={cn(
                   "flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer text-[13px] font-medium mb-0.5 transition-all duration-100 select-none",
                   isActive && !isGP && "bg-orange-50 text-orange-700",
-                  isActive && isGP && "bg-teal-50 text-teal-700",
+                  isActive && isGP && "bg-orange-50 text-orange-700",
                   !isActive && "text-muted-foreground hover:bg-secondary hover:text-foreground",
                 )}>
                   <NavIcon id={item.id!} />
@@ -101,7 +101,7 @@ export function Sidebar({ officeFull, visitors, gatePasses, user, onOpenOfficePi
                   {!!badge && (
                     <span className={cn(
                       "text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white",
-                      isGP ? "bg-teal-600" : "bg-primary"
+                      "bg-primary"
                     )}>
                       {badge}
                     </span>

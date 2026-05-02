@@ -109,11 +109,11 @@ export function NewGatePassModal({ open, onClose, onSubmit }: Props) {
                   className={cn(
                     "border-[1.5px] rounded-xl p-3 cursor-pointer transition-all text-left",
                     form.type === t
-                      ? "bg-teal-50 border-teal-500"
+                      ? "bg-orange-50 border-primary"
                       : "border-border hover:border-border/80 hover:bg-secondary"
                   )}
                 >
-                  <div className={cn("text-[13px] font-semibold", form.type === t ? "text-teal-700" : "text-foreground")}>{t}</div>
+                  <div className={cn("text-[13px] font-semibold", form.type === t ? "text-primary" : "text-foreground")}>{t}</div>
                 </button>
               ))}
             </div>
@@ -171,7 +171,7 @@ export function NewGatePassModal({ open, onClose, onSubmit }: Props) {
 
         <DialogFooter>
           <button type="button" onClick={onClose} className="btn-ghost">Cancel</button>
-          <button type="button" onClick={handleSubmit} disabled={saving} className="btn-teal">
+          <button type="button" onClick={handleSubmit} disabled={saving} className="btn-primary">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3.5 h-3.5"><polyline points="20 6 9 17 4 12"/></svg>
             {saving ? "Creating…" : "Create Gate Pass"}
           </button>
@@ -198,7 +198,7 @@ function GField({ label, required, error, children, className }: {
 function iCls(err: boolean) {
   return cn(
     "w-full bg-secondary border border-border rounded-lg px-3 py-2 text-[13.5px] text-foreground font-sans transition-all outline-none appearance-none",
-    "focus:border-teal-500 focus:bg-card focus:ring-2 focus:ring-teal-500/10",
+    "focus:border-primary focus:bg-card focus:ring-2 focus:ring-primary/10",
     "placeholder:text-muted-foreground/60",
     err && "border-red-400",
   );

@@ -25,8 +25,8 @@ const features = [
     title: "Gate Pass System",
     desc: "Issue digital passes for materials, equipment, and vehicles with full audit trails.",
     badge: "Core",
-    color: "text-teal-600",
-    bg: "bg-teal-50",
+    color: "text-orange-600",
+    bg: "bg-orange-50",
   },
   {
     icon: (
