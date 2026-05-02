@@ -9,11 +9,13 @@ import gatePassesRouter from "./gatePasses";
 import gpLogsRouter from "./gpLogs";
 import adminRouter from "./admin";
 import publicRouter from "./publicRoutes";
+import onboardRouter from "./onboard";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
+router.use("/onboard", onboardRouter);
 router.use("/offices", officesRouter);
 router.use("/users", usersRouter);
 router.use("/visitors", visitorsRouter);

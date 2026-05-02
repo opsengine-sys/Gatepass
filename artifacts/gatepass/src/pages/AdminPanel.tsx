@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useClerk } from "@clerk/react";
 import {
   useAdminListCompanies,
   useAdminListUsers,
@@ -14,8 +15,9 @@ import type { Company, UserProfile } from "@/types";
 
 type Tab = "companies" | "users";
 
-export function AdminPanel() {
+export function AdminPanel({ superAdminNoCompany = false }: { superAdminNoCompany?: boolean }) {
   const qc = useQueryClient();
+  const { signOut } = useClerk();
   const [tab, setTab] = useState<Tab>("companies");
   const [companyFilter, setCompanyFilter] = useState("");
 
@@ -27,23 +29,27 @@ export function AdminPanel() {
 
   const [newCompanyOpen, setNewCompanyOpen] = useState(false);
   const [editCompany, setEditCompany] = useState<Company | null>(null);
-  const [editUser, setEditUser] = useState<UserProfile | null>(null);
 
-  return (
+  const panel = (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-serif text-[21px] font-medium text-foreground">Super Admin Panel</h1>
           <p className="text-[12.5px] text-muted-foreground mt-0.5">Manage all companies and users</p>
         </div>
-        {tab === "companies" && (
-          <button onClick={() => setNewCompanyOpen(true)} className="btn-primary">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3.5 h-3.5">
-              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-            New Company
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {tab === "companies" && (
+            <button onClick={() => setNewCompanyOpen(true)} className="btn-primary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3.5 h-3.5">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              New Company
+            </button>
+          )}
+          {superAdminNoCompany && (
+            <button onClick={() => signOut()} className="btn-ghost text-[12.5px]">Sign out</button>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-1 mb-5 border-b border-border">
@@ -118,6 +124,27 @@ export function AdminPanel() {
       )}
     </div>
   );
+
+  if (superAdminNoCompany) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="border-b border-border bg-card px-6 py-3 flex items-center gap-2.5">
+          <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" className="w-3.5 h-3.5">
+              <rect x="3" y="4" width="14" height="10" rx="2"/>
+              <path d="M7 8h6M7 11h4"/>
+              <rect x="7" y="17" width="10" height="3" rx="1.5"/>
+            </svg>
+          </div>
+          <span className="font-serif font-semibold text-[15px] text-foreground">GatePass</span>
+          <span className="ml-2 text-[11px] font-semibold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">Super Admin</span>
+        </div>
+        <div className="max-w-6xl mx-auto px-6 py-8">{panel}</div>
+      </div>
+    );
+  }
+
+  return panel;
 }
 
 function CompaniesTab({

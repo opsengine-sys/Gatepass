@@ -189,6 +189,15 @@ function MainApp() {
     );
   }
 
+  // Super admin without a company goes straight to the admin panel
+  if (!user?.companyId && user?.role === "super_admin") {
+    return (
+      <div className="min-h-screen bg-background">
+        <AdminPanel superAdminNoCompany />
+      </div>
+    );
+  }
+
   if (!user?.companyId) {
     return <OnboardingPage user={user} />;
   }

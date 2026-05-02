@@ -60,24 +60,61 @@ router.get("/me", async (req: AuthenticatedRequest, res) => {
     .limit(1);
 
   if (existing) {
+    // If name/email are still placeholders, refresh from Clerk
+    const needsRefresh =
+      existing.name === "New User" || existing.email.endsWith("@unknown.com");
+
+    if (needsRefresh) {
+      try {
+        const { clerkClient } = await import("@clerk/express");
+        const clerkUser = await clerkClient().users.getUser(clerkId);
+        const firstName = clerkUser.firstName ?? "";
+        const lastName = clerkUser.lastName ?? "";
+        const freshName = [firstName, lastName].filter(Boolean).join(" ") || "New User";
+        const primaryEmail = clerkUser.emailAddresses.find(
+          (e) => e.id === clerkUser.primaryEmailAddressId,
+        );
+        const freshEmail = primaryEmail?.emailAddress ?? existing.email;
+
+        if (freshName !== existing.name || freshEmail !== existing.email) {
+          await db
+            .update(usersTable)
+            .set({ name: freshName, email: freshEmail, updatedAt: new Date() })
+            .where(eq(usersTable.id, existing.id));
+        }
+      } catch {
+        // ignore — use existing data
+      }
+    }
+
     const user = await getUserWithRelations(existing.id);
     res.json(user);
     return;
   }
 
-  // Auto-create user record on first sign-in
-  const clerkUser = auth?.sessionClaims;
-  const name =
-    (clerkUser?.["firstName"] as string ?? "") +
-    " " +
-    (clerkUser?.["lastName"] as string ?? "");
-  const email = (clerkUser?.["email"] as string) ?? `${clerkId}@unknown.com`;
+  // Auto-create user record on first sign-in — fetch real data from Clerk
+  let name = "New User";
+  let email = `${clerkId}@unknown.com`;
+
+  try {
+    const { clerkClient } = await import("@clerk/express");
+    const clerkUser = await clerkClient().users.getUser(clerkId);
+    const firstName = clerkUser.firstName ?? "";
+    const lastName = clerkUser.lastName ?? "";
+    name = [firstName, lastName].filter(Boolean).join(" ") || "New User";
+    const primaryEmail = clerkUser.emailAddresses.find(
+      (e) => e.id === clerkUser.primaryEmailAddressId,
+    );
+    email = primaryEmail?.emailAddress ?? email;
+  } catch {
+    // fall back to placeholder values
+  }
 
   const [newUser] = await db
     .insert(usersTable)
     .values({
       clerkId,
-      name: name.trim() || "New User",
+      name,
       email,
       role: "viewer",
     })
