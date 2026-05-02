@@ -25,7 +25,7 @@ export function VisitorLink() {
   return (
     <div>
       <div className="mb-5">
-        <h1 className="font-serif text-[21px] font-medium text-foreground">Visitor Registration Link</h1>
+        <h1 className="font-semibold text-[21px] tracking-tight text-foreground">Visitor Registration Link</h1>
         <p className="text-[12.5px] text-muted-foreground mt-0.5">Share this link with visitors to let them pre-register</p>
       </div>
 

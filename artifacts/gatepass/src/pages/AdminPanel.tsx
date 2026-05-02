@@ -147,7 +147,7 @@ export function AdminPanel({ superAdminNoCompany = false }: { superAdminNoCompan
               <rect x="7" y="17" width="10" height="3" rx="1.5"/>
             </svg>
           </div>
-          <span className="font-serif font-semibold text-[14px] text-foreground">GatePass</span>
+          <span className="font-semibold text-[14px] text-foreground">GatePass</span>
         </div>
         <span className="text-[11px] font-semibold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
           Super Admin
@@ -272,7 +272,7 @@ function OverviewTab() {
   return (
     <div className="space-y-8 max-w-5xl">
       <div>
-        <h1 className="font-serif text-[22px] font-semibold text-foreground mb-1">Overview</h1>
+        <h1 className="font-semibold text-[22px] tracking-tight text-foreground mb-1">Overview</h1>
         <p className="text-[13px] text-muted-foreground">Platform-wide metrics and activity at a glance</p>
       </div>
 
@@ -280,7 +280,7 @@ function OverviewTab() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {metricCards.map((m) => (
           <div key={m.label} className="bg-card border border-border rounded-xl p-5">
-            <div className={cn("text-[30px] font-bold font-serif", m.color)}>{m.value}</div>
+            <div className={cn("text-[30px] font-bold", m.color)}>{m.value}</div>
             <div className="text-[13px] font-semibold text-foreground mt-1">{m.label}</div>
             <div className="text-[11.5px] text-muted-foreground mt-0.5">{m.sub}</div>
           </div>
@@ -409,7 +409,7 @@ function CompaniesTab() {
     <div className="max-w-full">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="font-serif text-[22px] font-semibold text-foreground mb-0.5">Companies</h1>
+          <h1 className="font-semibold text-[22px] tracking-tight text-foreground mb-0.5">Companies</h1>
           <p className="text-[13px] text-muted-foreground">Manage company accounts, contracts & contacts</p>
         </div>
         <button onClick={() => setNewOpen(true)} className="btn-primary">
@@ -579,7 +579,7 @@ function LicensesTab() {
   return (
     <div className="max-w-4xl">
       <div className="mb-6">
-        <h1 className="font-serif text-[22px] font-semibold text-foreground mb-0.5">Licenses &amp; Products</h1>
+        <h1 className="font-semibold text-[22px] tracking-tight text-foreground mb-0.5">Licenses &amp; Products</h1>
         <p className="text-[13px] text-muted-foreground">Manage subscriptions, seat allocations and product access per company</p>
       </div>
 
@@ -761,7 +761,7 @@ function UsersTab() {
     <div className="max-w-5xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="font-serif text-[22px] font-semibold text-foreground mb-0.5">Users</h1>
+          <h1 className="font-semibold text-[22px] tracking-tight text-foreground mb-0.5">Users</h1>
           <p className="text-[13px] text-muted-foreground">All users across all companies</p>
         </div>
         <select
@@ -875,7 +875,7 @@ function PlatformAdminsTab() {
   return (
     <div className="max-w-2xl">
       <div className="mb-6">
-        <h1 className="font-serif text-[22px] font-semibold text-foreground mb-0.5">Platform Admins</h1>
+        <h1 className="font-semibold text-[22px] tracking-tight text-foreground mb-0.5">Platform Admins</h1>
         <p className="text-[13px] text-muted-foreground">Super admins have full platform access — companies CRM, impersonation, billing, and all settings.</p>
       </div>
 
@@ -1006,7 +1006,7 @@ function ActivityTab() {
   return (
     <div className="max-w-2xl">
       <div className="mb-6">
-        <h1 className="font-serif text-[22px] font-semibold text-foreground mb-0.5">Activity</h1>
+        <h1 className="font-semibold text-[22px] tracking-tight text-foreground mb-0.5">Activity</h1>
         <p className="text-[13px] text-muted-foreground">Recent platform events — sign-ups and company additions</p>
       </div>
 
@@ -1118,7 +1118,7 @@ function CompanyIntegrationsTab() {
   return (
     <div className="max-w-5xl">
       <div className="mb-6">
-        <h1 className="font-serif text-[22px] font-semibold text-foreground mb-0.5">Company Integrations</h1>
+        <h1 className="font-semibold text-[22px] tracking-tight text-foreground mb-0.5">Company Integrations</h1>
         <p className="text-[13px] text-muted-foreground">Configure SSO, notifications, and API integrations per company</p>
       </div>
 
@@ -1324,7 +1324,7 @@ function CompanyFormModal({
     <div className="fixed inset-0 z-50 bg-black/50 flex items-start justify-center p-4 overflow-y-auto" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="bg-card border border-border rounded-2xl w-full max-w-xl shadow-2xl my-8">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h3 className="font-serif font-semibold text-[16px] text-foreground">{title}</h3>
+          <h3 className="font-semibold text-[16px] text-foreground">{title}</h3>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>

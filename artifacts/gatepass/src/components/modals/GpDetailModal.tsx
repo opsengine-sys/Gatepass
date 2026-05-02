@@ -81,7 +81,7 @@ export function GpDetailModal({ gatePass: g, officeFull, onClose, onCloseGP }: P
     <Dialog open={!!g} onOpenChange={open => !open && onClose()}>
       <DialogContent className="max-w-[560px] max-h-[93vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-serif text-[19px] font-medium font-mono">{g.passId}</DialogTitle>
+          <DialogTitle className="font-semibold text-[19px] tracking-tight font-mono">{g.passId}</DialogTitle>
           <p className="text-[12.5px] text-muted-foreground">{g.type}</p>
         </DialogHeader>
 

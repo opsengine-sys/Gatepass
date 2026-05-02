@@ -39,7 +39,7 @@ export function VisitorDetailModal({ visitor: v, onClose, onCheckIn, onCheckOut,
     <Dialog open={!!v} onOpenChange={open => !open && onClose()}>
       <DialogContent className="max-w-[560px] max-h-[93vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-serif text-[19px] font-medium">{v.name}</DialogTitle>
+          <DialogTitle className="font-semibold text-[19px] tracking-tight">{v.name}</DialogTitle>
           <p className="text-[12.5px] text-muted-foreground">{v.company || "No company"}</p>
         </DialogHeader>
 

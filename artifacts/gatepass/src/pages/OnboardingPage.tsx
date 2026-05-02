@@ -60,7 +60,7 @@ export function OnboardingPage({ user }: Props) {
           </svg>
         </div>
         <div>
-          <div className="font-serif font-semibold text-[16px] text-foreground">GatePass</div>
+          <div className="font-semibold text-[16px] text-foreground">GatePass</div>
           <div className="text-[10.5px] text-muted-foreground leading-none">Visitor & Pass Management</div>
         </div>
       </div>
@@ -75,7 +75,7 @@ export function OnboardingPage({ user }: Props) {
               </svg>
             </div>
 
-            <h2 className="font-serif text-xl font-semibold text-foreground mb-2 text-center">
+            <h2 className="font-semibold text-xl tracking-tight text-foreground mb-2 text-center">
               Welcome{user?.name && user.name !== "New User" && user.name !== "User" ? `, ${user.name.split(" ")[0]}` : ""}!
             </h2>
             <p className="text-[13.5px] text-muted-foreground mb-6 leading-relaxed text-center">
@@ -120,7 +120,7 @@ export function OnboardingPage({ user }: Props) {
               Back
             </button>
 
-            <h2 className="font-serif text-lg font-semibold text-foreground mb-1">Set Up Your Company</h2>
+            <h2 className="font-semibold text-lg tracking-tight text-foreground mb-1">Set Up Your Company</h2>
             <p className="text-[12.5px] text-muted-foreground mb-5">You'll become the admin for this company.</p>
 
             <div className="space-y-4">

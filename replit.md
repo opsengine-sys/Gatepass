@@ -46,7 +46,7 @@ Full SaaS platform for Indian corporate offices. pnpm workspace monorepo using T
   - admin/security/viewer → main app
 
 - **Theme**: Neutral white (`hsl(0 0% 98.5%)`), cool gray borders, burnt orange primary (`#c06b2c`)
-- **Fonts**: Inter (UI), Plus Jakarta Sans (headings), JetBrains Mono (IDs)
+- **Fonts**: Inter (UI), Plus Jakarta Sans (headings/display), JetBrains Mono (IDs/mono). Zero `font-serif` / Lora references in TSX — fully removed. `--app-font-sans` CSS variable propagates via BrandingContext to all pages.
 
 ### API Server (`artifacts/api-server`)
 - **Route**: `/api`
@@ -108,8 +108,9 @@ Tables: `companies`, `users`, `offices`, `visitors`, `visitor_logs`, `gate_passe
    - Custom field rows: coloured `DataTypeBadge` (10 types: text/number/date/email/phone/boolean/select/file/url/textarea), editable label, enable/require toggles, delete
    - Add field row: type selector dropdown + label input + Add button
 3. **Locations** — office management (live API), edit office details, active/inactive toggle
-4. **Badge Templates** — 4-up grid of templates with "Open Editor" button launching `BadgeTemplateEditorModal`:
-   - **Full-screen editor**: left sidebar (template list with active badge), center (2.4× scaled live preview with label/desc), right panel (primary color + accent color pickers with hex input, font size S/M/L, show photo/logo/QR toggles, 6 quick color presets). Config persisted to `gp_badge_cfg_v1` / `gp_gp_cfg_v1`.
+4. **Badge Templates** — "Create from Scratch" + "Customise" buttons per section. Two editors:
+   - **BadgeTemplateEditorModal** — pick from built-in templates + customize colors/font size/toggles. Config persisted to `gp_badge_cfg_v1` / `gp_gp_cfg_v1`.
+   - **BadgeCreatorModal** (`src/components/badge/BadgeCreatorModal.tsx`) — full canvas-style creator: size picker (CR80/A6/A5/A4), left element palette (15 element kinds across 4 categories), center canvas with click-to-select, right properties panel (position/size/text/typography/colors/radius/zIndex), layer list, naming dialog. Custom templates saved to `gp_custom_templates_v1`. Edit/delete saved templates from grid.
 5. **Team & Users** — invite by email, role reference table
 6. **Notifications** — per-event toggle switches (in-app), email config placeholder
 7. **Integrations** — Microsoft 365 / Google Workspace toggles, LDAP coming soon
@@ -123,6 +124,7 @@ Tables: `companies`, `users`, `offices`, `visitors`, `visitor_logs`, `gate_passe
 - `gp_custom_vfields_v1`, `gp_custom_gpfields_v1` — custom field definitions (include `dataType`)
 - `gp_vfield_labels_v1`, `gp_gpfield_labels_v1` — built-in field label overrides
 - `gp_badge_cfg_v1`, `gp_gp_cfg_v1` — template customizer config (colors, toggles, font size)
+- `gp_custom_templates_v1` — custom badge/pass templates created from scratch (BadgeCreatorModal)
 - `gp_webhooks_v1`, `gp_apikeys_v1` — integrations config
 
 ## RegisterVisitorModal — dynamic visitor type fields

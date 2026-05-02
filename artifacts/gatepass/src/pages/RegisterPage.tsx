@@ -105,7 +105,7 @@ export function RegisterPage() {
               <polyline points="20 6 9 17 4 12"/>
             </svg>
           </div>
-          <h2 className="font-serif text-[21px] font-medium text-foreground mb-1">Registration Submitted</h2>
+          <h2 className="font-semibold text-[21px] tracking-tight text-foreground mb-1">Registration Submitted</h2>
           <p className="text-[13px] text-muted-foreground mb-5">
             Your details have been received. Please show this confirmation at the gate. You'll be assigned a Visitor ID on arrival.
           </p>
@@ -140,7 +140,7 @@ export function RegisterPage() {
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
-          <h1 className="font-serif text-[21px] font-medium text-foreground mb-0.5">Register Your Visit</h1>
+          <h1 className="font-semibold text-[21px] tracking-tight text-foreground mb-0.5">Register Your Visit</h1>
           <p className="text-[12.5px] text-muted-foreground mb-5">Fill in your details before arriving. You'll get a Visitor ID at the gate.</p>
 
           {status === "error" && (

@@ -159,7 +159,7 @@ export function RegisterVisitorModal({ open, onClose, onSubmit }: Props) {
     <Dialog open={open} onOpenChange={v => { if (!v) handleClose(); }}>
       <DialogContent className="max-w-[740px] max-h-[93vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-serif text-[19px] font-medium">Register Visitor</DialogTitle>
+          <DialogTitle className="font-semibold text-[19px] tracking-tight">Register Visitor</DialogTitle>
           <p className="text-[12.5px] text-muted-foreground">A unique Visitor ID is issued on check-in</p>
         </DialogHeader>
 

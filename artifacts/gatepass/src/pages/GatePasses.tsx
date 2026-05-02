@@ -34,7 +34,7 @@ export function GatePasses({ gatePasses, officeFull, onNew, onDetail, onCloseGP 
     <div>
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="font-serif text-[21px] font-medium text-foreground">Gate Passes</h1>
+          <h1 className="font-semibold text-[21px] tracking-tight text-foreground">Gate Passes</h1>
           <p className="text-[12.5px] text-muted-foreground mt-0.5">{officeFull}</p>
         </div>
         <button onClick={onNew} className="btn-teal">

@@ -15,7 +15,7 @@ export function OfficePicker({ open, currentOfficeId, offices, onSelect, onClose
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-[420px]">
         <DialogHeader>
-          <DialogTitle className="font-serif text-[19px] font-medium">Select Office</DialogTitle>
+          <DialogTitle className="font-semibold text-[19px] tracking-tight">Select Office</DialogTitle>
           <p className="text-[12.5px] text-muted-foreground">Data shown will be filtered to this location</p>
         </DialogHeader>
         <div className="mt-1 space-y-1">

@@ -82,7 +82,7 @@ export function BadgeModal({ visitor: v, officeFull, onClose }: Props) {
     <Dialog open={!!v} onOpenChange={open => !open && onClose()}>
       <DialogContent className="max-w-[720px] max-h-[93vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-serif text-[19px] font-medium">Visitor Badge</DialogTitle>
+          <DialogTitle className="font-semibold text-[19px] tracking-tight">Visitor Badge</DialogTitle>
           <p className="text-[12.5px] text-muted-foreground">{v.visitorId} · {v.name}</p>
         </DialogHeader>
 

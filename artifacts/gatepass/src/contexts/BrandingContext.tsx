@@ -35,7 +35,7 @@ function hexToHSL(hex: string): string {
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
-const BUNDLED_FONTS = new Set(["Instrument Sans", "Lora"]);
+const BUNDLED_FONTS = new Set(["Inter", "Plus Jakarta Sans", "JetBrains Mono"]);
 
 function ensureFont(font: string) {
   const id = `gf-${font.toLowerCase().replace(/\s+/g, "-")}`;
@@ -43,7 +43,7 @@ function ensureFont(font: string) {
   const link = document.createElement("link");
   link.id = id;
   link.rel = "stylesheet";
-  link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(font)}:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap`;
+  link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(font)}:wght@300;400;500;600;700&display=swap`;
   document.head.appendChild(link);
 }
 

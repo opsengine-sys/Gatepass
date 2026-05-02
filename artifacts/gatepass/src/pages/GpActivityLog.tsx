@@ -33,7 +33,7 @@ export function GpActivityLog({ gpLogs, officeFull }: Props) {
     <div>
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="font-serif text-[21px] font-medium text-foreground">GP Activity Log</h1>
+          <h1 className="font-semibold text-[21px] tracking-tight text-foreground">GP Activity Log</h1>
           <p className="text-[12.5px] text-muted-foreground mt-0.5">{officeFull} · {todayCount} events today</p>
         </div>
         <div className="text-[11px] font-semibold bg-secondary border border-border rounded-full px-3 py-1.5 text-muted-foreground">

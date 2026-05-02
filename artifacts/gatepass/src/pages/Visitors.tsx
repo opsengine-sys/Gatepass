@@ -48,7 +48,7 @@ export function Visitors({
     <div>
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="font-serif text-[21px] font-medium text-foreground">Visitors</h1>
+          <h1 className="font-semibold text-[21px] tracking-tight text-foreground">Visitors</h1>
           <p className="text-[12.5px] text-muted-foreground mt-0.5">{officeFull}</p>
         </div>
         <button onClick={onRegister} className="btn-primary">

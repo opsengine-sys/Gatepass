@@ -29,7 +29,7 @@ export function GpDashboard({ gatePasses, gpLogs, officeFull, onDetail, onNew }:
     <div>
       <div className="mb-5 flex items-start justify-between gap-3">
         <div>
-          <h1 className="font-serif text-[21px] font-medium text-foreground">Gate Pass Dashboard</h1>
+          <h1 className="font-semibold text-[21px] tracking-tight text-foreground">Gate Pass Dashboard</h1>
           <p className="text-[12.5px] text-muted-foreground mt-0.5">{officeFull}</p>
         </div>
         {onNew && (

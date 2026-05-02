@@ -4,6 +4,7 @@ import { useUser } from "@clerk/react";
 import { useBranding } from "@/contexts/BrandingContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { BadgeCreatorModal, loadCustomTemplates, type CustomTemplate } from "@/components/badge/BadgeCreatorModal";
 import { VISITOR_TYPES, TYPE_COLORS, GP_TYPES } from "@/types";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import {
@@ -137,7 +138,7 @@ export function Settings() {
   return (
     <div className="max-w-[900px]">
       <div className="mb-5">
-        <h1 className="font-serif text-[21px] font-medium text-foreground">Settings</h1>
+        <h1 className="font-semibold text-[21px] tracking-tight text-foreground">Settings</h1>
         <p className="text-[12.5px] text-muted-foreground mt-0.5">Manage your workspace preferences and configuration</p>
       </div>
 
@@ -969,13 +970,27 @@ function BadgeTemplatesTab({ badgeTemplate, setBadgeTemplate, gpTemplate, setGpT
   const [gpCfg, setGPCfg] = useState<TemplateConfig>(loadGPCfg);
   const [badgeEditor, setBadgeEditor] = useState(false);
   const [gpEditor, setGPEditor] = useState(false);
+  const [creatorOpen, setCreatorOpen] = useState<"badge" | "gp" | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<CustomTemplate | undefined>(undefined);
+  const [customTemplates, setCustomTemplates] = useState<CustomTemplate[]>(loadCustomTemplates);
 
   const saveBadgeCfg = (c: TemplateConfig) => { setBadgeCfg(c); localStorage.setItem("gp_badge_cfg_v1", JSON.stringify(c)); };
   const saveGPCfg   = (c: TemplateConfig) => { setGPCfg(c);    localStorage.setItem("gp_gp_cfg_v1",    JSON.stringify(c)); };
 
+  const handleCreatorSave = (t: CustomTemplate) => {
+    setCustomTemplates(loadCustomTemplates());
+  };
+
+  const handleDeleteCustom = (id: string) => {
+    const updated = customTemplates.filter(t => t.id !== id);
+    localStorage.setItem("gp_custom_templates_v1", JSON.stringify(updated));
+    setCustomTemplates(updated);
+    toast.success("Template deleted");
+  };
+
   return (
     <>
-      {/* Full-screen editors (portalled above everything) */}
+      {/* Full-screen editors */}
       {badgeEditor && (
         <BadgeTemplateEditorModal
           kind="badge"
@@ -992,6 +1007,14 @@ function BadgeTemplatesTab({ badgeTemplate, setBadgeTemplate, gpTemplate, setGpT
           onClose={() => setGPEditor(false)}
         />
       )}
+      {creatorOpen && (
+        <BadgeCreatorModal
+          kind={creatorOpen}
+          editTemplate={editingTemplate}
+          onClose={() => { setCreatorOpen(null); setEditingTemplate(undefined); }}
+          onSave={handleCreatorSave}
+        />
+      )}
 
       <div className="space-y-5">
         {/* ── Visitor Badge ── */}
@@ -1001,11 +1024,18 @@ function BadgeTemplatesTab({ badgeTemplate, setBadgeTemplate, gpTemplate, setGpT
               <h3 className="font-semibold text-[13px] text-foreground">Visitor Badge Templates</h3>
               <p className="text-[11px] text-muted-foreground mt-0.5">Choose how printed visitor badges look</p>
             </div>
-            <button onClick={() => setBadgeEditor(true)}
-              className="flex items-center gap-2 text-[12px] font-medium px-3.5 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors shadow-sm">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6M9 12h4"/></svg>
-              Open Editor
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={() => { setCreatorOpen("badge"); setEditingTemplate(undefined); }}
+                className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-lg border border-primary/40 text-primary hover:bg-primary/8 transition-colors">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Create from Scratch
+              </button>
+              <button onClick={() => setBadgeEditor(true)}
+                className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors shadow-sm">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6M9 12h4"/></svg>
+                Customise
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-4 gap-3 p-5">
             {BADGE_TEMPLATES.map(t => (
@@ -1033,11 +1063,18 @@ function BadgeTemplatesTab({ badgeTemplate, setBadgeTemplate, gpTemplate, setGpT
               <h3 className="font-semibold text-[13px] text-foreground">Gate Pass Templates</h3>
               <p className="text-[11px] text-muted-foreground mt-0.5">A4 size (210 × 297 mm) print-ready passes</p>
             </div>
-            <button onClick={() => setGPEditor(true)}
-              className="flex items-center gap-2 text-[12px] font-medium px-3.5 py-2 rounded-lg bg-teal-600 text-white hover:bg-teal-600/90 transition-colors shadow-sm">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6M9 12h4"/></svg>
-              Open Editor
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={() => { setCreatorOpen("gp"); setEditingTemplate(undefined); }}
+                className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-lg border border-teal-500/40 text-teal-700 hover:bg-teal-50 transition-colors">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Create from Scratch
+              </button>
+              <button onClick={() => setGPEditor(true)}
+                className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-lg bg-teal-600 text-white hover:bg-teal-600/90 transition-colors shadow-sm">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6M9 12h4"/></svg>
+                Customise
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-4 gap-3 p-5">
             {GP_TEMPLATES.map(t => (
@@ -1057,6 +1094,47 @@ function BadgeTemplatesTab({ badgeTemplate, setBadgeTemplate, gpTemplate, setGpT
             ))}
           </div>
         </div>
+
+        {/* ── Custom Templates ── */}
+        {customTemplates.length > 0 && (
+          <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+            <div className="px-5 py-3.5 border-b border-border">
+              <h3 className="font-semibold text-[13px] text-foreground">Custom Templates</h3>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Templates you created from scratch</p>
+            </div>
+            <div className="grid grid-cols-4 gap-3 p-5">
+              {customTemplates.map(t => (
+                <div key={t.id} className="border-[1.5px] border-border rounded-xl overflow-hidden group hover:border-primary/40 transition-all">
+                  <div className="bg-secondary py-5 px-3 flex items-center justify-center min-h-[70px]">
+                    <div className="text-center">
+                      <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-1.5">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4 text-primary">
+                          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 13h4M9 17h3"/>
+                        </svg>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground font-medium">{t.size.toUpperCase()}</div>
+                    </div>
+                  </div>
+                  <div className="px-3 py-2 border-t border-border">
+                    <div className="text-[11.5px] font-semibold text-foreground truncate">{t.name}</div>
+                    <div className="flex items-center gap-1 mt-1.5">
+                      <button
+                        onClick={() => { setEditingTemplate(t); setCreatorOpen(t.kind); }}
+                        className="flex-1 text-[10px] font-medium text-primary hover:bg-primary/8 px-1.5 py-1 rounded transition-colors">
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteCustom(t.id)}
+                        className="text-[10px] font-medium text-destructive/60 hover:text-destructive hover:bg-destructive/8 px-1.5 py-1 rounded transition-colors">
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

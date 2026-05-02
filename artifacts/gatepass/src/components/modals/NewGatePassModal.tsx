@@ -91,7 +91,7 @@ export function NewGatePassModal({ open, onClose, onSubmit }: Props) {
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
       <DialogContent className="max-w-[720px] max-h-[93vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-serif text-[19px] font-medium">New Gate Pass</DialogTitle>
+          <DialogTitle className="font-semibold text-[19px] tracking-tight">New Gate Pass</DialogTitle>
           <p className="text-[12.5px] text-muted-foreground">Create a materials / supplies / food pass</p>
         </DialogHeader>
 

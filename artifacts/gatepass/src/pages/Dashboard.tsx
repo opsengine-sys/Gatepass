@@ -110,7 +110,7 @@ export function Dashboard({ visitors, logs, officeFull, onRegisterVisitor }: Pro
     <div>
       <div className="mb-5 flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="font-serif text-[21px] font-medium text-foreground">Visitor Overview</h1>
+          <h1 className="font-semibold text-[21px] tracking-tight text-foreground">Visitor Overview</h1>
           <p className="text-[12.5px] text-muted-foreground mt-0.5">{officeFull}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
