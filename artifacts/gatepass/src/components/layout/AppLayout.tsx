@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { Sidebar } from "./Sidebar";
-import { useBranding } from "@/contexts/BrandingContext";
+import { useBranding } from "@/contexts/useBranding";
 import type { Visitor, GatePass, UserProfile } from "@/types";
 import { cn } from "@/lib/utils";
 

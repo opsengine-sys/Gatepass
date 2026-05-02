@@ -1,7 +1,7 @@
 import { useLocation, Link } from "wouter";
 import { useClerk } from "@clerk/react";
 import { cn } from "@/lib/utils";
-import { useBranding } from "@/contexts/BrandingContext";
+import { useBranding } from "@/contexts/useBranding";
 import type { Visitor, GatePass, UserProfile } from "@/types";
 
 interface SidebarProps {

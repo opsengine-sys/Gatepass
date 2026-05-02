@@ -30,6 +30,7 @@ export const companiesTable = pgTable("companies", {
 
   notes: text("notes"),
   contacts: text("contacts").default("[]"),
+  settings: text("settings").default("{}"),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

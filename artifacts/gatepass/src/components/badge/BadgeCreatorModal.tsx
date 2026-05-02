@@ -1,43 +1,14 @@
 import { useState, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-export type BadgeSize = "cr80" | "a6" | "a5" | "a4";
-export type ElementKind =
-  | "photo" | "name" | "company" | "visitorId" | "type" | "host"
-  | "purpose" | "checkIn" | "checkOut" | "qr" | "barcode"
-  | "logo" | "text" | "rect" | "divider";
-
-export interface CanvasElement {
-  id: string;
-  kind: ElementKind;
-  x: number;  // 0-100 percent
-  y: number;
-  w: number;
-  h: number;
-  label?: string;
-  fontSize?: number;
-  fontWeight?: "normal" | "semibold" | "bold";
-  color?: string;
-  bgColor?: string;
-  borderColor?: string;
-  borderRadius?: number;
-  align?: "left" | "center" | "right";
-  opacity?: number;
-  zIndex?: number;
-}
-
-export interface CustomTemplate {
-  id: string;
-  name: string;
-  kind: "badge" | "gp";
-  size: BadgeSize;
-  bgColor: string;
-  elements: CanvasElement[];
-  createdAt: string;
-}
+import {
+  loadCustomTemplates,
+  saveCustomTemplates,
+  type BadgeSize,
+  type ElementKind,
+  type CanvasElement,
+  type CustomTemplate,
+} from "./badgeTemplateUtils";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -65,8 +36,6 @@ const ELEMENT_PALETTE: { kind: ElementKind; label: string; icon: string; categor
   { kind: "rect",      label: "Color Block",    icon: "⬜", category: "Layout" },
   { kind: "divider",   label: "Divider Line",   icon: "—", category: "Layout" },
 ];
-
-const STORAGE_KEY = "gp_custom_templates_v1";
 
 // ─── Default elements ─────────────────────────────────────────────────────────
 
@@ -105,17 +74,6 @@ function defaultElements(kind: "badge" | "gp", size: BadgeSize): CanvasElement[]
     { id: "15", kind: "text",     x: 3,   y: 93.5, w: 60, h: 5,  label: "Authorised by Security", fontSize: 9, color: "#9ca3af", zIndex: 1 },
   ];
 }
-
-// ─── Load / save ──────────────────────────────────────────────────────────────
-
-function loadCustomTemplates(): CustomTemplate[] {
-  try { const s = localStorage.getItem(STORAGE_KEY); if (s) return JSON.parse(s); } catch { /* */ }
-  return [];
-}
-function saveCustomTemplates(t: CustomTemplate[]) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(t)); } catch { /* */ }
-}
-export { loadCustomTemplates };
 
 // ─── Element renderer ─────────────────────────────────────────────────────────
 

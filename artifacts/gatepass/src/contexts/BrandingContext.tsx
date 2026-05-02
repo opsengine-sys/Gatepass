@@ -1,20 +1,5 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-
-export interface BrandingSettings {
-  logoUrl: string | null;
-  primaryColor: string;
-  font: string;
-  companyName: string;
-  theme: "light" | "dark" | "system";
-}
-
-const DEFAULT: BrandingSettings = {
-  logoUrl: null,
-  primaryColor: "#c06b2c",
-  font: "Plus Jakarta Sans",
-  companyName: "GatePass",
-  theme: "light",
-};
+import { useEffect, useState, type ReactNode } from "react";
+import { BrandingContext, DEFAULT_BRANDING, type BrandingSettings } from "./brandingContext";
 
 const STORAGE_KEY = "gp_branding_v1";
 
@@ -49,19 +34,13 @@ function ensureFont(font: string) {
   document.head.appendChild(link);
 }
 
-interface BrandingCtx extends BrandingSettings {
-  update: (patch: Partial<BrandingSettings>) => void;
-}
-
-const BrandingContext = createContext<BrandingCtx>({ ...DEFAULT, update: () => {} });
-
 export function BrandingProvider({ children }: { children: ReactNode }) {
   const [branding, setBranding] = useState<BrandingSettings>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? { ...DEFAULT, ...JSON.parse(stored) } : DEFAULT;
+      return stored ? { ...DEFAULT_BRANDING, ...JSON.parse(stored) } : DEFAULT_BRANDING;
     } catch {
-      return DEFAULT;
+      return DEFAULT_BRANDING;
     }
   });
 
@@ -101,7 +80,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
   const update = (patch: Partial<BrandingSettings>) => {
     setBranding(prev => {
       const next = { ...prev, ...patch };
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { }
       return next;
     });
   };
@@ -112,5 +91,3 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
     </BrandingContext.Provider>
   );
 }
-
-export const useBranding = () => useContext(BrandingContext);

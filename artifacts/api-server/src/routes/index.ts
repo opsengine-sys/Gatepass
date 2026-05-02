@@ -11,6 +11,7 @@ import adminRouter from "./admin";
 import publicRouter from "./publicRoutes";
 import onboardRouter from "./onboard";
 import auditLogsRouter from "./auditLogs";
+import companySettingsRouter from "./companySettings";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use("/gp-logs", gpLogsRouter);
 router.use("/admin", adminRouter);
 router.use("/public", publicRouter);
 router.use("/audit-logs", auditLogsRouter);
+router.use("/company-settings", companySettingsRouter);
 
 export default router;

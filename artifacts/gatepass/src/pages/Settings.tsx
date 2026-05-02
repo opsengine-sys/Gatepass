@@ -1,12 +1,13 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { useUser } from "@clerk/react";
-import { useBranding } from "@/contexts/BrandingContext";
+import { useBranding } from "@/contexts/useBranding";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { BadgeCreatorModal, loadCustomTemplates, type CustomTemplate } from "@/components/badge/BadgeCreatorModal";
+import { BadgeCreatorModal } from "@/components/badge/BadgeCreatorModal";
+import { loadCustomTemplates, type CustomTemplate } from "@/components/badge/badgeTemplateUtils";
 import { VISITOR_TYPES, TYPE_COLORS, GP_TYPES } from "@/types";
-import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import {
   useListOffices, useCreateOffice, useUpdateOffice, useDeleteOffice,
   useListUsers, useUpdateUser,
@@ -314,38 +315,64 @@ type GPTypeItem = { id: string; name: string; enabled: boolean };
 type FieldConfig = Record<string, { enabled: boolean; required: boolean }>;
 type CustomFieldItem = { id: string; label: string; enabled: boolean; required: boolean; dataType: DataType };
 type FieldLabelOverrides = Record<string, string>;
+type WebhookEntry = { id: string; url: string; secret: string; events: string[]; enabled: boolean; createdAt: string };
+type ApiKeyEntry = { id: string; label: string; key: string; createdAt: string; lastUsed: string | null };
 
-function loadVisitorTypes(): VisitorTypeItem[] {
-  try { const s = localStorage.getItem("gp_vt_v1"); if (s) return JSON.parse(s); } catch { /* ignore */ }
-  return VISITOR_TYPES.map((t, i) => ({ id: String(i), name: t, color: TYPE_COLORS[t] ?? "#445368", enabled: true }));
+interface CompanySettingsData {
+  visitorTypes?: VisitorTypeItem[];
+  gpTypes?: GPTypeItem[];
+  vFields?: FieldConfig;
+  gpFields?: FieldConfig;
+  customVFields?: CustomFieldItem[];
+  customGPFields?: CustomFieldItem[];
+  vFieldLabels?: FieldLabelOverrides;
+  gpFieldLabels?: FieldLabelOverrides;
+  badgeCfg?: TemplateConfig;
+  gpCfg?: TemplateConfig;
+  customTemplates?: CustomTemplate[];
+  webhooks?: WebhookEntry[];
+  apiKeys?: ApiKeyEntry[];
 }
-function loadGPTypes(): GPTypeItem[] {
-  try { const s = localStorage.getItem("gp_gpt_v1"); if (s) return JSON.parse(s); } catch { /* ignore */ }
-  return GP_TYPES.map((t, i) => ({ id: String(i), name: t, enabled: true }));
+
+const defaultVisitorTypes = (): VisitorTypeItem[] =>
+  VISITOR_TYPES.map((t, i) => ({ id: String(i), name: t, color: TYPE_COLORS[t] ?? "#445368", enabled: true }));
+const defaultGPTypes = (): GPTypeItem[] =>
+  GP_TYPES.map((t, i) => ({ id: String(i), name: t, enabled: true }));
+const defaultVFields = (): FieldConfig =>
+  Object.fromEntries(VISITOR_FORM_FIELDS.map(f => [f.id, { enabled: true, required: false }]));
+const defaultGPFields = (): FieldConfig =>
+  Object.fromEntries(GP_FORM_FIELDS.map(f => [f.id, { enabled: true, required: false }]));
+
+function lsGet<T>(key: string, fallback: () => T): T {
+  try { const s = localStorage.getItem(key); if (s) return JSON.parse(s) as T; } catch { /* */ }
+  return fallback();
 }
-function loadVFields(): FieldConfig {
-  try { const s = localStorage.getItem("gp_vfields_v1"); if (s) return JSON.parse(s); } catch { /* ignore */ }
-  return Object.fromEntries(VISITOR_FORM_FIELDS.map(f => [f.id, { enabled: true, required: false }]));
+function lsSet(key: string, val: unknown) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch { /* */ }
 }
-function loadGPFields(): FieldConfig {
-  try { const s = localStorage.getItem("gp_gpfields_v1"); if (s) return JSON.parse(s); } catch { /* ignore */ }
-  return Object.fromEntries(GP_FORM_FIELDS.map(f => [f.id, { enabled: true, required: false }]));
+
+async function patchCompanySettings(patch: Partial<CompanySettingsData>) {
+  try {
+    await fetch("/api/company-settings", {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+  } catch { /* fire-and-forget */ }
 }
-function loadCustomVFields(): CustomFieldItem[] {
-  try { const s = localStorage.getItem("gp_custom_vfields_v1"); if (s) return JSON.parse(s); } catch { /* ignore */ }
-  return [];
-}
-function loadCustomGPFields(): CustomFieldItem[] {
-  try { const s = localStorage.getItem("gp_custom_gpfields_v1"); if (s) return JSON.parse(s); } catch { /* ignore */ }
-  return [];
-}
-function loadVFieldLabels(): FieldLabelOverrides {
-  try { const s = localStorage.getItem("gp_vfield_labels_v1"); if (s) return JSON.parse(s); } catch { /* ignore */ }
-  return {};
-}
-function loadGPFieldLabels(): FieldLabelOverrides {
-  try { const s = localStorage.getItem("gp_gpfield_labels_v1"); if (s) return JSON.parse(s); } catch { /* ignore */ }
-  return {};
+
+function useCompanySettings() {
+  const { data, isSuccess } = useQuery<CompanySettingsData>({
+    queryKey: ["/api/company-settings"],
+    queryFn: async () => {
+      const res = await fetch("/api/company-settings", { credentials: "include" });
+      if (!res.ok) return {};
+      return res.json() as Promise<CompanySettingsData>;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  return { apiSettings: isSuccess ? (data ?? {}) : null };
 }
 
 function DataTypeBadge({ type }: { type: DataType }) {
@@ -386,29 +413,46 @@ function AccordionSection({ title, badge, children, defaultOpen = false, accent 
 }
 
 function CustomizationTab() {
-  const [vTypes, setVTypes] = useState<VisitorTypeItem[]>(loadVisitorTypes);
-  const [gpTypes, setGPTypes] = useState<GPTypeItem[]>(loadGPTypes);
-  const [vFields, setVFields] = useState<FieldConfig>(loadVFields);
-  const [gpFields, setGPFields] = useState<FieldConfig>(loadGPFields);
-  const [customVFields, setCustomVFields] = useState<CustomFieldItem[]>(loadCustomVFields);
-  const [customGPFields, setCustomGPFields] = useState<CustomFieldItem[]>(loadCustomGPFields);
-  const [vFieldLabels, setVFieldLabels] = useState<FieldLabelOverrides>(loadVFieldLabels);
-  const [gpFieldLabels, setGPFieldLabels] = useState<FieldLabelOverrides>(loadGPFieldLabels);
+  const { apiSettings } = useCompanySettings();
+
+  const [vTypes, setVTypes] = useState<VisitorTypeItem[]>(() => lsGet("gp_vt_v1", defaultVisitorTypes));
+  const [gpTypes, setGPTypes] = useState<GPTypeItem[]>(() => lsGet("gp_gpt_v1", defaultGPTypes));
+  const [vFields, setVFields] = useState<FieldConfig>(() => lsGet("gp_vfields_v1", defaultVFields));
+  const [gpFields, setGPFields] = useState<FieldConfig>(() => lsGet("gp_gpfields_v1", defaultGPFields));
+  const [customVFields, setCustomVFields] = useState<CustomFieldItem[]>(() => lsGet("gp_custom_vfields_v1", () => []));
+  const [customGPFields, setCustomGPFields] = useState<CustomFieldItem[]>(() => lsGet("gp_custom_gpfields_v1", () => []));
+  const [vFieldLabels, setVFieldLabels] = useState<FieldLabelOverrides>(() => lsGet("gp_vfield_labels_v1", () => ({})));
+  const [gpFieldLabels, setGPFieldLabels] = useState<FieldLabelOverrides>(() => lsGet("gp_gpfield_labels_v1", () => ({})));
   const [newVType, setNewVType] = useState("");
   const [newGPType, setNewGPType] = useState("");
   const [newVFieldLabel, setNewVFieldLabel] = useState("");
   const [newGPFieldLabel, setNewGPFieldLabel] = useState("");
   const [newVFieldType, setNewVFieldType] = useState<DataType>("text");
   const [newGPFieldType, setNewGPFieldType] = useState<DataType>("text");
+  const [hydrated, setHydrated] = useState(false);
 
-  const saveVT  = (next: VisitorTypeItem[])   => { setVTypes(next);          localStorage.setItem("gp_vt_v1",              JSON.stringify(next)); };
-  const saveGPT = (next: GPTypeItem[])         => { setGPTypes(next);         localStorage.setItem("gp_gpt_v1",             JSON.stringify(next)); };
-  const saveVF  = (next: FieldConfig)          => { setVFields(next);         localStorage.setItem("gp_vfields_v1",         JSON.stringify(next)); };
-  const saveGPF = (next: FieldConfig)          => { setGPFields(next);        localStorage.setItem("gp_gpfields_v1",        JSON.stringify(next)); };
-  const saveCVF = (next: CustomFieldItem[])    => { setCustomVFields(next);   localStorage.setItem("gp_custom_vfields_v1",  JSON.stringify(next)); };
-  const saveCGPF= (next: CustomFieldItem[])    => { setCustomGPFields(next);  localStorage.setItem("gp_custom_gpfields_v1", JSON.stringify(next)); };
-  const saveVFL = (next: FieldLabelOverrides)  => { setVFieldLabels(next);    localStorage.setItem("gp_vfield_labels_v1",   JSON.stringify(next)); };
-  const saveGPFL= (next: FieldLabelOverrides)  => { setGPFieldLabels(next);   localStorage.setItem("gp_gpfield_labels_v1",  JSON.stringify(next)); };
+  useEffect(() => {
+    if (apiSettings && !hydrated) {
+      if (apiSettings.visitorTypes)  { setVTypes(apiSettings.visitorTypes);       lsSet("gp_vt_v1", apiSettings.visitorTypes); }
+      if (apiSettings.gpTypes)       { setGPTypes(apiSettings.gpTypes);            lsSet("gp_gpt_v1", apiSettings.gpTypes); }
+      if (apiSettings.vFields)       { setVFields(apiSettings.vFields);            lsSet("gp_vfields_v1", apiSettings.vFields); }
+      if (apiSettings.gpFields)      { setGPFields(apiSettings.gpFields);          lsSet("gp_gpfields_v1", apiSettings.gpFields); }
+      if (apiSettings.customVFields) { setCustomVFields(apiSettings.customVFields); lsSet("gp_custom_vfields_v1", apiSettings.customVFields); }
+      if (apiSettings.customGPFields){ setCustomGPFields(apiSettings.customGPFields); lsSet("gp_custom_gpfields_v1", apiSettings.customGPFields); }
+      if (apiSettings.vFieldLabels)  { setVFieldLabels(apiSettings.vFieldLabels);  lsSet("gp_vfield_labels_v1", apiSettings.vFieldLabels); }
+      if (apiSettings.gpFieldLabels) { setGPFieldLabels(apiSettings.gpFieldLabels); lsSet("gp_gpfield_labels_v1", apiSettings.gpFieldLabels); }
+      setHydrated(true);
+    }
+  }, [apiSettings, hydrated]);
+
+  const saveVT  = useCallback((next: VisitorTypeItem[])   => { setVTypes(next);           lsSet("gp_vt_v1", next);              void patchCompanySettings({ visitorTypes: next }); }, []);
+  const saveGPT = useCallback((next: GPTypeItem[])         => { setGPTypes(next);          lsSet("gp_gpt_v1", next);             void patchCompanySettings({ gpTypes: next }); }, []);
+  const saveVF  = useCallback((next: FieldConfig)          => { setVFields(next);          lsSet("gp_vfields_v1", next);         void patchCompanySettings({ vFields: next }); }, []);
+  const saveGPF = useCallback((next: FieldConfig)          => { setGPFields(next);         lsSet("gp_gpfields_v1", next);        void patchCompanySettings({ gpFields: next }); }, []);
+  const saveCVF = useCallback((next: CustomFieldItem[])    => { setCustomVFields(next);    lsSet("gp_custom_vfields_v1", next);  void patchCompanySettings({ customVFields: next }); }, []);
+  const saveCGPF= useCallback((next: CustomFieldItem[])    => { setCustomGPFields(next);   lsSet("gp_custom_gpfields_v1", next); void patchCompanySettings({ customGPFields: next }); }, []);
+  const saveVFL = useCallback((next: FieldLabelOverrides)  => { setVFieldLabels(next);     lsSet("gp_vfield_labels_v1", next);   void patchCompanySettings({ vFieldLabels: next }); }, []);
+  const saveGPFL= useCallback((next: FieldLabelOverrides)  => { setGPFieldLabels(next);    lsSet("gp_gpfield_labels_v1", next);  void patchCompanySettings({ gpFieldLabels: next }); }, []);
 
   const addVType = () => {
     if (!newVType.trim()) return;
@@ -432,11 +476,11 @@ function CustomizationTab() {
   };
 
   const toggleVField = (id: string, key: "enabled" | "required") => {
-    const next = { ...vFields, [id]: { ...vFields[id], [key]: !vFields[id][key] } };
+    const next = { ...vFields, [id]: { ...vFields[id], [key]: !vFields[id]?.[key] } };
     saveVF(next);
   };
   const toggleGPField = (id: string, key: "enabled" | "required") => {
-    const next = { ...gpFields, [id]: { ...gpFields[id], [key]: !gpFields[id][key] } };
+    const next = { ...gpFields, [id]: { ...gpFields[id], [key]: !gpFields[id]?.[key] } };
     saveGPF(next);
   };
 
@@ -713,12 +757,12 @@ const defaultBadgeCfg: TemplateConfig = { primaryColor: "#c06b2c", accentColor: 
 const defaultGPCfg: TemplateConfig    = { primaryColor: "#c06b2c", accentColor: "#f9f5f0", showLogo: true, showPhoto: false, showQR: false, fontSize: "md" };
 
 function loadBadgeCfg(): TemplateConfig {
-  try { const s = localStorage.getItem("gp_badge_cfg_v1"); if (s) return { ...defaultBadgeCfg, ...JSON.parse(s) }; } catch { /* */ }
-  return defaultBadgeCfg;
+  return lsGet<Partial<TemplateConfig>>("gp_badge_cfg_v1", () => ({})) as TemplateConfig
+    ? { ...defaultBadgeCfg, ...lsGet<Partial<TemplateConfig>>("gp_badge_cfg_v1", () => ({})) }
+    : defaultBadgeCfg;
 }
 function loadGPCfg(): TemplateConfig {
-  try { const s = localStorage.getItem("gp_gp_cfg_v1"); if (s) return { ...defaultGPCfg, ...JSON.parse(s) }; } catch { /* */ }
-  return defaultGPCfg;
+  return { ...defaultGPCfg, ...lsGet<Partial<TemplateConfig>>("gp_gp_cfg_v1", () => ({})) };
 }
 
 function TemplateLivePreview({ kind, templateId, cfg }: { kind: "badge" | "gp"; templateId: string; cfg: TemplateConfig }) {
@@ -966,6 +1010,8 @@ function BadgeTemplatesTab({ badgeTemplate, setBadgeTemplate, gpTemplate, setGpT
   badgeTemplate: string; setBadgeTemplate: (t: string) => void;
   gpTemplate: string; setGpTemplate: (t: string) => void;
 }) {
+  const { apiSettings } = useCompanySettings();
+
   const [badgeCfg, setBadgeCfg] = useState<TemplateConfig>(loadBadgeCfg);
   const [gpCfg, setGPCfg] = useState<TemplateConfig>(loadGPCfg);
   const [badgeEditor, setBadgeEditor] = useState(false);
@@ -973,18 +1019,31 @@ function BadgeTemplatesTab({ badgeTemplate, setBadgeTemplate, gpTemplate, setGpT
   const [creatorOpen, setCreatorOpen] = useState<"badge" | "gp" | null>(null);
   const [editingTemplate, setEditingTemplate] = useState<CustomTemplate | undefined>(undefined);
   const [customTemplates, setCustomTemplates] = useState<CustomTemplate[]>(loadCustomTemplates);
+  const [hydrated, setHydrated] = useState(false);
 
-  const saveBadgeCfg = (c: TemplateConfig) => { setBadgeCfg(c); localStorage.setItem("gp_badge_cfg_v1", JSON.stringify(c)); };
-  const saveGPCfg   = (c: TemplateConfig) => { setGPCfg(c);    localStorage.setItem("gp_gp_cfg_v1",    JSON.stringify(c)); };
+  useEffect(() => {
+    if (apiSettings && !hydrated) {
+      if (apiSettings.badgeCfg)       { setBadgeCfg({ ...defaultBadgeCfg, ...apiSettings.badgeCfg }); lsSet("gp_badge_cfg_v1", apiSettings.badgeCfg); }
+      if (apiSettings.gpCfg)          { setGPCfg({ ...defaultGPCfg, ...apiSettings.gpCfg });           lsSet("gp_gp_cfg_v1", apiSettings.gpCfg); }
+      if (apiSettings.customTemplates){ setCustomTemplates(apiSettings.customTemplates);                lsSet("gp_custom_templates_v1", apiSettings.customTemplates); }
+      setHydrated(true);
+    }
+  }, [apiSettings, hydrated]);
 
-  const handleCreatorSave = (t: CustomTemplate) => {
-    setCustomTemplates(loadCustomTemplates());
+  const saveBadgeCfg = (c: TemplateConfig) => { setBadgeCfg(c); lsSet("gp_badge_cfg_v1", c); void patchCompanySettings({ badgeCfg: c }); };
+  const saveGPCfg   = (c: TemplateConfig) => { setGPCfg(c);    lsSet("gp_gp_cfg_v1", c);    void patchCompanySettings({ gpCfg: c }); };
+
+  const handleCreatorSave = (_t: CustomTemplate) => {
+    const updated = loadCustomTemplates();
+    setCustomTemplates(updated);
+    void patchCompanySettings({ customTemplates: updated });
   };
 
   const handleDeleteCustom = (id: string) => {
     const updated = customTemplates.filter(t => t.id !== id);
-    localStorage.setItem("gp_custom_templates_v1", JSON.stringify(updated));
+    lsSet("gp_custom_templates_v1", updated);
     setCustomTemplates(updated);
+    void patchCompanySettings({ customTemplates: updated });
     toast.success("Template deleted");
   };
 
@@ -1435,17 +1494,10 @@ function NotificationsTab({ notifications, onToggle }: { notifications: Record<s
 
 // ─── Integrations Tab ─────────────────────────────────────────────────────────
 
-type WebhookEntry = { id: string; url: string; secret: string; events: string[]; enabled: boolean; createdAt: string };
-type ApiKeyEntry = { id: string; label: string; key: string; createdAt: string; lastUsed: string | null };
-
-function loadWebhooks(): WebhookEntry[] {
-  try { const s = localStorage.getItem("gp_webhooks_v1"); return s ? JSON.parse(s) : []; } catch { return []; }
-}
-function loadApiKeys(): ApiKeyEntry[] {
-  try { const s = localStorage.getItem("gp_apikeys_v1"); return s ? JSON.parse(s) : []; } catch { return []; }
-}
-function saveWebhooks(wh: WebhookEntry[]) { localStorage.setItem("gp_webhooks_v1", JSON.stringify(wh)); }
-function saveApiKeys(keys: ApiKeyEntry[]) { localStorage.setItem("gp_apikeys_v1", JSON.stringify(keys)); }
+function loadWebhooks(): WebhookEntry[] { return lsGet("gp_webhooks_v1", () => []); }
+function loadApiKeys(): ApiKeyEntry[] { return lsGet("gp_apikeys_v1", () => []); }
+function saveWebhooks(wh: WebhookEntry[]) { lsSet("gp_webhooks_v1", wh); void patchCompanySettings({ webhooks: wh }); }
+function saveApiKeys(keys: ApiKeyEntry[]) { lsSet("gp_apikeys_v1", keys); void patchCompanySettings({ apiKeys: keys }); }
 
 function generateApiKey() {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -1709,11 +1761,20 @@ function MessagingSection() {
 }
 
 function WebhooksSection() {
+  const { apiSettings } = useCompanySettings();
   const [webhooks, setWebhooks] = useState<WebhookEntry[]>(loadWebhooks);
   const [url, setUrl] = useState("");
   const [secret, setSecret] = useState("");
   const [events, setEvents] = useState<string[]>(["visitor.checkin", "visitor.checkout", "gatepass.created"]);
   const [adding, setAdding] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    if (apiSettings && !hydrated) {
+      if (apiSettings.webhooks) { setWebhooks(apiSettings.webhooks); lsSet("gp_webhooks_v1", apiSettings.webhooks); }
+      setHydrated(true);
+    }
+  }, [apiSettings, hydrated]);
 
   const addWebhook = () => {
     if (!url.trim()) { toast.error("Webhook URL is required"); return; }
@@ -1819,7 +1880,16 @@ function WebhooksSection() {
 }
 
 function ApiKeysSection() {
+  const { apiSettings } = useCompanySettings();
   const [apiKeys, setApiKeys] = useState<ApiKeyEntry[]>(loadApiKeys);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    if (apiSettings && !hydrated) {
+      if (apiSettings.apiKeys) { setApiKeys(apiSettings.apiKeys); lsSet("gp_apikeys_v1", apiSettings.apiKeys); }
+      setHydrated(true);
+    }
+  }, [apiSettings, hydrated]);
   const [label, setLabel] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [revealing, setRevealing] = useState<string | null>(null);
