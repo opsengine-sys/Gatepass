@@ -1,9 +1,85 @@
+import { useEffect, useState } from "react";
 import { StatCard } from "@/components/shared/StatCard";
 import { Avatar } from "@/components/shared/Avatar";
 import { TypeBadge } from "@/components/shared/Badge";
 import { VisitorIDChip } from "@/components/shared/VisitorIDChip";
 import type { Visitor, VisitorLog } from "@/types";
 import { fmtTime, fmtDate, sameDay } from "@/lib/time";
+
+// ── Weather widget ─────────────────────────────────────────────────────────────
+
+interface WttrData {
+  current_condition: Array<{
+    temp_C: string;
+    temp_F: string;
+    weatherDesc: Array<{ value: string }>;
+    weatherCode: string;
+    humidity: string;
+    windspeedKmph: string;
+    FeelsLikeC: string;
+  }>;
+}
+
+function weatherIcon(code: string) {
+  const n = Number(code);
+  if (n === 113) return "☀️";
+  if (n === 116) return "⛅";
+  if ([119, 122].includes(n)) return "☁️";
+  if ([143, 248, 260].includes(n)) return "🌫️";
+  if ([176, 263, 266, 281, 284, 293, 296, 299, 302, 305, 308, 311, 314, 317, 350, 353, 356, 359, 362, 365, 374, 377].includes(n)) return "🌧️";
+  if ([179, 182, 185, 227, 230, 320, 323, 326, 329, 332, 335, 338, 368, 371].includes(n)) return "❄️";
+  if ([200, 386, 389, 392, 395].includes(n)) return "⛈️";
+  return "🌤️";
+}
+
+function WeatherWidget({ city }: { city: string }) {
+  const [weather, setWeather] = useState<WttrData["current_condition"][0] | null>(null);
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!city) return;
+    setLoading(true);
+    setError(false);
+    fetch(`https://wttr.in/${encodeURIComponent(city)}?format=j1`)
+      .then(r => r.json())
+      .then((d: WttrData) => { setWeather(d.current_condition?.[0] ?? null); setLoading(false); })
+      .catch(() => { setError(true); setLoading(false); });
+  }, [city]);
+
+  if (!city) return null;
+
+  return (
+    <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-3.5 py-2.5 shadow-sm min-w-[160px]">
+      {loading ? (
+        <div className="flex items-center gap-2 text-muted-foreground text-[12px]">
+          <div className="w-4 h-4 rounded-full border-2 border-border border-t-primary animate-spin" />
+          Loading weather…
+        </div>
+      ) : error || !weather ? (
+        <div className="text-[12px] text-muted-foreground">Weather unavailable</div>
+      ) : (
+        <>
+          <span className="text-[22px] leading-none">{weatherIcon(weather.weatherCode)}</span>
+          <div>
+            <div className="flex items-baseline gap-1">
+              <span className="text-[18px] font-bold text-foreground leading-none">{weather.temp_C}°</span>
+              <span className="text-[10px] text-muted-foreground">C</span>
+            </div>
+            <div className="text-[10.5px] text-muted-foreground mt-0.5 leading-none">{weather.weatherDesc[0]?.value}</div>
+            <div className="text-[10px] text-muted-foreground/70 mt-0.5">{city} · Feels {weather.FeelsLikeC}°</div>
+          </div>
+          <div className="ml-auto text-right pl-2 border-l border-border">
+            <div className="text-[10px] text-muted-foreground">💧 {weather.humidity}%</div>
+            <div className="text-[10px] text-muted-foreground">💨 {weather.windspeedKmph} km/h</div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface Props {
   visitors: Visitor[];
@@ -14,6 +90,8 @@ interface Props {
 
 export function Dashboard({ visitors, logs, officeFull, onRegisterVisitor }: Props) {
   const today = new Date();
+  // Extract city from officeFull: format "Office Name — City" or just use as-is
+  const city = officeFull.includes("—") ? officeFull.split("—").slice(1).join("—").trim() : officeFull.split(",")[0]?.trim() ?? "";
 
   const active = visitors.filter(v => v.status === "Checked In");
   const onBreak = visitors.filter(v => v.status === "On Break");
@@ -30,22 +108,25 @@ export function Dashboard({ visitors, logs, officeFull, onRegisterVisitor }: Pro
 
   return (
     <div>
-      <div className="mb-5 flex items-start justify-between gap-3">
+      <div className="mb-5 flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="font-serif text-[21px] font-medium text-foreground">Visitor Overview</h1>
           <p className="text-[12.5px] text-muted-foreground mt-0.5">{officeFull}</p>
         </div>
-        {onRegisterVisitor && (
-          <button
-            onClick={onRegisterVisitor}
-            className="flex items-center gap-1.5 bg-primary text-white px-3.5 py-2 rounded-lg text-[12.5px] font-semibold hover:bg-primary/90 transition-colors flex-shrink-0"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="w-3.5 h-3.5">
-              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-            Register Visitor
-          </button>
-        )}
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          {city && <WeatherWidget city={city} />}
+          {onRegisterVisitor && (
+            <button
+              onClick={onRegisterVisitor}
+              className="flex items-center gap-1.5 bg-primary text-white px-3.5 py-2 rounded-lg text-[12.5px] font-semibold hover:bg-primary/90 transition-colors flex-shrink-0"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="w-3.5 h-3.5">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Register Visitor
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">

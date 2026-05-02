@@ -25,6 +25,8 @@ export const companiesTable = pgTable("companies", {
   // License & products (stored as JSON string: string[])
   products: text("products").default("[]"),
   licenseStatus: text("license_status").default("trial"),
+  maxSeats: text("max_seats").default("10"),
+  seatsUsed: text("seats_used").default("0"),
 
   notes: text("notes"),
   contacts: text("contacts").default("[]"),
