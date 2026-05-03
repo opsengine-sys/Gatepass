@@ -24,6 +24,12 @@ const plans = [
   { name: "Enterprise", tagline: "Large, complex deployments", price: "Custom", period: "", highlight: false, features: ["Unlimited offices", "Unlimited visitors", "Everything in Growth", "Analytics & Reports", "API Access", "Unlimited users", "Dedicated account manager"], cta: "Contact Sales", ctaVariant: "ghost" },
 ];
 
+const steps = [
+  { num: "01", title: "Set up your workspace", desc: "Sign up, create your company profile, and add offices. Under 5 minutes." },
+  { num: "02", title: "Invite your team", desc: "Add security staff and admins. Each person sees only what they need." },
+  { num: "03", title: "Start managing visitors", desc: "Register walk-ins, issue gate passes, track everything in real-time." },
+];
+
 const badgeBg: Record<string, string> = { Core: "bg-zinc-100 text-zinc-600", Growth: "bg-blue-50 text-blue-600" };
 
 function HeroBg() {
