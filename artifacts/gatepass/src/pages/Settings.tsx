@@ -5,7 +5,7 @@ import { useBranding } from "@/contexts/useBranding";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { BadgeCreatorModal } from "@/components/badge/BadgeCreatorModal";
-import { loadCustomTemplates, type CustomTemplate } from "@/components/badge/badgeTemplateUtils";
+import { loadCustomTemplates, saveCustomTemplates, type CustomTemplate } from "@/components/badge/badgeTemplateUtils";
 import { VISITOR_TYPES, TYPE_COLORS, GP_TYPES } from "@/types";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import {
