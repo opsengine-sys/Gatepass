@@ -35,6 +35,22 @@ export interface CustomTemplate {
   createdAt: string;
 }
 
+export type TemplateScope = "badge" | "gp";
+
+export function getDefaultTemplateId(scope: TemplateScope): string | null {
+  try {
+    return localStorage.getItem(`gp_default_template_${scope}_v1`);
+  } catch {
+    return null;
+  }
+}
+
+export function setDefaultTemplateId(scope: TemplateScope, id: string): void {
+  try {
+    localStorage.setItem(`gp_default_template_${scope}_v1`, id);
+  } catch { /* */ }
+}
+
 export function normalizeCustomTemplates(value: unknown): CustomTemplate[] {
   if (!Array.isArray(value)) return [];
   return value.filter((item): item is CustomTemplate => {
