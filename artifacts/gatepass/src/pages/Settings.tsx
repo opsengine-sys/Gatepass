@@ -1127,6 +1127,49 @@ function BadgeTemplatesTab({ badgeTemplate, setBadgeTemplate, gpTemplate, setGpT
                 </div>
               </button>
             ))}
+            {customTemplates.filter(t => t.kind === "badge").map(t => {
+              const isActive = badgeTemplate === t.id;
+              return (
+                <div key={t.id} className={cn("border-[1.5px] rounded-xl overflow-hidden transition-all",
+                  isActive ? "border-primary shadow-[0_0_0_3px_rgba(192,107,44,0.15)]" : "border-border hover:border-primary/40")}>
+                  <div className={cn("py-4 px-3 flex items-center justify-center min-h-[100px]",
+                    isActive ? "bg-orange-50" : "bg-secondary")}>
+                    <div className="text-center">
+                      <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-1.5">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4 text-primary">
+                          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 13h4M9 17h3"/>
+                        </svg>
+                      </div>
+                      <div className="text-[9.5px] text-muted-foreground font-medium">{t.size.toUpperCase()} · Custom</div>
+                    </div>
+                  </div>
+                  <div className="px-3 py-2 border-t border-border">
+                    <div className="text-[11.5px] font-semibold text-foreground truncate flex items-center gap-1.5 flex-wrap">
+                      {t.name}
+                      {isActive && <span className="text-[9px] bg-orange-100 text-orange-700 rounded-full px-1.5 py-0.5 font-bold">Active</span>}
+                    </div>
+                    <div className="flex items-center gap-1 mt-1.5">
+                      <button
+                        onClick={() => { setBadgeTemplate(t.id); toast.success(`Default badge set to "${t.name}"`); }}
+                        className={cn("flex-1 text-[10px] font-medium px-1.5 py-1 rounded transition-colors",
+                          isActive ? "text-orange-700 bg-orange-50" : "text-primary hover:bg-primary/8")}>
+                        {isActive ? "Default" : "Set Default"}
+                      </button>
+                      <button
+                        onClick={() => { setEditingTemplate(t); setCreatorOpen(t.kind); }}
+                        className="text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary px-1.5 py-1 rounded transition-colors">
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteCustom(t.id)}
+                        className="text-[10px] font-medium text-destructive/50 hover:text-destructive hover:bg-destructive/8 px-1.5 py-1 rounded transition-colors">
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -1166,49 +1209,51 @@ function BadgeTemplatesTab({ badgeTemplate, setBadgeTemplate, gpTemplate, setGpT
                 </div>
               </button>
             ))}
-          </div>
-        </div>
-
-        {/* ── Custom Templates ── */}
-        {customTemplates.length > 0 && (
-          <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
-            <div className="px-5 py-3.5 border-b border-border">
-              <h3 className="font-semibold text-[13px] text-foreground">Custom Templates</h3>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Templates you created from scratch</p>
-            </div>
-            <div className="grid grid-cols-4 gap-3 p-5">
-              {customTemplates.map(t => (
-                <div key={t.id} className="border-[1.5px] border-border rounded-xl overflow-hidden group hover:border-primary/40 transition-all">
-                  <div className="bg-secondary py-5 px-3 flex items-center justify-center min-h-[116px]">
+            {customTemplates.filter(t => t.kind === "gp").map(t => {
+              const isActive = gpTemplate === t.id;
+              return (
+                <div key={t.id} className={cn("border-[1.5px] rounded-xl overflow-hidden transition-all",
+                  isActive ? "border-primary shadow-[0_0_0_3px_rgba(192,107,44,0.12)]" : "border-border hover:border-primary/40")}>
+                  <div className={cn("py-4 px-3 flex items-center justify-center min-h-[100px]",
+                    isActive ? "bg-primary/8" : "bg-secondary")}>
                     <div className="text-center">
                       <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-1.5">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4 text-primary">
                           <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 13h4M9 17h3"/>
                         </svg>
                       </div>
-                      <div className="text-[10px] text-muted-foreground font-medium">{t.size.toUpperCase()}</div>
+                      <div className="text-[9.5px] text-muted-foreground font-medium">{t.size.toUpperCase()} · Custom</div>
                     </div>
                   </div>
                   <div className="px-3 py-2 border-t border-border">
-                    <div className="text-[11.5px] font-semibold text-foreground truncate">{t.name}</div>
+                    <div className="text-[11.5px] font-semibold text-foreground truncate flex items-center gap-1.5 flex-wrap">
+                      {t.name}
+                      {isActive && <span className="text-[9px] bg-primary/10 text-primary rounded-full px-1.5 py-0.5 font-bold">Active</span>}
+                    </div>
                     <div className="flex items-center gap-1 mt-1.5">
                       <button
+                        onClick={() => { setGpTemplate(t.id); toast.success(`Default gate pass set to "${t.name}"`); }}
+                        className={cn("flex-1 text-[10px] font-medium px-1.5 py-1 rounded transition-colors",
+                          isActive ? "text-primary bg-primary/8" : "text-primary hover:bg-primary/8")}>
+                        {isActive ? "Default" : "Set Default"}
+                      </button>
+                      <button
                         onClick={() => { setEditingTemplate(t); setCreatorOpen(t.kind); }}
-                        className="flex-1 text-[10px] font-medium text-primary hover:bg-primary/8 px-1.5 py-1 rounded transition-colors">
+                        className="text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary px-1.5 py-1 rounded transition-colors">
                         Edit
                       </button>
                       <button
                         onClick={() => handleDeleteCustom(t.id)}
-                        className="text-[10px] font-medium text-destructive/60 hover:text-destructive hover:bg-destructive/8 px-1.5 py-1 rounded transition-colors">
-                        Delete
+                        className="text-[10px] font-medium text-destructive/50 hover:text-destructive hover:bg-destructive/8 px-1.5 py-1 rounded transition-colors">
+                        ✕
                       </button>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
-        )}
+        </div>
       </div>
     </>
   );
