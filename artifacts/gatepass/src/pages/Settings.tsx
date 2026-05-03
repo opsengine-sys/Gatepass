@@ -1034,8 +1034,14 @@ function BadgeTemplatesTab({ badgeTemplate, setBadgeTemplate, gpTemplate, setGpT
   const saveBadgeCfg = (c: TemplateConfig) => { setBadgeCfg(c); lsSet("gp_badge_cfg_v1", c); void patchCompanySettings({ badgeCfg: c }); };
   const saveGPCfg   = (c: TemplateConfig) => { setGPCfg(c);    lsSet("gp_gp_cfg_v1", c);    void patchCompanySettings({ gpCfg: c }); };
 
-  const handleCreatorSave = (_t: CustomTemplate) => {
-    const updated = loadCustomTemplates();
+  const handleCreatorSave = (t: CustomTemplate) => {
+    const updated = (() => {
+      const existing = loadCustomTemplates();
+      const next = existing.filter((x) => x.id !== t.id);
+      next.push(t);
+      return next;
+    })();
+    saveCustomTemplates(updated);
     setCustomTemplates(updated);
     void patchCompanySettings({ customTemplates: updated });
   };

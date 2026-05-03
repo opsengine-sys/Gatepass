@@ -412,7 +412,7 @@ export function BadgeCreatorModal({ kind, onClose, onSave, editTemplate }: Badge
       ? existing.map(x => x.id === t.id ? t : x)
       : [...existing, t];
     saveCustomTemplates(updated);
-    onSave?.(t);
+    onSave?.(updated.find(x => x.id === t.id) ?? t);
     toast.success(`Template "${t.name}" saved`);
     onClose();
   };
