@@ -765,14 +765,15 @@ function loadGPCfg(): TemplateConfig {
   return { ...defaultGPCfg, ...lsGet<Partial<TemplateConfig>>("gp_gp_cfg_v1", () => ({})) };
 }
 
-function TemplateLivePreview({ kind, templateId, cfg }: { kind: "badge" | "gp"; templateId: string; cfg: TemplateConfig }) {
+function TemplateLivePreview({ kind, templateId, cfg, preview = false }: { kind: "badge" | "gp"; templateId: string; cfg: TemplateConfig; preview?: boolean }) {
   const c = cfg.primaryColor;
   const bg = cfg.accentColor;
   const sz = cfg.fontSize === "sm" ? "text-[9px]" : cfg.fontSize === "lg" ? "text-[12px]" : "text-[10px]";
+  const wrap = preview ? "scale-[2.05] origin-center" : "";
 
   if (kind === "badge") {
     if (templateId === "classic") return (
-      <div className="w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm bg-white flex">
+      <div className={cn("w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm bg-white flex", wrap)}>
         <div className="w-2.5 h-full flex-shrink-0" style={{ backgroundColor: c }} />
         <div className="flex flex-col items-center justify-center w-[38px] flex-shrink-0 bg-gray-50 border-r border-gray-100 gap-1 py-1">
           {cfg.showPhoto && <div className="w-7 h-7 rounded-full border-2 bg-gray-200" style={{ borderColor: c }} />}
@@ -787,7 +788,7 @@ function TemplateLivePreview({ kind, templateId, cfg }: { kind: "badge" | "gp"; 
       </div>
     );
     if (templateId === "minimal") return (
-      <div className="w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm bg-white flex flex-col justify-between p-3">
+      <div className={cn("w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm bg-white flex flex-col justify-between p-3", wrap)}>
         <div>
           <div className={cn("font-bold text-gray-900", sz)}>Rajesh Kumar</div>
           <div className={cn("text-gray-400 mt-0.5", sz)}>Vendor · TechCorp</div>
@@ -800,7 +801,7 @@ function TemplateLivePreview({ kind, templateId, cfg }: { kind: "badge" | "gp"; 
       </div>
     );
     if (templateId === "bold") return (
-      <div className="w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm flex flex-col" style={{ backgroundColor: bg }}>
+      <div className={cn("w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm flex flex-col", wrap)} style={{ backgroundColor: bg }}>
         <div className="h-5 flex items-center px-2.5" style={{ backgroundColor: c }}>
           {cfg.showLogo && <span className="text-white text-[7px] font-bold">GatePass™</span>}
         </div>
@@ -815,7 +816,7 @@ function TemplateLivePreview({ kind, templateId, cfg }: { kind: "badge" | "gp"; 
       </div>
     );
     if (templateId === "corporate") return (
-      <div className="w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm bg-white flex flex-col">
+      <div className={cn("w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm bg-white flex flex-col", wrap)}>
         <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-gray-100">
           {cfg.showLogo && <span className="text-[7px] font-bold" style={{ color: c }}>GatePass™</span>}
           <span className="text-[7px] font-mono text-gray-400 ml-auto">V-2024-0042</span>
@@ -831,7 +832,7 @@ function TemplateLivePreview({ kind, templateId, cfg }: { kind: "badge" | "gp"; 
       </div>
     );
     if (templateId === "photo") return (
-      <div className="w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm relative">
+      <div className={cn("w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm relative", wrap)}>
         <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center">
           <div className="text-gray-500 text-[9px]">Photo</div>
         </div>
@@ -842,7 +843,7 @@ function TemplateLivePreview({ kind, templateId, cfg }: { kind: "badge" | "gp"; 
       </div>
     );
     return (
-      <div className="w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm bg-white flex gap-2 p-2.5">
+      <div className={cn("w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm bg-white flex gap-2 p-2.5", wrap)}>
         <div className="flex flex-col gap-1.5">
           {cfg.showQR && <div className="w-12 h-12 bg-gray-800 rounded-sm p-1"><div className="w-full h-full grid grid-cols-3 gap-0.5">{[...Array(9)].map((_,i) => <div key={i} className={cn("rounded-[1px]", [0,2,6,8].includes(i) ? "bg-white" : "bg-gray-800/0")} />)}</div></div>}
           {cfg.showPhoto && <div className="w-8 h-8 rounded-full bg-gray-200 border border-gray-100" />}
@@ -858,7 +859,7 @@ function TemplateLivePreview({ kind, templateId, cfg }: { kind: "badge" | "gp"; 
 
   // Gate pass previews
   if (templateId === "detailed") return (
-    <div className="w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm bg-white flex flex-col">
+    <div className={cn("w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm bg-white flex flex-col", wrap)}>
       <div className="flex items-center justify-between px-2.5 py-1.5" style={{ backgroundColor: c }}>
         <span className="text-white text-[7px] font-bold">GATE PASS</span>
         <span className="text-white text-[7px] opacity-80">GP-2024-001</span>
@@ -874,7 +875,7 @@ function TemplateLivePreview({ kind, templateId, cfg }: { kind: "badge" | "gp"; 
     </div>
   );
   if (templateId === "corporate") return (
-    <div className="w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm bg-white flex flex-col">
+    <div className={cn("w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm bg-white flex flex-col", wrap)}>
       <div className="px-2.5 py-1.5 flex items-center justify-between" style={{ backgroundColor: c }}>
         {cfg.showLogo && <span className="text-white text-[7px] font-bold">GatePass™</span>}
         <span className="text-white text-[7px]">GATE PASS</span>
@@ -901,7 +902,7 @@ function TemplateLivePreview({ kind, templateId, cfg }: { kind: "badge" | "gp"; 
     </div>
   );
   if (templateId === "compact") return (
-    <div className="w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm bg-white p-2.5">
+    <div className={cn("w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm bg-white p-2.5", wrap)}>
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-[7px] font-bold" style={{ color: c }}>GATE PASS</span>
         <span className="text-[6.5px] font-mono text-gray-400">GP-001</span>
@@ -915,7 +916,7 @@ function TemplateLivePreview({ kind, templateId, cfg }: { kind: "badge" | "gp"; 
     </div>
   );
   if (templateId === "security") return (
-    <div className="w-[160px] h-[100px] rounded-lg border-2 border-red-300 overflow-hidden shadow-sm bg-white flex flex-col">
+    <div className={cn("w-[160px] h-[100px] rounded-lg border-2 border-red-300 overflow-hidden shadow-sm bg-white flex flex-col", wrap)}>
       <div className="flex items-center justify-between px-2.5 py-1.5 bg-red-600">
         <span className="text-white text-[7px] font-black tracking-wider">SECURITY PASS</span>
       </div>
@@ -934,7 +935,7 @@ function TemplateLivePreview({ kind, templateId, cfg }: { kind: "badge" | "gp"; 
     </div>
   );
   return (
-    <div className="w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm bg-white p-2.5 flex flex-col justify-between">
+    <div className={cn("w-[160px] h-[100px] rounded-lg border border-gray-200 overflow-hidden shadow-sm bg-white p-2.5 flex flex-col justify-between", wrap)}>
       <div>
         <div className="flex items-center justify-between mb-1">
           <span className="text-[7px] font-bold" style={{ color: c }}>Gate Pass</span>

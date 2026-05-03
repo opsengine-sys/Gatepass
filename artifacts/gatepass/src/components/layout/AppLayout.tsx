@@ -51,7 +51,7 @@ export function AppLayout({ children, office, officeFull, visitors, gatePasses, 
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-[52px] border-b border-border flex items-center px-5 gap-3 bg-card flex-shrink-0">
+        <header className="h-[56px] border-b border-border flex items-center px-5 gap-3 bg-card flex-shrink-0">
           <button
             className="md:hidden flex items-center justify-center bg-secondary border border-border rounded-lg p-1.5 text-muted-foreground"
             onClick={() => setSidebarOpen(true)}
@@ -64,7 +64,7 @@ export function AppLayout({ children, office, officeFull, visitors, gatePasses, 
           </button>
 
           <span className={cn(
-            "text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full",
+            "text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full whitespace-nowrap",
             meta.module === "gatepasses" ? "bg-orange-50 text-orange-700" :
             meta.module === "admin" ? "bg-purple-50 text-purple-700" :
             meta.module === "settings" ? "bg-slate-100 text-slate-600" :
@@ -73,14 +73,14 @@ export function AppLayout({ children, office, officeFull, visitors, gatePasses, 
             {meta.module === "gatepasses" ? "Gate Passes" : meta.module === "admin" ? "Admin" : meta.module === "settings" ? "Account" : "Visitors"}
           </span>
 
-          <div className="font-bold text-sm flex-1 text-foreground flex items-center gap-2">
+          <div className="font-bold text-sm flex-1 min-w-0 text-foreground flex items-center gap-2">
             {logoUrl && (
               <img src={logoUrl} alt={companyName} className="h-5 w-auto object-contain opacity-70" />
             )}
             {meta.title}
           </div>
 
-          <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground bg-secondary border border-border rounded-full px-2.5 py-1">
+          <div className="hidden sm:flex items-center gap-1.5 text-[11.5px] text-muted-foreground bg-secondary border border-border rounded-full px-2.5 py-1 whitespace-nowrap">
             <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
             {checkedIn} inside · {openGP} open passes
           </div>

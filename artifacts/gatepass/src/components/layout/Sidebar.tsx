@@ -50,7 +50,7 @@ export function Sidebar({ officeFull, visitors, gatePasses, user, onOpenOfficePi
         <div className="fixed inset-0 bg-black/25 z-40 md:hidden" onClick={onClose} />
       )}
       <nav className={cn(
-        "w-[228px] bg-card border-r border-border flex flex-col flex-shrink-0 z-50",
+        "w-[240px] bg-card border-r border-border flex flex-col flex-shrink-0 z-50",
         "fixed left-0 top-0 bottom-0 transition-transform duration-250 ease-in-out md:static md:translate-x-0",
         isOpen ? "translate-x-0 shadow-xl" : "-translate-x-full",
       )}>
@@ -133,7 +133,7 @@ export function Sidebar({ officeFull, visitors, gatePasses, user, onOpenOfficePi
           )}
         </div>
 
-        <div className="px-3 py-2.5 border-t border-border space-y-2">
+        <div className="px-3 py-3 border-t border-border space-y-2 bg-card sticky bottom-0">
           <button
             onClick={onOpenOfficePicker}
             className="w-full bg-secondary border border-border rounded-lg p-2 flex items-center gap-2 cursor-pointer hover:border-border/80 transition-colors text-left"
@@ -151,7 +151,7 @@ export function Sidebar({ officeFull, visitors, gatePasses, user, onOpenOfficePi
 
           <button
             onClick={() => signOut()}
-            className="w-full flex items-center gap-2 px-2 py-1.5 text-[12px] text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2 text-[12px] font-semibold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-3.5 h-3.5">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
