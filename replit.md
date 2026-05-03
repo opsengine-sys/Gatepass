@@ -86,7 +86,7 @@ Tables: `companies`, `users`, `offices`, `visitors`, `visitor_logs`, `gate_passe
 
 1. **Overview** — metric cards (companies, users, visitors, active licenses), license/plan breakdowns, recently added companies, expiring contracts. Graceful "access required" fallback if stats unavailable.
 2. **Companies** — full CRM table with contact/contract/license info, Edit modal with all fields + multi-contact editor (add/remove contacts with roles), "Enter as Admin" impersonation, Suspend
-3. **Licenses** — per-company product assignment + license status + seat allocation. Summary bar (total/active/trial/seats). Per-company seat usage bar (green→amber→red at 70/90%), inline maxSeats editing, contract dates with expiry warnings. Inactive products hidden (no strikethrough); empty state "No products assigned — click Edit" shown.
+3. **Licenses** — per-company product assignment + license status + seat allocation. Summary bar (total/active/trial/seats). Per-company seat usage bar (green→amber→red at 70/90%), inline maxSeats editing, contract dates with expiry warnings. Inactive products hidden (no strikethrough); empty state "No products assigned — click Edit" shown. Seat usage shows live `userCount` from DB (not the stale `seatsUsed` column).
 4. **Users** — all users across platform, filter by company, inline role & company editing
 5. **Platform Admins** — lists all super_admin users from `/api/admin/users`, invite-by-email modal, security callout ("never elevate company users"), DB assignment instructions
 6. **Activity** — timeline of recent sign-ups and company creations
@@ -96,6 +96,11 @@ Tables: `companies`, `users`, `offices`, `visitors`, `visitor_logs`, `gate_passe
 - Primary Contact (legacy single contact fields)
 - Additional Contacts: dynamic list of `CompanyContact` cards, each with name/email/phone/role (Primary, Technical, Billing, Operations, Other)
 - Stored as JSON in `companies.contacts` column
+
+### Admin PATCH / POST companies
+- Handles all fields: `name`, `slug`, `plan`, `isActive`, `logoUrl`, `contactName`, `contactEmail`, `contactPhone`, `contractStart`, `contractEnd`, `contractValue`, `products`, `licenseStatus`, `maxSeats`, `contacts`, `notes`
+- `maxSeats` stored as text string in DB; `contacts` stored as JSON string
+- POST (create) also seeds `maxSeats` and `contacts` correctly
 
 ### "Enter as Admin" impersonation
 - Clicking "Enter as Admin" sets `localStorage.gp_impersonate = {companyId, companyName}`
@@ -113,6 +118,7 @@ Tables: `companies`, `users`, `offices`, `visitors`, `visitor_logs`, `gate_passe
 4. **Badge Templates** — "Create from Scratch" + "Customise" buttons per section. Two editors:
    - **BadgeTemplateEditorModal** — pick from built-in templates + customize colors/font size/toggles. Config persisted to `gp_badge_cfg_v1` / `gp_gp_cfg_v1`.
    - **BadgeCreatorModal** (`src/components/badge/BadgeCreatorModal.tsx`) — full canvas-style creator: size picker (CR80/A6/A5/A4), left element palette (15 element kinds across 4 categories), center canvas with click-to-select, right properties panel (position/size/text/typography/colors/radius/zIndex), layer list, naming dialog. Custom templates saved to `gp_custom_templates_v1`. Edit/delete saved templates from grid.
+   - **Template selection persisted**: clicking any built-in or custom template saves `badgeTemplate`/`gpTemplate` to `/api/company-settings` via `patchCompanySettings`. Selection is hydrated from `apiSettings` on next load. Both the inline grid and the full-screen editor editor persist the choice.
 5. **Team & Users** — invite by email, role reference table
 6. **Notifications** — per-event toggle switches (in-app), email config placeholder
 7. **Integrations** — Microsoft 365 / Google Workspace toggles, LDAP coming soon

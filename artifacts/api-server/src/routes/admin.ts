@@ -145,6 +145,8 @@ router.post(
         contractValue: contractValue ?? null,
         products: products ? JSON.stringify(products) : "[]",
         licenseStatus: licenseStatus ?? "trial",
+        maxSeats: maxSeats ? String(maxSeats) : "10",
+        contacts: contacts ? (typeof contacts === "string" ? contacts : JSON.stringify(contacts)) : "[]",
         notes: notes ?? null,
       })
       .returning();
@@ -161,14 +163,15 @@ router.patch(
   async (req: AuthenticatedRequest, res) => {
     const companyId = req.params["companyId"] as string;
     const {
-      name, plan, isActive, logoUrl,
+      name, slug, plan, isActive, logoUrl,
       contactName, contactEmail, contactPhone,
       contractStart, contractEnd, contractValue,
-      products, licenseStatus, notes,
+      products, licenseStatus, maxSeats, notes, contacts,
     } = req.body;
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (name !== undefined) updates.name = name;
+    if (slug !== undefined) updates.slug = slug;
     if (plan !== undefined) updates.plan = plan;
     if (isActive !== undefined) updates.isActive = isActive;
     if (logoUrl !== undefined) updates.logoUrl = logoUrl;
@@ -180,6 +183,8 @@ router.patch(
     if (contractValue !== undefined) updates.contractValue = contractValue;
     if (products !== undefined) updates.products = JSON.stringify(products);
     if (licenseStatus !== undefined) updates.licenseStatus = licenseStatus;
+    if (maxSeats !== undefined) updates.maxSeats = String(maxSeats);
+    if (contacts !== undefined) updates.contacts = typeof contacts === "string" ? contacts : JSON.stringify(contacts);
     if (notes !== undefined) updates.notes = notes;
 
     const [updated] = await db

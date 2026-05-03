@@ -572,7 +572,7 @@ function LicensesTab() {
 
   const allCompanies = companies as Company[];
   const totalSeats = allCompanies.reduce((a, c) => a + Number(c.maxSeats ?? 0), 0);
-  const usedSeats  = allCompanies.reduce((a, c) => a + Number(c.seatsUsed ?? 0), 0);
+  const usedSeats  = allCompanies.reduce((a, c) => a + Number((c as any).userCount ?? c.seatsUsed ?? 0), 0);
   const activeCount = allCompanies.filter(c => (c.licenseStatus as LicenseStatus) === "active").length;
   const trialCount  = allCompanies.filter(c => (c.licenseStatus as LicenseStatus) === "trial").length;
 
@@ -607,7 +607,7 @@ function LicensesTab() {
             const products = isEditing ? editProducts : parseProducts(c.products);
             const status = isEditing ? editStatus : ((c.licenseStatus as LicenseStatus) ?? "trial");
             const maxSeats = isEditing ? Number(editMaxSeats) : Number(c.maxSeats ?? 10);
-            const seatsUsed = Number(c.seatsUsed ?? 0);
+            const seatsUsed = Number((c as any).userCount ?? c.seatsUsed ?? 0);
             const contractEndDate = c.contractEnd ? new Date(c.contractEnd) : null;
             const daysLeft = contractEndDate ? Math.ceil((contractEndDate.getTime() - Date.now()) / 86400000) : null;
 

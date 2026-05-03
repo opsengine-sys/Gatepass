@@ -340,6 +340,8 @@ interface CompanySettingsData {
   customTemplates?: CustomTemplate[];
   webhooks?: WebhookEntry[];
   apiKeys?: ApiKeyEntry[];
+  badgeTemplate?: string;
+  gpTemplate?: string;
 }
 
 const defaultVisitorTypes = (): VisitorTypeItem[] =>
@@ -1035,6 +1037,8 @@ function BadgeTemplatesTab({ badgeTemplate, setBadgeTemplate, gpTemplate, setGpT
       if (apiSettings.badgeCfg)       { setBadgeCfg({ ...defaultBadgeCfg, ...apiSettings.badgeCfg }); lsSet("gp_badge_cfg_v1", apiSettings.badgeCfg); }
       if (apiSettings.gpCfg)          { setGPCfg({ ...defaultGPCfg, ...apiSettings.gpCfg });           lsSet("gp_gp_cfg_v1", apiSettings.gpCfg); }
       if (apiSettings.customTemplates){ setCustomTemplates(apiSettings.customTemplates);                lsSet("gp_custom_templates_v1", apiSettings.customTemplates); }
+      if (apiSettings.badgeTemplate)  { setBadgeTemplate(apiSettings.badgeTemplate); }
+      if (apiSettings.gpTemplate)     { setGpTemplate(apiSettings.gpTemplate); }
       setHydrated(true);
     }
   }, [apiSettings, hydrated]);
@@ -1068,7 +1072,7 @@ function BadgeTemplatesTab({ badgeTemplate, setBadgeTemplate, gpTemplate, setGpT
       {badgeEditor && (
         <BadgeTemplateEditorModal
           kind="badge"
-          template={badgeTemplate} setTemplate={t => { setBadgeTemplate(t); toast.success(`Badge template: ${BADGE_TEMPLATES.find(x => x.id === t)?.label}`); }}
+          template={badgeTemplate} setTemplate={t => { setBadgeTemplate(t); void patchCompanySettings({ badgeTemplate: t }); toast.success(`Badge template: ${BADGE_TEMPLATES.find(x => x.id === t)?.label}`); }}
           cfg={badgeCfg} setCfg={saveBadgeCfg}
           onClose={() => setBadgeEditor(false)}
         />
@@ -1076,7 +1080,7 @@ function BadgeTemplatesTab({ badgeTemplate, setBadgeTemplate, gpTemplate, setGpT
       {gpEditor && (
         <BadgeTemplateEditorModal
           kind="gp"
-          template={gpTemplate} setTemplate={t => { setGpTemplate(t); toast.success(`GP template: ${GP_TEMPLATES.find(x => x.id === t)?.label}`); }}
+          template={gpTemplate} setTemplate={t => { setGpTemplate(t); void patchCompanySettings({ gpTemplate: t }); toast.success(`GP template: ${GP_TEMPLATES.find(x => x.id === t)?.label}`); }}
           cfg={gpCfg} setCfg={saveGPCfg}
           onClose={() => setGPEditor(false)}
         />
@@ -1113,7 +1117,7 @@ function BadgeTemplatesTab({ badgeTemplate, setBadgeTemplate, gpTemplate, setGpT
           </div>
           <div className="grid grid-cols-4 gap-3 p-5">
             {BADGE_TEMPLATES.map(t => (
-              <button key={t.id} onClick={() => { setBadgeTemplate(t.id); toast.success(`Badge: ${t.label}`); }}
+              <button key={t.id} onClick={() => { setBadgeTemplate(t.id); void patchCompanySettings({ badgeTemplate: t.id }); toast.success(`Badge: ${t.label}`); }}
                 className={cn("border-[1.5px] rounded-xl overflow-hidden text-left transition-all group",
                   badgeTemplate === t.id ? "border-primary shadow-[0_0_0_3px_rgba(192,107,44,0.15)]" : "border-border hover:border-primary/40")}>
                 <div className={cn("flex items-center justify-center py-3 px-2 relative", badgeTemplate === t.id ? "bg-orange-50" : "bg-secondary group-hover:bg-secondary/70")}>
@@ -1150,7 +1154,7 @@ function BadgeTemplatesTab({ badgeTemplate, setBadgeTemplate, gpTemplate, setGpT
                     </div>
                     <div className="flex items-center gap-1 mt-1.5">
                       <button
-                        onClick={() => { setBadgeTemplate(t.id); toast.success(`Default badge set to "${t.name}"`); }}
+                        onClick={() => { setBadgeTemplate(t.id); void patchCompanySettings({ badgeTemplate: t.id }); toast.success(`Default badge set to "${t.name}"`); }}
                         className={cn("flex-1 text-[10px] font-medium px-1.5 py-1 rounded transition-colors",
                           isActive ? "text-orange-700 bg-orange-50" : "text-primary hover:bg-primary/8")}>
                         {isActive ? "Default" : "Set Default"}
@@ -1195,7 +1199,7 @@ function BadgeTemplatesTab({ badgeTemplate, setBadgeTemplate, gpTemplate, setGpT
           </div>
           <div className="grid grid-cols-4 gap-3 p-5">
             {GP_TEMPLATES.map(t => (
-              <button key={t.id} onClick={() => { setGpTemplate(t.id); toast.success(`GP: ${t.label}`); }}
+              <button key={t.id} onClick={() => { setGpTemplate(t.id); void patchCompanySettings({ gpTemplate: t.id }); toast.success(`GP: ${t.label}`); }}
                 className={cn("border-[1.5px] rounded-xl overflow-hidden text-left transition-all group",
                   gpTemplate === t.id ? "border-primary shadow-[0_0_0_3px_rgba(192,107,44,0.12)]" : "border-border hover:border-primary/40")}>
                 <div className={cn("flex items-center justify-center py-3 px-2", gpTemplate === t.id ? "bg-primary/8" : "bg-secondary group-hover:bg-secondary/70")}>
@@ -1232,7 +1236,7 @@ function BadgeTemplatesTab({ badgeTemplate, setBadgeTemplate, gpTemplate, setGpT
                     </div>
                     <div className="flex items-center gap-1 mt-1.5">
                       <button
-                        onClick={() => { setGpTemplate(t.id); toast.success(`Default gate pass set to "${t.name}"`); }}
+                        onClick={() => { setGpTemplate(t.id); void patchCompanySettings({ gpTemplate: t.id }); toast.success(`Default gate pass set to "${t.name}"`); }}
                         className={cn("flex-1 text-[10px] font-medium px-1.5 py-1 rounded transition-colors",
                           isActive ? "text-primary bg-primary/8" : "text-primary hover:bg-primary/8")}>
                         {isActive ? "Default" : "Set Default"}
