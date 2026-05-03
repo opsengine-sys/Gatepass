@@ -1,7 +1,7 @@
 import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { HeroShader } from "@/components/HeroShader";
+import { DottedSurface } from "@/components/DottedSurface";
 
 const features = [
   {
@@ -167,16 +167,8 @@ function HeroBg() {
         filter: "blur(36px)",
       }} />
 
-      {/* ② Dot grid for texture */}
-      <div className="absolute inset-0" style={{
-        backgroundImage: "radial-gradient(circle, rgba(192,107,44,0.14) 1px, transparent 1px)",
-        backgroundSize: "30px 30px",
-        maskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 75%, transparent 100%)",
-        WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 75%, transparent 100%)",
-      }} />
-
-      {/* ③ WebGL animated layer (adds organic motion on top of CSS) */}
-      <HeroShader className="absolute inset-0 w-full h-full" />
+      {/* ② Animated dotted surface — mouse-reactive ripple wave */}
+      <DottedSurface className="absolute inset-0 w-full h-full" spacing={28} dotRadius={1.6} waveSpeed={0.9} mouseRadius={140} />
 
       {/* ④ Bottom fade — blend back to page background */}
       <div className="absolute inset-x-0 bottom-0 h-32" style={{
