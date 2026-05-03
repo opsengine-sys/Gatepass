@@ -193,9 +193,17 @@ function ProfileTab({ user, isAdmin }: { user: ReturnType<typeof useApp>["user"]
       const parts = name.trim().split(" ");
       await clerkUser?.update({ firstName: parts[0], lastName: parts.slice(1).join(" ") || undefined });
       const basePath = import.meta.env.BASE_URL?.replace(/\/$/, "") || "";
-      await fetch(`${basePath}/api/me`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: name.trim() }) });
+      const res = await fetch(`${basePath}/api/me`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim() }),
+      });
+      if (!res.ok) throw new Error("profile_save_failed");
       toast.success("Profile updated");
-    } catch { toast.error("Failed to save profile"); }
+    } catch {
+      toast.error("Failed to save profile");
+    }
     finally { setSavingProfile(false); }
   };
 
