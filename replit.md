@@ -35,8 +35,10 @@ Full SaaS platform for Indian corporate offices. pnpm workspace monorepo using T
   - `src/pages/Dashboard.tsx` — VM Dashboard with "Register Visitor" button
   - `src/pages/GpDashboard.tsx` — GP Dashboard with "New Gate Pass" button
   - `src/components/modals/RegisterVisitorModal.tsx` — full visitor registration with camera + 9 dynamic visitor type field sets
-  - `src/components/layout/Sidebar.tsx` — nav with Settings item + gear icon; Admin only for super_admin
-  - `src/components/layout/AppLayout.tsx` — title/module map includes settings module
+  - `src/pages/OfficesPage.tsx` — Offices CRUD (add/edit/deactivate) using API hooks; admin/super_admin only
+  - `src/pages/TeamPage.tsx` — Team management (list members, edit role/office, deactivate) using API hooks
+  - `src/components/layout/Sidebar.tsx` — nav with Offices, Team, Settings items; Admin only for super_admin
+  - `src/components/layout/AppLayout.tsx` — title/module map includes settings/offices/team modules
 
 - **Auth flow**:
   - Unauthenticated → LandingPage (route `/` or any protected path)

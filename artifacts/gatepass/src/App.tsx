@@ -35,6 +35,8 @@ import { LandingPage } from "@/pages/LandingPage";
 import { OnboardingPage } from "@/pages/OnboardingPage";
 import { AdminPanel } from "@/pages/AdminPanel";
 import { Settings } from "@/pages/Settings";
+import { OfficesPage } from "@/pages/OfficesPage";
+import { TeamPage } from "@/pages/TeamPage";
 
 const basePath = import.meta.env.BASE_URL?.replace(/\/$/, "") || "";
 
@@ -263,6 +265,12 @@ function MainApp() {
               <AdminPanel />
             </Route>
           )}
+          <Route path="/offices">
+            <OfficesPage />
+          </Route>
+          <Route path="/team">
+            <TeamPage />
+          </Route>
           <Route path="/settings">
             <Settings />
           </Route>

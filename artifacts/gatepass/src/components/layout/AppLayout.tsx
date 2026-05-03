@@ -25,6 +25,8 @@ const titleMap: Record<string, { title: string; module: "visitors" | "gatepasses
   "/gp-activity-log": { title: "GP Activity Log", module: "gatepasses" },
   "/admin": { title: "Admin Panel", module: "admin" },
   "/settings": { title: "Settings", module: "settings" },
+  "/offices": { title: "Offices", module: "settings" },
+  "/team": { title: "Team", module: "settings" },
 };
 
 export function AppLayout({ children, office, officeFull, visitors, gatePasses, user, onOpenOfficePicker }: AppLayoutProps) {
