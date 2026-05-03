@@ -1165,7 +1165,7 @@ function BadgeTemplatesTab({ badgeTemplate, setBadgeTemplate, gpTemplate, setGpT
             <div className="grid grid-cols-4 gap-3 p-5">
               {customTemplates.map(t => (
                 <div key={t.id} className="border-[1.5px] border-border rounded-xl overflow-hidden group hover:border-primary/40 transition-all">
-                  <div className="bg-secondary py-5 px-3 flex items-center justify-center min-h-[70px]">
+                  <div className="bg-secondary py-5 px-3 flex items-center justify-center min-h-[116px]">
                     <div className="text-center">
                       <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-1.5">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4 text-primary">

@@ -186,7 +186,7 @@ export function AdminPanel({ superAdminNoCompany = false }: { superAdminNoCompan
         )}
         <button
           onClick={() => signOut()}
-          className="w-full text-left text-[12px] text-muted-foreground hover:text-red-600 flex items-center gap-2 px-1 transition-colors"
+          className="w-full text-left text-[12px] font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg flex items-center gap-2 px-3 py-2 transition-colors"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
@@ -263,7 +263,7 @@ function OverviewTab() {
   const s = stats;
 
   const metricCards = [
-    { label: "Total Companies", value: s.totalCompanies, color: "text-primary", sub: `${s.activeCompanies} active` },
+    { label: "Total Companies", value: s.totalCompanies, color: "text-primary", sub: `${s.activeCompanies} with active license` },
     { label: "Total Users", value: s.totalUsers, color: "text-blue-600", sub: "across all companies" },
     { label: "Total Visitors", value: s.totalVisitors, color: "text-orange-600", sub: "all time" },
     { label: "Active Licenses", value: s.licenseBreakdown.find(l => l.status === "active")?.cnt ?? 0, color: "text-green-600", sub: "live subscriptions" },
@@ -709,7 +709,7 @@ function LicensesTab() {
                   {!isEditing && products.length === 0 && (
                     <span className="text-[12px] text-muted-foreground/60 italic flex items-center gap-1.5">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                      No products assigned — click Edit to configure
+                      Product access is not restricted for this company
                     </span>
                   )}
                 </div>
