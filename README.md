@@ -1,5 +1,7 @@
 # GatePass
 
+![Under Development](https://img.shields.io/badge/status-under%20development-orange?style=flat-square)
+
 **Visitor & Gate Pass Management SaaS for Indian corporate offices.**
 
 GatePass is a full-stack, multi-tenant platform that digitises visitor registration, gate pass issuance, and office access tracking across multiple locations. Built as a pnpm workspace monorepo with TypeScript throughout.
